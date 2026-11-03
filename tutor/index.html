@@ -215,6 +215,7 @@ svg.i .dot { fill: currentColor; stroke: none; }
 .search-clear { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); display: grid; place-items: center; }
 .search-clear:hover { color: var(--text); background: var(--hover); }
 .actions { display: flex; gap: 8px; }
+a.btn-ghost { text-decoration: none; }
 .actions .btn-ghost[aria-pressed="true"] { background: var(--raised); border-color: var(--line-strong); }
 #savedBtn[aria-pressed="true"] svg path { fill: currentColor; }
 
@@ -717,6 +718,7 @@ main { min-width: 0; padding: 22px 0 40px; outline: none; }
     <ul class="ac" id="ac" role="listbox" aria-label="Card name suggestions" hidden></ul>
   </form>
   <div class="actions">
+    <a class="btn-ghost collapse" id="arenaLink" href="arena/" title="Watch AI players battle with these cards"><span data-icon="swords"></span><span class="lbl">Arena</span></a>
     <button type="button" class="btn-ghost collapse" id="random" title="Open a random card that matches your filters"><span data-icon="die"></span><span class="lbl">Random</span></button>
     <button type="button" class="btn-ghost collapse" id="savedBtn" aria-pressed="false"><span data-icon="bookmark"></span><span class="lbl">Saved</span><span class="count-badge" id="savedCount">0</span></button>
   </div>
@@ -840,6 +842,7 @@ const ICON = {
   flip: '<path d="M5 11.5a7 7 0 0 1 11.95-4.95L19 8.6"/><path d="M19 4.6v4h-4"/><path d="M19 12.5a7 7 0 0 1-11.95 4.95L5 15.4"/><path d="M5 19.4v-4h4"/>',
   rotate: '<path d="M18.5 12.5a6.5 6.5 0 1 1-1.9-4.6"/><path d="M17.6 3.9v4.3h-4.3"/>',
   sparkle: '<path d="M11 4l1.7 4.8L17.5 10.5l-4.8 1.7L11 17l-1.7-4.8L4.5 10.5l4.8-1.7z"/><path d="M18 14.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
+  swords: '<path d="M4.5 4.5l10.6 10.6M19.5 4.5L8.9 15.1"/><path d="M12.4 17.8l5.4-5.4M6.2 12.4l5.4 5.4M16.4 16.4l2.4 2.4M7.6 16.4l-2.4 2.4"/><circle class="dot" cx="19.3" cy="19.3" r="1.15"/><circle class="dot" cx="4.7" cy="19.3" r="1.15"/>',
   copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5"/>',
 };
 const icon = (name) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICON[name]}</svg>`;
