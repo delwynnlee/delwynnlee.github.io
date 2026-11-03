@@ -513,10 +513,10 @@ function newCard(G, def, owner) {
   return { id: G.nextId++, def, owner, ctrl: owner, tapped: false, sick: true, dmg: 0, dt: false, cnt: 0, tp: 0, tt: 0, tkw: [],
     token: false, attacking: false, blocked: false, blocking: 0, blockedBy: [], pumps: 0, stun: false };
 }
-function createGame({ decks, seed, first = null, record = true }) {
+function createGame({ decks, seed, first = null, record = true, human = null, answers = [] }) {
   const rng = makeRng(seed == null ? Date.now() : seed);
   const G = { rng, seed, turn: 0, active: 0, first: 0, players: [], frames: [], record, over: false, winner: null, reason: '',
-    stack: [], defs: {}, nextId: 1, phase: 'setup' };
+    stack: [], defs: {}, nextId: 1, phase: 'setup', human, answers, qi: 0 };
   decks.forEach((d, i) => {
     const P = { i, name: d.name, persona: PERSONAS[d.archetype] ? d.archetype : 'midrange', colors: d.colors || [], life: 20,
       library: [], hand: [], bf: [], gy: [], exile: [], landsPlayed: 0, lost: false, decked: false, mulligans: 0,
@@ -534,7 +534,7 @@ function snap(G) {
   return {
     turn: G.turn, active: G.active, phase: G.phase,
     p: G.players.map((P) => ({
-      life: P.life, lib: P.library.length,
+      life: P.life, lib: P.library.length, mana: manaCount(P),
       hand: P.hand.map((c) => [c.id, c.def.id]),
       bf: P.bf.map((c) => {
         const o = { id: c.id, d: c.def.id };
@@ -1035,22 +1035,22 @@ function resolveEffects(G, P, effects, source, targets, ctx) {
         break;
       }
       case 'draw': drawCards(G, P, e.n); emit(G, 'draw', `${P.name} draws ${e.n === 1 ? 'a card' : `${e.n} cards`}.`, { who: P.i }); break;
-      case 'loot': drawCards(G, P, e.n); discardWorst(G, P, e.d); emit(G, 'draw', `${P.name} draws ${e.n === 1 ? 'a card' : `${e.n} cards`}, then discards.`, { who: P.i }); break;
-      case 'brainstorm': drawCards(G, P, 3); putBack(G, P, 2); emit(G, 'draw', `${P.name} draws three cards and puts two back.`, { who: P.i }); break;
-      case 'rummage': if (P.hand.length) { discardWorst(G, P, 1); drawCards(G, P, 1); emit(G, 'draw', `${P.name} discards a card and draws a card.`, { who: P.i }); } break;
-      case 'discardSelf': if (P.hand.length) { discardWorst(G, P, e.n); emit(G, 'discard', `${P.name} discards a card.`, { who: P.i }); } break;
+      case 'loot': drawCards(G, P, e.n); discardChoice(G, P, e.d, 'loot'); emit(G, 'draw', `${P.name} draws ${e.n === 1 ? 'a card' : `${e.n} cards`}, then discards.`, { who: P.i }); break;
+      case 'brainstorm': drawCards(G, P, 3); putBackChoice(G, P, 2); emit(G, 'draw', `${P.name} draws three cards and puts two back.`, { who: P.i }); break;
+      case 'rummage': if (P.hand.length) { discardChoice(G, P, 1, 'rummage'); drawCards(G, P, 1); emit(G, 'draw', `${P.name} discards a card and draws a card.`, { who: P.i }); } break;
+      case 'discardSelf': if (P.hand.length) { discardChoice(G, P, e.n, 'discard'); emit(G, 'discard', `${P.name} discards a card.`, { who: P.i }); } break;
       case 'gain': gainLife(G, P, e.n); emit(G, 'life', `${P.name} gains ${e.n} life.`, { who: P.i, target: `p${P.i}`, amount: -e.n }); break;
       case 'drain': damagePlayer(G, O, e.n, source, P); emit(G, 'life', `${O.name} loses ${e.n} life.`, { who: P.i, target: `p${O.i}`, amount: e.n }); break;
       case 'loseSelf': P.life -= e.n; emit(G, 'life', `${P.name} loses ${e.n} life.`, { who: P.i, target: `p${P.i}`, amount: e.n }); break;
       case 'discard': {
         const n = Math.min(e.n, O.hand.length);
-        if (n) { if (e.random) discardRandom(G, O, n); else discardWorst(G, O, n); emit(G, 'discard', `${O.name} discards ${n === 1 ? 'a card' : `${n} cards`}${e.random ? ' at random' : ''}.`, { who: P.i }); }
+        if (n) { if (e.random) discardRandom(G, O, n); else discardChoice(G, O, n, 'discard'); emit(G, 'discard', `${O.name} discards ${n === 1 ? 'a card' : `${n} cards`}${e.random ? ' at random' : ''}.`, { who: P.i }); }
         break;
       }
-      case 'scry': aiScry(G, P, e.n); break;
+      case 'scry': scryChoice(G, P, e.n); break;
       case 'edict': {
         const cs = O.bf.filter((c) => isCreature(c) && edictOk(G, O, e.f, c));
-        if (cs.length) { const v = cs.reduce((w, c) => (cv(c) < cv(w) ? c : w), cs[0]); P.stats.kills++; emit(G, 'sac', `${O.name} sacrifices ${v.def.name}.`, { who: O.i, cards: [v.id] }); dieNow(G, [v]); }
+        if (cs.length) { const v = sacrificeChoice(G, O, cs); P.stats.kills++; emit(G, 'sac', `${O.name} sacrifices ${v.def.name}.`, { who: O.i, cards: [v.id] }); dieNow(G, [v]); }
         else emit(G, 'info', `${O.name} has nothing to sacrifice.`, { who: P.i });
         break;
       }
@@ -1174,7 +1174,7 @@ function threatOf(G, O, item) {
   });
   return s;
 }
-function castSpell(G, P, card, targets) {
+function castSpell(G, P, card, targets, etbTargets) {
   if (!pay(P, card.def.cost)) return false;
   P.hand.splice(P.hand.indexOf(card), 1);
   const item = { card, P, targets: targets || [] };
@@ -1183,12 +1183,34 @@ function castSpell(G, P, card, targets) {
   emit(G, 'cast', `${P.name} casts ${card.def.name}${targetText(G, item.targets)}.`, { who: P.i, card: card.id, targets: targetIds(item.targets) });
   if (!card.def.types.includes('Creature')) for (const x of P.bf) if (isCreature(x) && has(x, 'prowess')) { x.tp++; x.tt++; }
   const O = other(G, P);
-  // Mana Leak-style counters only get cast when the caster can't pay; the AI always pays when it can.
-  const cs = O.hand.filter((c) => {
-    const ce = c.def.spell && c.def.spell.find((e) => e.k === 'counter');
-    return ce && counterLegal(c, item) && canPay(O, c.def.cost) && (!ce.unless || !canPay(P, genericCost(ce.unless)));
-  }).sort((a, b) => a.def.mv - b.def.mv)[0];
-  if (cs && threatOf(G, O, item) >= PERSONAS[O.persona].counterBar && G.rng.next() < 0.9) {
+  let cs = null;
+  if (isHuman(G, O)) {
+    const opts = O.hand.filter((c) => { const ce = c.def.spell && c.def.spell.find((e) => e.k === 'counter'); return ce && counterLegal(c, item) && canPay(O, c.def.cost); });
+    if (opts.length) {
+      const a = ask(G, { type: 'counter', spell: card.id, options: opts.map((c) => c.id) });
+      cs = opts.find((c) => c.id === a.id) || null;
+    }
+  } else {
+    // Mana Leak-style counters only get cast when the caster can't pay; the AI always pays when it can.
+    const pick = O.hand.filter((c) => {
+      const ce = c.def.spell && c.def.spell.find((e) => e.k === 'counter');
+      return ce && counterLegal(c, item) && canPay(O, c.def.cost) && (!ce.unless || !canPay(P, genericCost(ce.unless)));
+    }).sort((a, b) => a.def.mv - b.def.mv)[0];
+    if (pick && threatOf(G, O, item) >= PERSONAS[O.persona].counterBar && G.rng.next() < 0.9) cs = pick;
+  }
+  const paidOff = cs && cs.def.spell.find((e) => e.k === 'counter').unless && canPay(P, genericCost(cs.def.spell.find((e) => e.k === 'counter').unless));
+  if (cs && paidOff) {
+    const u = cs.def.spell.find((e) => e.k === 'counter').unless;
+    pay(O, cs.def.cost);
+    O.hand.splice(O.hand.indexOf(cs), 1);
+    O.stats.cast++;
+    emit(G, 'cast', `${O.name} casts ${cs.def.name}, targeting ${card.def.name}.`, { who: O.i, card: cs.id, targets: [card.id] });
+    O.gy.push(cs);
+    pay(P, genericCost(u));
+    emit(G, 'info', `${P.name} pays ${u}, so ${card.def.name} resolves.`, { who: P.i });
+    cs = null;
+  }
+  if (cs) {
     pay(O, cs.def.cost);
     O.hand.splice(O.hand.indexOf(cs), 1);
     O.stats.cast++;
@@ -1205,7 +1227,7 @@ function castSpell(G, P, card, targets) {
     return true;
   }
   G.stack.pop();
-  if (card.def.types.includes('Creature')) enterBattlefield(G, P, card);
+  if (card.def.types.includes('Creature')) enterBattlefield(G, P, card, etbTargets);
   else {
     P.gy.push(card);
     G.resolving = card.id;
@@ -1215,14 +1237,22 @@ function castSpell(G, P, card, targets) {
   sba(G);
   return true;
 }
-function enterBattlefield(G, P, card) {
+function enterBattlefield(G, P, card, etbTargets) {
   resetCard(card);
   card.ctrl = P.i;
   card.tapped = !!card.def.etbTapped;
   P.bf.push(card);
   emit(G, 'enter', `${card.def.name} enters the battlefield.`, { who: P.i, card: card.id });
   sba(G);
-  if (card.def.etb.length && !G.over) resolveEffects(G, P, card.def.etb, card, null, 'etb');
+  if (card.def.etb.length && !G.over) {
+    // A human picks enter-the-battlefield targets while casting; anything missing or no longer legal is chosen now.
+    let tg = null;
+    if (etbTargets && etbTargets.some((t) => t)) {
+      const auto = chooseTargets(G, P, card.def.etb, 'etb', card);
+      tg = card.def.etb.map((e, k) => (etbTargets[k] === 'skip' ? 'skip' : etbTargets[k] && stillLegal(G, P, e, etbTargets[k], card) ? etbTargets[k] : auto ? auto.targets[k] : null));
+    }
+    resolveEffects(G, P, card.def.etb, card, tg, 'etb');
+  }
 }
 function playLand(G, P, c) {
   P.hand.splice(P.hand.indexOf(c), 1);
@@ -1553,9 +1583,10 @@ function trickValue(G, P, D, attackers, spell, idx, tgt) {
 }
 function aiTricks(G, P, role, attackers) {
   const A = G.players[G.active], D = other(G, A);
+  let cast = 0;
   for (let guard = 0; guard < 3 && !G.over; guard++) {
     const live = attackers.filter((a) => onBf(G, a) && a.attacking);
-    if (!live.length) return;
+    if (!live.length) return cast;
     const base = combatValue(G, P, D, live, new Set(), null);
     let best = null;
     for (const card of P.hand) {
@@ -1584,7 +1615,9 @@ function aiTricks(G, P, role, attackers) {
     const targets = best.card.def.spell.map((e, k) => (k === best.idx ? { c: best.tgt } : needsTarget(e) ? (ch ? ch.targets[k] : null) : null));
     if (targets.some((t, k) => needsTarget(best.card.def.spell[k]) && !t)) break;
     castSpell(G, P, best.card, targets);
+    cast++;
   }
+  return cast;
 }
 function aiFirebreathing(G, P, role, attackers) {
   const O = other(G, P);
@@ -1619,7 +1652,7 @@ function aiFirebreathing(G, P, role, attackers) {
 function combat(G) {
   const A = G.players[G.active], D = other(G, A);
   G.phase = 'combat';
-  const attackers = aiAttackers(G, A, D);
+  const attackers = isHuman(G, A) ? humanAttackers(G, A) : aiAttackers(G, A, D);
   if (!attackers.length) return;
   for (const c of attackers) { c.attacking = true; if (!has(c, 'vigilance')) c.tapped = true; }
   emit(G, 'attack', `${A.name} attacks with ${nameList(attackers)}.`, { who: A.i, cards: attackers.map((c) => c.id) });
@@ -1632,19 +1665,27 @@ function combat(G) {
   if (G.over) return;
   for (const c of attackers) if (c.def.attack.length && onBf(G, c) && !G.over) resolveEffects(G, A, c.def.attack, c, null, 'trigger');
   if (G.over) return;
-  aiInstantWindow(G, D, 'attackers');
+  if (isHuman(G, D)) humanWindow(G, D, 'attackers'); else aiInstantWindow(G, D, 'attackers');
   if (G.over) return;
   const live = attackers.filter((c) => onBf(G, c) && c.attacking);
   if (live.length) {
-    const blocks = aiBlocks(G, D, A, live);
+    const blocks = isHuman(G, D) ? humanBlocks(G, D, A, live) : aiBlocks(G, D, A, live);
     for (const [aid, bs] of blocks) { const a = live.find((x) => x.id === aid); a.blocked = true; a.blockedBy = bs.slice(); bs.forEach((b) => { b.blocking = aid; }); }
     if (blocks.size) {
       const parts = [...blocks].map(([aid, bs]) => `${live.find((x) => x.id === aid).def.name} with ${nameList(bs)}`);
       emit(G, 'block', `${D.name} blocks ${parts.join('; ')}.`, { who: D.i, cards: [...blocks.values()].flat().map((c) => c.id) });
     } else emit(G, 'noblock', `${D.name} doesn't block.`, { who: D.i });
-    aiTricks(G, A, 'attack', live);
-    if (!G.over) aiTricks(G, D, 'block', live);
-    if (!G.over) { aiFirebreathing(G, A, 'attack', live); aiFirebreathing(G, D, 'block', live); }
+    // Tricks: the attacker acts first. When a human acts, the AI gets one more chance to answer, and vice versa.
+    if (isHuman(G, A)) {
+      if (humanWindow(G, A, 'blocks') >= 0 && !G.over && aiTricks(G, D, 'block', live) && !G.over) humanWindow(G, A, 'blocks');
+    } else if (isHuman(G, D)) {
+      aiTricks(G, A, 'attack', live);
+      if (!G.over && humanWindow(G, D, 'blocks') && !G.over) aiTricks(G, A, 'attack', live);
+    } else {
+      aiTricks(G, A, 'attack', live);
+      if (!G.over) aiTricks(G, D, 'block', live);
+    }
+    if (!G.over) { if (!isHuman(G, A)) aiFirebreathing(G, A, 'attack', live); if (!isHuman(G, D)) aiFirebreathing(G, D, 'block', live); }
     if (!G.over) aiCombatSacs(G, live);
     if (!G.over && G.fog) emit(G, 'fog', 'All combat damage is prevented.', { who: D.i });
     else if (!G.over) {
@@ -1701,7 +1742,7 @@ function fireSacPing(G, P, src, tgt) {
 function aiCombatSacs(G, live) {
   const D = other(G, G.players[G.active]);
   for (const P of G.players) for (const c of P.bf.slice()) {
-    if (G.over || !c.def.sacPing || !(c.attacking || c.blocking) || !canPay(P, c.def.sacPing.cost)) continue;
+    if (G.over || isHuman(G, P) || !c.def.sacPing || !(c.attacking || c.blocking) || !canPay(P, c.def.sacPing.cost)) continue;
     if (!forecast(G, D, live.filter((a) => onBf(G, a)), new Set(), null).dead.has(c)) continue;
     const t = sacPingTarget(G, P, c);
     if (t && t.score > 0) fireSacPing(G, P, c, t.target);
@@ -1776,8 +1817,280 @@ function aiInstantWindow(G, P, when) {
   }
 }
 
+/* ---------- A human at the table ----------
+   The engine stays synchronous. When a human player has a decision to make, ask() takes the next stored
+   answer; when there isn't one it throws NeedInput carrying the question and a snapshot of the table.
+   The caller replays the game from its seed with the answers so far (a game takes a few milliseconds),
+   which keeps every AI decision identical and makes undo free. */
+function NeedInput(req) { this.req = req; }
+const isHuman = (G, P) => G.human != null && P.i === G.human;
+function ask(G, req) {
+  if (G.qi < G.answers.length) {
+    const a = G.answers[G.qi++];
+    if (!a || a.type !== req.type) throw new Error(`Replay out of step at answer ${G.qi - 1}: expected ${req.type}, got ${a && a.type}`);
+    return a;
+  }
+  req.s = snap(G);
+  req.turn = G.turn; req.active = G.active; req.phase = G.phase; req.qi = G.qi;
+  throw new NeedInput(req);
+}
+const costText = (c) => `${c.g ? `{${c.g}}` : ''}${COLORS.map((k) => `{${k}}`.repeat(c[k])).join('')}` || '{0}';
+// Pick cards from a pool; answers that are short or stale are topped up the same way every replay.
+function pickCards(G, req, pool, n) {
+  req.defs = Object.fromEntries(pool.map((c) => [c.id, c.def.id]));
+  const a = ask(G, req);
+  const chosen = [];
+  for (const id of a.ids || []) { const c = pool.find((x) => x.id === id); if (c && !chosen.includes(c)) chosen.push(c); }
+  if (n != null) { for (const c of pool) if (chosen.length < n && !chosen.includes(c)) chosen.push(c); return chosen.slice(0, n); }
+  return chosen;
+}
+function discardChoice(G, P, n, reason) {
+  n = Math.min(n, P.hand.length);
+  if (!n) return 0;
+  if (!isHuman(G, P)) { discardWorst(G, P, n); return n; }
+  const chosen = n === P.hand.length ? P.hand.slice() : pickCards(G, { type: 'choose', reason, n, min: n, max: n, zone: 'hand', cards: P.hand.map((c) => c.id) }, P.hand, n);
+  for (const c of chosen) { P.hand.splice(P.hand.indexOf(c), 1); P.gy.push(c); }
+  return n;
+}
+function scryChoice(G, P, n) {
+  if (!isHuman(G, P)) return aiScry(G, P, n);
+  const top = P.library.slice(Math.max(0, P.library.length - n)).reverse(); // top card first
+  if (!top.length) return;
+  const bottom = pickCards(G, { type: 'choose', reason: 'scry', n: top.length, min: 0, max: top.length, zone: 'library', cards: top.map((c) => c.id) }, top, null);
+  const keep = top.filter((c) => !bottom.includes(c));
+  P.library.splice(Math.max(0, P.library.length - n));
+  P.library.unshift(...bottom);
+  P.library.push(...keep.slice().reverse());
+  emit(G, 'scry', `${P.name} scries ${n}${bottom.length ? `, putting ${bottom.length === 1 ? 'one card' : `${bottom.length} cards`} on the bottom` : ''}.`, { who: P.i });
+}
+function putBackChoice(G, P, n) {
+  if (!isHuman(G, P)) return putBack(G, P, n);
+  n = Math.min(n, P.hand.length);
+  if (!n) return;
+  const chosen = n === P.hand.length ? P.hand.slice() : pickCards(G, { type: 'choose', reason: 'putback', n, min: n, max: n, zone: 'hand', cards: P.hand.map((c) => c.id) }, P.hand, n);
+  for (const c of chosen.slice().reverse()) { P.hand.splice(P.hand.indexOf(c), 1); P.library.push(c); } // first chosen ends on top
+}
+function sacrificeChoice(G, Q, cs) {
+  if (!isHuman(G, Q)) return cs.reduce((w, c) => (cv(c) < cv(w) ? c : w), cs[0]);
+  if (cs.length === 1) return cs[0];
+  return pickCards(G, { type: 'choose', reason: 'sacrifice', n: 1, min: 1, max: 1, zone: 'battlefield', cards: cs.map((c) => c.id) }, cs, 1)[0];
+}
+function humanOpeningHand(G, P) {
+  for (let m = 0; m <= 3; m++) {
+    P.library.push(...P.hand); P.hand = [];
+    G.rng.shuffle(P.library);
+    drawCards(G, P, 7);
+    P.mulligans = m;
+    if (m === 3) break;
+    if (ask(G, { type: 'mulligan', mulligans: m, cards: P.hand.map((c) => c.id) }).keep) break;
+  }
+  if (P.mulligans) {
+    const n = P.mulligans;
+    const chosen = pickCards(G, { type: 'choose', reason: 'bottom', n, min: n, max: n, zone: 'hand', cards: P.hand.map((c) => c.id) }, P.hand, n);
+    for (const c of chosen) { P.hand.splice(P.hand.indexOf(c), 1); P.library.unshift(c); }
+  }
+}
+// Targets travel as plain data so answers can be stored: {c}, {c, c2}, {p} or 'skip'
+function refOf(t) {
+  if (!t || t === 'skip') return t || null;
+  const r = {};
+  if (t.c) r.c = t.c.id;
+  if (t.c2) r.c2 = t.c2.id;
+  if (t.p != null) r.p = t.p;
+  return r;
+}
+function fromRef(G, r) {
+  if (r === 'skip') return 'skip';
+  if (!r) return null;
+  const find = (id) => allCreatures(G).find((c) => c.id === id);
+  const t = {};
+  if (r.c != null) { t.c = find(r.c); if (!t.c) return null; }
+  if (r.c2 != null) { t.c2 = find(r.c2); if (!t.c2) return null; }
+  if (r.p != null) { if (!G.players[r.p]) return null; t.p = r.p; }
+  return t;
+}
+function specLabel(e) {
+  switch (e.k) {
+    case 'dmg': return `${e.n} damage to ${e.to === 'any' ? 'any target' : 'a creature'}`;
+    case 'destroy': return 'Destroy a creature';
+    case 'exile': return 'Exile a creature';
+    case 'bounce': return "Return a creature to its owner's hand";
+    case 'tuck': return "Put an attacking creature on the bottom of its owner's library";
+    case 'tap': return e.stun ? "Tap a creature; it won't untap next turn" : 'Tap a creature';
+    case 'pump': { const pt = e.p || e.t ? `${sgn(e.p)}/${sgn(e.t)}` : ''; return `Give a creature ${pt}${pt && e.kw.length ? ' and ' : ''}${e.kw.join(' and ')}`; }
+    case 'counters': return `Put ${e.n === 1 ? 'a +1/+1 counter' : `${e.n} +1/+1 counters`} on a creature`;
+    case 'noBlock': return "Stop a creature from blocking this turn";
+    case 'fight': return 'Your creature fights one of theirs';
+    case 'bite': return 'Your creature deals damage equal to its power to one of theirs';
+    default: return 'Choose a target';
+  }
+}
+function targetSpec(G, P, e, k, source) {
+  const creatures = (f) => allCreatures(G).filter((c) => targetOk(G, P, f || {}, c, source)).map((c) => c.id);
+  if (e.k === 'fight' || e.k === 'bite') {
+    const mine = creatures({ side: 'you' }), theirs = creatures({ side: 'opp' });
+    return mine.length && theirs.length ? { k, pair: true, mine, theirs, label: specLabel(e) } : null;
+  }
+  const cands = creatures(e.f);
+  if (e.k === 'dmg' && e.to === 'any') cands.push(...G.players.filter((Q) => !Q.lost).map((Q) => `p${Q.i}`));
+  return cands.length ? { k, cands, may: !!e.may, label: specLabel(e) } : null;
+}
+const attackCandidates = (G, P) => P.bf.filter((c) => isCreature(c) && !c.tapped && (!c.sick || has(c, 'haste')) && !has(c, 'defender'));
+// Everything a human could do right now, with the legal targets for each choice.
+function humanActions(G, P, when) {
+  const acts = [];
+  const sorcery = G.active === P.i && (when === 'main1' || when === 'main2') && !G.stack.length;
+  if (sorcery && P.landsPlayed === 0) for (const c of P.hand) if (isLand(c)) acts.push({ act: `land:${c.id}`, kind: 'land', card: c.id, label: 'Play this land' });
+  for (const c of P.hand) {
+    const d = c.def;
+    if (isLand(c) || (!sorcery && !isInstantSpeed(d))) continue;
+    if (d.spell && d.spell.some((e) => e.k === 'counter')) continue; // counterspells are offered when a spell is cast
+    if (!canPay(P, d.cost)) continue;
+    const cre = d.types.includes('Creature');
+    const specs = [];
+    let ok = true;
+    (cre ? d.etb : d.spell).forEach((e, k) => {
+      if (!needsTarget(e) || e.k === 'divided') return; // split damage is planned automatically
+      const sp = targetSpec(G, P, e, k, c);
+      if (sp) specs.push(sp);
+      else if (!cre && !e.may) ok = false;
+    });
+    if (ok) acts.push({ act: `cast:${c.id}`, kind: 'cast', card: c.id, label: `Cast ${d.name}`, specs, etb: cre });
+  }
+  for (const c of P.bf) {
+    if (!isCreature(c)) continue;
+    const ready = !c.tapped && (!c.sick || has(c, 'haste'));
+    const dmgCands = (to) => {
+      const out = to === 'player' ? [] : allCreatures(G).filter((x) => targetOk(G, P, {}, x, c)).map((x) => x.id);
+      if (to === 'player') out.push(`p${other(G, P).i}`);
+      else if (to === 'any') out.push(...G.players.filter((Q) => !Q.lost).map((Q) => `p${Q.i}`));
+      return out;
+    };
+    const where = (to) => (to === 'any' ? 'any target' : to === 'creature' ? 'a creature' : 'your opponent');
+    if (c.def.pinger && ready) {
+      const { n, to } = c.def.pinger;
+      const cands = dmgCands(to);
+      if (cands.length) acts.push({ act: `ping:${c.id}`, kind: 'ping', card: c.id, label: `Tap: ${n} damage to ${where(to)}`, specs: [{ k: 0, cands, label: `${n} damage to ${where(to)}` }] });
+    }
+    const ab = c.def.pumpAbility;
+    if (ab && canPay(P, ab.cost) && !(ab.once && c.pumps > 0) && !(ab.max && c.pumps >= ab.max) && tou(c) + ab.t - c.dmg > 0) {
+      acts.push({ act: `pump:${c.id}`, kind: 'pump', card: c.id, label: `${costText(ab.cost)}: ${sgn(ab.p)}/${sgn(ab.t)} until end of turn` });
+    }
+    if (c.def.tapLoot && ready && P.library.length) acts.push({ act: `loot:${c.id}`, kind: 'loot', card: c.id, label: 'Tap: draw a card, then discard a card' });
+    if (c.def.sacPing && canPay(P, c.def.sacPing.cost)) {
+      const { n, to } = c.def.sacPing;
+      const cands = dmgCands(to).filter((x) => x !== c.id);
+      if (cands.length) acts.push({ act: `sac:${c.id}`, kind: 'sac', card: c.id, label: `${c.def.sacPing.cost.g || COLORS.some((k) => c.def.sacPing.cost[k]) ? `${costText(c.def.sacPing.cost)}, sacrifice` : 'Sacrifice'}: ${n} damage to ${where(to)}`, specs: [{ k: 0, cands, label: `${n} damage to ${where(to)}` }] });
+    }
+  }
+  for (const c of P.hand) if (c.def.cycling && canPay(P, c.def.cycling) && P.library.length) acts.push({ act: `cycle:${c.id}`, kind: 'cycle', card: c.id, label: `Cycle for ${costText(c.def.cycling)}` });
+  return acts;
+}
+function applyAction(G, P, a) {
+  const [kind, idStr] = String(a.act).split(':');
+  const id = +idStr;
+  const inHand = P.hand.find((c) => c.id === id);
+  const mine = P.bf.find((c) => c.id === id);
+  const t0 = (a.t || []).map((r) => fromRef(G, r));
+  switch (kind) {
+    case 'land': if (inHand) playLand(G, P, inHand); break;
+    case 'cast':
+      if (!inHand) break;
+      if (inHand.def.types.includes('Creature')) castSpell(G, P, inHand, [], inHand.def.etb.map((e, k) => fromRef(G, (a.etb || [])[k])));
+      else castSpell(G, P, inHand, inHand.def.spell.map((e, k) => (e.k === 'divided' ? { plan: dividePlan(G, P, e, inHand).plan } : t0[k] || null)));
+      break;
+    case 'ping': if (mine && t0[0] && t0[0] !== 'skip') firePing(G, P, { src: mine, target: t0[0] }); break;
+    case 'pump': {
+      const ab = mine && mine.def.pumpAbility;
+      if (!ab || !pay(P, ab.cost)) break;
+      mine.tp += ab.p; mine.tt += ab.t; mine.pumps++;
+      emit(G, 'pump', `${mine.def.name} gets ${sgn(ab.p)}/${sgn(ab.t)}, now ${pow(mine)}/${tou(mine)}.`, { who: P.i, cards: [mine.id] });
+      break;
+    }
+    case 'loot':
+      if (!mine) break;
+      mine.tapped = true;
+      drawCards(G, P, 1);
+      discardChoice(G, P, 1, 'loot');
+      emit(G, 'draw', `${mine.def.name} loots: ${P.name} draws a card, then discards a card.`, { who: P.i, card: mine.id });
+      break;
+    case 'sac': if (mine && t0[0] && t0[0] !== 'skip') fireSacPing(G, P, mine, t0[0]); break;
+    case 'cycle':
+      if (!inHand || !pay(P, inHand.def.cycling)) break;
+      P.hand.splice(P.hand.indexOf(inHand), 1);
+      P.gy.push(inHand);
+      drawCards(G, P, 1);
+      emit(G, 'cycle', `${P.name} cycles ${inHand.def.name}.`, { who: P.i, card: inHand.id });
+      break;
+    default: break;
+  }
+  sba(G);
+}
+function humanMain(G, P, which) {
+  const ctx = which === 1 ? 'main1' : 'main2';
+  G.phase = ctx;
+  for (let guard = 0; guard < 80 && !G.over; guard++) {
+    const acts = humanActions(G, P, ctx);
+    const canAttack = ctx === 'main1' && attackCandidates(G, P).length > 0;
+    if (!acts.length) return canAttack ? 'combat' : 'end';
+    const a = ask(G, { type: 'act', when: ctx, actions: acts, canAttack });
+    if (a.pass) return a.pass === 'combat' && canAttack ? 'combat' : 'end';
+    if (!acts.some((x) => x.act === a.act)) return 'end';
+    applyAction(G, P, a);
+  }
+  return 'end';
+}
+function humanWindow(G, P, when) {
+  let acted = 0;
+  for (let guard = 0; guard < 30 && !G.over; guard++) {
+    const acts = humanActions(G, P, when);
+    if (!acts.length) break;
+    const a = ask(G, { type: 'act', when, actions: acts });
+    if (a.pass || !acts.some((x) => x.act === a.act)) break;
+    applyAction(G, P, a);
+    acted++;
+  }
+  return acted;
+}
+function humanAttackers(G, A) {
+  const cands = attackCandidates(G, A);
+  if (!cands.length) return [];
+  const must = cands.filter((c) => c.def.mustAttack);
+  const a = ask(G, { type: 'attack', cands: cands.map((c) => c.id), must: must.map((c) => c.id) });
+  const ids = new Set((a.ids || []).concat(must.map((c) => c.id)));
+  return cands.filter((c) => ids.has(c.id));
+}
+function humanBlocks(G, D, A, attackers) {
+  const blockers = D.bf.filter((b) => isCreature(b) && !b.tapped && !b.def.cantBlock && !b.noBlock);
+  const opts = attackers.map((a) => ({ id: a.id, menace: has(a, 'menace'), by: blockers.filter((b) => canBlock(G, b, a)).map((b) => b.id) })).filter((o) => o.by.length);
+  const map = new Map();
+  if (!opts.length) return map;
+  const ans = ask(G, { type: 'block', attackers: opts });
+  const used = new Set();
+  for (const [aid, bids] of ans.blocks || []) {
+    const a = attackers.find((x) => x.id === aid);
+    if (!a || map.has(aid)) continue;
+    const bs = (bids || []).map((id) => blockers.find((b) => b.id === id)).filter((b, k, arr) => b && arr.indexOf(b) === k && !used.has(b) && canBlock(G, b, a));
+    if (!bs.length || (has(a, 'menace') && bs.length < 2)) continue;
+    map.set(aid, bs);
+    bs.forEach((b) => used.add(b));
+  }
+  return map;
+}
+function runInteractive({ decks, seed, human = 0, answers = [] }) {
+  const G = createGame({ decks, seed, record: true, human, answers });
+  try {
+    playGame(G);
+    return { G, done: true, req: null };
+  } catch (err) {
+    if (err instanceof NeedInput) return { G, done: false, req: err.req };
+    throw err;
+  }
+}
+
 /* ---------- Turns ---------- */
 function openingHand(G, P) {
+  if (isHuman(G, P)) return humanOpeningHand(G, P);
   for (let m = 0; m <= 2; m++) {
     P.library.push(...P.hand); P.hand = [];
     G.rng.shuffle(P.library);
@@ -1801,14 +2114,20 @@ function takeTurn(G) {
   P.landsPlayed = 0;
   emit(G, 'turn', `Turn ${G.turn}: ${P.name}.`, { who: P.i });
   if (!(G.turn === 1)) { drawCards(G, P, 1); sba(G); if (G.over) return; }
-  aiMain(G, P, 1); if (G.over) return;
-  combat(G); if (G.over) return;
-  aiMain(G, P, 2); if (G.over) return;
+  if (isHuman(G, P)) {
+    const next = humanMain(G, P, 1); if (G.over) return;
+    if (next === 'combat') { combat(G); if (G.over) return; humanMain(G, P, 2); if (G.over) return; }
+  } else {
+    aiMain(G, P, 1); if (G.over) return;
+    combat(G); if (G.over) return;
+    aiMain(G, P, 2); if (G.over) return;
+  }
   G.phase = 'end';
   const oneTurn = allCreatures(G).filter((c) => c.def.sacAtEnd);
   if (oneTurn.length) { emit(G, 'sac', `${nameList(oneTurn)} ${oneTurn.length > 1 ? 'are' : 'is'} sacrificed at the end step.`, { who: P.i, cards: oneTurn.map((c) => c.id) }); dieNow(G, oneTurn); sba(G); if (G.over) return; }
-  aiInstantWindow(G, other(G, P), 'end'); if (G.over) return;
-  if (P.hand.length > 7) { const n = P.hand.length - 7; discardWorst(G, P, n); emit(G, 'discard', `${P.name} discards ${n === 1 ? 'a card' : `${n} cards`} to hand size.`, { who: P.i }); }
+  if (isHuman(G, other(G, P))) humanWindow(G, other(G, P), 'end'); else aiInstantWindow(G, other(G, P), 'end');
+  if (G.over) return;
+  if (P.hand.length > 7) { const n = P.hand.length - 7; discardChoice(G, P, n, 'hand'); emit(G, 'discard', `${P.name} discards ${n === 1 ? 'a card' : `${n} cards`} to hand size.`, { who: P.i }); }
   for (const Q of G.players) for (const c of Q.bf) { c.dmg = 0; c.dt = false; c.tp = 0; c.tt = 0; c.tkw = []; c.pumps = 0; c.noBlock = false; c.exileDead = false; }
   G.fog = false;
   G.active = 1 - G.active;
@@ -1945,6 +2264,7 @@ function deckFromList(name, colors, archetype, list, extra) {
 return {
   compileCard, parseCost, parseTarget, parseSentence, cardValue, efficiency, makeRng, KW, COLORS, slug,
   PERSONAS, ARCH, MAX_TURNS, createGame, playGame, runMatch, replayOf, buildDeck, deckFromList, guildName,
+  runInteractive, NeedInput, humanActions, attackCandidates, costText,
   _internal: { cv, fight, kills, canBlock, planPayment, manaSources, evalEffect, chooseTargets, aiAttackers, aiBlocks, sba, snap, newCard, castSpell, resolveEffects, combat, takeTurn, enterBattlefield, forecast, protectedFrom, targetOk, pow, tou },
 };
 });

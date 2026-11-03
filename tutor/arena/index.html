@@ -418,6 +418,68 @@ svg.i .fill { fill: currentColor; }
 .insp .x { position: absolute; right: 12px; top: 12px; }
 
 /* ============================================================
+   Playing against the AI
+   ============================================================ */
+.playbar { display: none; flex: none; align-items: center; gap: 12px; min-height: 64px; padding: 9px 14px calc(9px + var(--safe-b)); border-top: 1px solid var(--line); background: rgba(32, 29, 39, .96); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+.table.playing .playbar { display: flex; }
+.table.playing .ctrl { display: none; }
+.pb-text { flex: 1; min-width: 0; }
+.pb-text b { display: block; font: 800 18px/1.2 var(--serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-text span { display: block; margin-top: 2px; color: var(--muted); font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.table[data-ui="busy"] .pb-text b { font: 500 15.5px/1.3 var(--sans); color: var(--muted); }
+.pb-acts { flex: none; display: flex; align-items: center; gap: 8px; }
+.pb-acts .pill { height: 42px; }
+.pb-acts .logbtn { display: none; }
+.mana { flex: none; font: 600 12.5px/1 var(--sans); color: var(--muted); padding: 6px 9px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.mana b { color: var(--text); font-weight: 800; }
+.table:not(.playing) .pbar .mana { display: none; }
+.card.can-act .face { box-shadow: 0 0 0 2px rgba(255, 216, 140, .95), 0 0 18px rgba(255, 200, 110, .45); }
+.card.can-target { cursor: pointer; }
+.card.can-target .face { box-shadow: 0 0 0 3px #ffb34d, 0 0 24px rgba(255, 166, 64, .75); animation: glow 1.1s ease-in-out infinite alternate; }
+@keyframes glow { to { box-shadow: 0 0 0 3px #ffd18a, 0 0 34px rgba(255, 186, 96, .95); } }
+.table[data-ui="target"] .card:not(.can-target):not(.sel) .face { filter: brightness(.55) saturate(.6); }
+.life.can-target { cursor: pointer; border-color: #ffb34d; box-shadow: 0 0 0 2px #ffb34d, 0 0 22px rgba(255, 166, 64, .7); }
+.card.pick { translate: 0 -15%; }
+.card.pick .face { box-shadow: 0 0 0 2px var(--r), 0 0 22px rgba(232, 105, 63, .6); }
+.card.sel .face { box-shadow: 0 0 0 3px var(--text), 0 0 20px rgba(236, 229, 216, .7); }
+.card.pblk .face { box-shadow: 0 0 0 2px var(--u), 0 0 18px rgba(95, 163, 217, .6); }
+.card.can-take { cursor: pointer; }
+.card.can-take .face { box-shadow: 0 0 0 3px var(--u), 0 0 26px rgba(95, 163, 217, .85); }
+.table.playing .side[data-p="0"] { flex-grow: 1.15; }
+.pbar .grow { flex: 1 1 0; }
+.side:not(.stack) .pbar .grow { display: none; }
+.table.playing .side[data-p="0"] .pbar { --pbar-h: inherit; }
+.side.stack .pbar { height: auto; flex-wrap: wrap; align-content: flex-start; column-gap: 10px; row-gap: 4px; }
+.side.stack .pbar .myhand { order: 9; flex: 0 0 100%; height: var(--hand-row); }
+.myhand .card { transition: translate .2s var(--ease); }
+.myhand .card.can-act { translate: 0 -5%; }
+@media (hover: hover) { .myhand .card:hover { translate: 0 -12%; z-index: 3; } }
+.toast { position: absolute; left: 50%; top: 50%; z-index: 35; transform: translate(-50%, -50%); padding: 14px 24px; border-radius: 16px; background: rgba(32, 29, 39, .88); border: 1px solid var(--line-strong); font: 900 32px/1 var(--serif); pointer-events: none; box-shadow: 0 20px 50px rgba(0, 0, 0, .45); }
+.toast.show { animation: toast 1.6s var(--ease) forwards; }
+@keyframes toast { 0% { opacity: 0; scale: .9; } 14% { opacity: 1; scale: 1; } 72% { opacity: 1; } 100% { opacity: 0; } }
+.sheet { position: fixed; inset: 0; z-index: 55; display: grid; place-items: center; padding: 18px; background: rgba(14, 12, 18, .6); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+.sheet-box { width: min(820px, 100%); max-height: calc(100dvh - 36px); overflow: auto; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 20px; padding: 20px 22px; box-shadow: 0 30px 90px rgba(0, 0, 0, .6); animation: rise .3s var(--ease); }
+.sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.sheet h2 { margin: 0; font: 800 25px/1.15 var(--serif); }
+.sheet .sub { margin: 5px 0 0; color: var(--muted); }
+.sheet-head .link-btn { flex: none; font-size: 14px; }
+.pick-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 18px 0 4px; }
+.pick-grid .card { --cardw: clamp(86px, 14vw, 132px); }
+.pick-grid .card[data-look] { cursor: zoom-in; }
+.pick-grid.selectable .card { cursor: pointer; }
+.pick-grid .card .face { transition: translate .2s var(--ease), box-shadow .2s, rotate .35s; }
+.pick-grid .card.chosen .face { translate: 0 -6%; box-shadow: 0 0 0 3px #ffb34d, 0 0 24px rgba(255, 166, 64, .65); }
+.pick-grid .ord { left: 50%; top: -8px; transform: translateX(-50%); background: #ffb34d; color: #21180a; }
+.sheet-acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.resume { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-top: 24px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--line-strong); background: var(--raised); }
+.res-text b { font-family: var(--serif); font-size: 17px; }
+.res-acts { display: flex; align-items: center; gap: 14px; }
+.insp .acts { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+.insp .acts .pill { justify-content: flex-start; height: auto; min-height: 46px; padding: 9px 16px; text-align: left; line-height: 1.25; }
+.insp .acts .note { color: var(--faint); font-size: 13.5px; }
+.matchup em { font-style: normal; color: var(--faint); font: 500 14px var(--sans); }
+
+/* ============================================================
    Narrow screens
    ============================================================ */
 @media (max-width: 1080px) {
@@ -426,6 +488,7 @@ svg.i .fill { fill: currentColor; }
   .logpane.open { transform: none; }
   .loghead .close { display: inline-flex; }
   .ctrl .logbtn { display: inline-flex; }
+  .pb-acts .logbtn { display: inline-flex; }
 }
 @media (max-width: 860px) {
   .seats { grid-template-columns: minmax(0, 1fr); }
@@ -484,6 +547,20 @@ svg.i .fill { fill: currentColor; }
   .ctrl .tlabel { display: none; }
   .ctrl .seg button { padding: 0 7px; }
   .float { font-size: 22px; }
+  .playbar { gap: 8px; min-height: 58px; padding: 7px 10px calc(7px + var(--safe-b)); }
+  .pb-text b { font-size: 15.5px; }
+  .pb-text span { font-size: 13px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; }
+  .pb-acts { gap: 6px; }
+  .pb-acts .pill { height: 40px; padding: 0 13px; font-size: 15px; }
+  .pb-acts .icon-btn { width: 38px; height: 38px; }
+  .mana { padding: 5px 7px; font-size: 11.5px; }
+  .toast { font-size: 25px; }
+  .sheet { padding: 0; place-items: end stretch; }
+  .sheet-box { border-radius: 20px 20px 0 0; padding: 16px 14px calc(16px + var(--safe-b)); max-height: 92dvh; }
+  .sheet h2 { font-size: 21px; }
+  .pick-grid { gap: 8px; }
+  .pick-grid .card { --cardw: min(29vw, 112px); }
+  .sheet-acts .pill { flex: 1 1 auto; }
   .insp { padding: 10px; }
   .insp-box { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 16px; }
   .insp .card { --cardw: min(250px, 66vw); justify-self: center; }
@@ -510,13 +587,15 @@ svg.i .fill { fill: currentColor; }
 <main id="lobby" class="lobby">
   <section class="hero">
     <h1>Arena</h1>
-    <p>Pick two decks and watch AI players fight it out with real Magic cards. Every attack, block and counterspell is played by the rules, and you can scrub back through any game.</p>
+    <p>Pick two decks, then play against the AI yourself or watch two AI players fight it out with real Magic cards. Every attack, block and counterspell is played by the rules.</p>
   </section>
   <p class="boot" id="boot" role="status">Shuffling up the card pool</p>
   <div id="lobbyBody" hidden>
+    <div class="resume" id="resume" hidden></div>
     <div class="seats" id="seats"></div>
     <div class="go-row">
-      <button type="button" class="pill pill-solid" id="watchBtn"></button>
+      <button type="button" class="pill pill-solid" id="playBtn"></button>
+      <button type="button" class="pill" id="watchBtn"></button>
       <button type="button" class="pill" id="simBtn"></button>
       <button type="button" class="pill" id="randBtn"></button>
       <button type="button" class="link-btn" id="swapBtn">Swap seats</button>
@@ -552,6 +631,7 @@ svg.i .fill { fill: currentColor; }
       <svg class="fx" id="fx" aria-hidden="true"></svg>
       <div class="floaters" id="floaters" aria-hidden="true"></div>
       <div class="banner" id="banner" hidden></div>
+      <div class="toast" id="toast" hidden aria-hidden="true"></div>
     </div>
     <div class="ctrl" id="ctrl">
       <button type="button" class="icon-btn hide-s" id="cFirst" aria-label="Back to the start"></button>
@@ -566,6 +646,10 @@ svg.i .fill { fill: currentColor; }
       <button type="button" class="icon-btn tog" id="cHands" aria-pressed="true" aria-label="Show hands" title="Show hands"></button>
       <button type="button" class="icon-btn logbtn" id="cLog" aria-label="Game log"></button>
     </div>
+    <div class="playbar" id="playbar" aria-live="polite">
+      <div class="pb-text"><b id="pbTitle"></b><span id="pbHint"></span></div>
+      <div class="pb-acts" id="pbActs"></div>
+    </div>
   </div>
   <aside class="logpane" id="logpane" aria-label="Game log">
     <div class="loghead"><h2>Game log</h2><button type="button" class="icon-btn close" id="logClose" aria-label="Close the log"></button></div>
@@ -575,9 +659,10 @@ svg.i .fill { fill: currentColor; }
 </section>
 
 <div class="insp" id="insp" role="dialog" aria-modal="true" aria-labelledby="inspName" hidden></div>
+<div class="sheet" id="sheet" hidden></div>
 
-<script src="engine.js"></script>
-<script src="decks.js"></script>
+<script src="engine.js?v=2"></script>
+<script src="decks.js?v=2"></script>
 <script>
 'use strict';
 /* ============================================================
@@ -613,6 +698,7 @@ const ICON = {
   die: '<rect x="4" y="4" width="16" height="16" rx="3.6"/><circle class="fill" cx="8.6" cy="8.6" r="1.25"/><circle class="fill" cx="15.4" cy="8.6" r="1.25"/><circle class="fill" cx="12" cy="12" r="1.25"/><circle class="fill" cx="8.6" cy="15.4" r="1.25"/><circle class="fill" cx="15.4" cy="15.4" r="1.25"/>',
   back: '<path d="M14.5 5.5L8 12l6.5 6.5"/>',
   sparkle: '<path d="M11 4l1.7 4.8L17.5 10.5l-4.8 1.7L11 17l-1.7-4.8L4.5 10.5l4.8-1.7z"/><path d="M18 14.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
+  undo: '<path d="M9 7.5h6.2a4.3 4.3 0 0 1 0 8.6H9.5"/><path d="M11.8 4.6L8.8 7.5l3 3"/>',
   ext: '<path d="M13.5 5.5h5v5M18.5 5.5L11 13M16.5 13.5v4a1.5 1.5 0 0 1-1.5 1.5H7a1.5 1.5 0 0 1-1.5-1.5V9.5A1.5 1.5 0 0 1 7 8h4"/>',
 };
 const icon = (name) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICON[name]}</svg>`;
@@ -763,7 +849,7 @@ const imgOf = (name) => IMG.map[name] && IMG.map[name][0];
 const artOf = (name) => IMG.map[name] && IMG.map[name][1];
 function paintImages(names) {
   for (const el of $$('[data-art]')) if (names.has(el.dataset.art) && artOf(el.dataset.art)) el.style.backgroundImage = `url("${artOf(el.dataset.art)}")`;
-  for (const el of $$('.card[data-name]')) if (names.has(el.dataset.name) && !el.querySelector('.face img') && !el.classList.contains('is-back')) fillFace(el);
+  for (const el of $$('.card[data-name]')) if (names.has(el.dataset.name) && !el.querySelector('.face > img') && !el.classList.contains('is-back')) fillFace(el);
 }
 
 /* ============================================================
@@ -818,7 +904,8 @@ function hashFor() {
   const p = new URLSearchParams();
   if (S.seats[0]) p.set('a', S.seats[0]);
   if (S.seats[1]) p.set('b', S.seats[1]);
-  if (S.view === 'watch' && W.seed != null) p.set('seed', String(W.seed));
+  if (S.view === 'watch' && W.mode === 'play') p.set('play', String(PL.seed));
+  else if (S.view === 'watch' && W.seed != null) p.set('seed', String(W.seed));
   return `#${p.toString()}`;
 }
 function syncHash(push) {
@@ -829,8 +916,8 @@ function syncHash(push) {
 function readHash() {
   const p = new URLSearchParams(location.hash.slice(1));
   const a = deckByKey(p.get('a')), b = deckByKey(p.get('b'));
-  const seed = p.get('seed');
-  return { a, b, seed: seed != null && /^\d{1,10}$/.test(seed) ? +seed : null };
+  const seed = p.get('seed'), pl = p.get('play');
+  return { a, b, seed: seed != null && /^\d{1,10}$/.test(seed) ? +seed : null, play: pl != null && /^\d{1,10}$/.test(pl) ? +pl : null };
 }
 
 /* ============================================================
@@ -927,7 +1014,10 @@ function setSeat(key) {
   syncHash(false);
 }
 function renderButtons() {
-  $('#watchBtn').innerHTML = `${icon('play')}<span>Watch the game</span>`;
+  $('#playBtn').innerHTML = `${icon('play')}<span class="lbl">Play as Player 1</span><span class="lbl-s">Play</span>`;
+  $('#playBtn').setAttribute('aria-label', 'Play as Player 1 against the AI');
+  $('#watchBtn').innerHTML = `${icon('eye')}<span class="lbl">Watch AI vs AI</span><span class="lbl-s">Watch</span>`;
+  $('#watchBtn').setAttribute('aria-label', 'Watch AI vs AI');
   $('#simBtn').innerHTML = `${icon('chart')}<span class="lbl">Simulate 100 games</span><span class="lbl-s">100 games</span>`;
   $('#simBtn').setAttribute('aria-label', 'Simulate 100 games');
   $('#randBtn').innerHTML = `${icon('die')}<span class="lbl">Random matchup</span>`;
@@ -1041,6 +1131,7 @@ function watch(seed, opts = {}) {
   const d0 = deckByKey(S.seats[0]), d1 = deckByKey(S.seats[1]);
   if (!d0 || !d1) return;
   stop();
+  endPlay();
   const decks = mirrorSafe(d0, d1);
   const G = Arena.createGame({ decks, seed, record: true });
   Arena.playGame(G);
@@ -1068,12 +1159,14 @@ function setView(view, push) {
   const mu = $('#matchup'), back = $('#toLobby');
   if (view === 'watch') {
     mu.hidden = false;
-    mu.innerHTML = `<span>${esc(W.decks[0].name)}</span><span class="vs">vs</span><span>${esc(W.decks[1].name)}</span>`;
+    mu.innerHTML = `<span>${esc(W.decks[0].name)}${W.mode === 'play' ? ' <em>(you)</em>' : ''}</span><span class="vs">vs</span><span>${esc(W.decks[1].name)}</span>`;
     back.hidden = false;
     back.innerHTML = `${icon('back')}<span>Decks</span>`;
-    document.title = `${W.decks[0].name} vs ${W.decks[1].name}: Arena`;
+    document.title = `${W.mode === 'play' ? 'Playing ' : ''}${W.decks[0].name} vs ${W.decks[1].name}: Arena`;
   } else {
     stop();
+    endPlay();
+    renderResume();
     mu.hidden = true;
     back.hidden = true;
     document.title = 'Arena: watch AI players battle with Magic cards';
@@ -1085,12 +1178,14 @@ function setView(view, push) {
 function buildSides() {
   for (const pi of [0, 1]) {
     const pl = W.replay.players[pi];
+    const mine = W.mode === 'play' && pi === 0;
     T.sides[pi].style.setProperty('--pc', playerColor(pi));
     T.sides[pi].innerHTML = `
       <div class="pbar">
         <span class="life" data-player="${pi}" aria-label="Life"><span class="lv">20</span><small>life</small></span>
-        <span class="who"><span class="nm">${esc(pl.name)}</span><span class="sub">${ARCH_LABEL[pl.persona]}${pl.mulligans ? `, mulliganed to ${7 - pl.mulligans}` : ''}</span></span>
-        <div class="row-zone hand" aria-label="Hand"></div>
+        <span class="who"><span class="nm">${esc(pl.name)}</span><span class="sub"></span></span>
+        <span class="mana" title="Untapped mana"><b class="mn">0</b> mana</span>
+        ${mine ? '<span class="grow"></span><div class="row-zone hand myhand" aria-label="Your hand"></div>' : '<div class="row-zone hand" aria-label="Hand"></div>'}
         <span class="zones">
           <span class="pile" title="Library"><span class="stack lib"></span><span class="lbl">Library</span><b class="libn">0</b></span>
           <span class="pile" title="Graveyard"><span class="stack gy"></span><span class="lbl">Graveyard</span><b class="gyn">0</b></span>
@@ -1110,6 +1205,7 @@ function buildLog() {
   const html = [];
   let cur = null;
   fr.forEach((f, k) => {
+    if (f.k === 'ask') return;
     const head = f.k === 'turn' ? `Turn ${f.turn}: ${W.replay.players[f.who].name}` : k === 0 ? 'Opening hands' : null;
     if (head && head !== cur) { cur = head; html.push(`<div class="th" data-f="${k}" style="--dot:${playerColor(f.who)}"><i></i>${esc(head)}</div>`); }
     if (f.k === 'turn') return;
@@ -1155,11 +1251,16 @@ function sizeZones(pi, ps, ctx) {
   const cres = ps.bf.filter((b) => isCre(defOf(b.d)));
   const lands = ps.bf.filter((b) => !isCre(defOf(b.d)));
   const groups = new Set(lands.map((b) => `${b.d}|${b.tap ? 1 : 0}`)).size;
-  // Height budget per side: creatures get most of it
-  const sideH = (boardH - (phone ? 24 : 30)) / 2 - 12;
-  const handH = phone ? 46 : 66;
-  const landH = sideH * (phone ? 0.22 : 0.24);
-  const creH = sideH - (phone ? 50 : 72) - landH - 16;
+  // Height budget per side: creatures get most of it; in a game you play, your hand gets a row of its own
+  const myHand = W.mode === 'play' && pi === 0;
+  const sideH = W.mode === 'play' ? side.clientHeight - 12 : (boardH - (phone ? 24 : 30)) / 2 - 12;
+  let pbarH = phone ? 50 : 72, handH = phone ? 46 : 66, handRow = 0;
+  if (myHand && phone) { handRow = clamp(sideH * 0.3, 70, 104); pbarH = 46 + handRow; handH = handRow - 6; }
+  else if (myHand) { pbarH = clamp(sideH * 0.38, 76, 156); handH = pbarH - 8; }
+  side.classList.toggle('stack', myHand && phone);
+  side.style.setProperty('--hand-row', `${handRow}px`);
+  const landH = sideH * (myHand ? (phone ? 0.17 : 0.19) : phone ? 0.22 : 0.24);
+  const creH = sideH - pbarH - landH - 16;
   // Creatures: one row while they fit comfortably, then two rows (phones have the height for it)
   const cz = side.querySelector('.creatures');
   const avail = Math.max(120, cz.clientWidth - 4);
@@ -1181,18 +1282,20 @@ function sizeZones(pi, ps, ctx) {
   const hn = ps.hand.length;
   const hz = side.querySelector('.hand');
   const room = Math.max(40, hz.clientWidth - 8);
-  let hw = clamp(handH / 1.4, phone ? 16 : 24, phone ? 33 : 47);
-  let ov = W.hands ? 0.16 : 0.4;
+  let hw = myHand ? clamp(handH / 1.4, phone ? 40 : 52, phone ? 72 : 112) : clamp(handH / 1.4, phone ? 16 : 24, phone ? 33 : 47);
+  let ov = myHand ? -0.03 : (W.mode === 'play' ? false : W.hands) ? 0.16 : 0.4;
   if (hn) {
-    ov = clamp(Math.max(ov, (1 - room / (hn * hw)) / 2), ov, 0.44);
-    if (hn * hw * (1 - 2 * ov) > room) hw = Math.max(12, room / (hn * (1 - 2 * ov)));
+    // The row spans hw * (hn - 2·ov·(hn - 1)): every card but the last is tucked under the next one
+    ov = clamp(hn > 1 ? (hn * hw - room) / (2 * hw * (hn - 1)) : 0, ov, myHand ? 0.3 : 0.44);
+    const span = hn - 2 * ov * (hn - 1);
+    if (hw * span > room) hw = Math.max(12, room / span);
   }
   hz.style.setProperty('--ov', ov.toFixed(3));
   side.style.setProperty('--cw', `${cw}px`);
   cz.style.setProperty('--cardw', `${cw}px`);
   side.querySelector('.lands').style.setProperty('--cardw', `${lw}px`);
   side.querySelector('.hand').style.setProperty('--cardw', `${hw}px`);
-  side.style.setProperty('--pbar-h', `${phone ? 50 : 72}px`);
+  side.style.setProperty('--pbar-h', `${pbarH}px`);
   T.board.style.setProperty('--sw', `${clamp(cw * 1.75, phone ? 96 : 130, phone ? 132 : 200)}px`);
   return { cres, lands, cw, lw, hw };
 }
@@ -1208,6 +1311,9 @@ function renderSide(pi, ps, f, used) {
   }
   lifeEl.setAttribute('aria-label', `${W.replay.players[pi].name} life ${ps.life}`);
   side.querySelector('.libn').textContent = ps.lib;
+  side.querySelector('.mn').textContent = ps.mana != null ? ps.mana : '';
+  const pl = W.replay.players[pi];
+  side.querySelector('.who .sub').textContent = `${W.mode === 'play' ? (pi === 0 ? 'You' : `AI, ${ARCH_LABEL[pl.persona].toLowerCase()}`) : ARCH_LABEL[pl.persona]}${pl.mulligans ? `, mulliganed to ${7 - pl.mulligans}` : ''}`;
   side.querySelector('.gyn').textContent = ps.gyN;
   const { cres, lands } = sizeZones(pi, ps);
   const spotIds = new Set((f.s.stack || []).map((x) => x.id).concat(f.res ? [f.res] : []));
@@ -1258,8 +1364,10 @@ function renderSide(pi, ps, f, used) {
   placeChildren(lz, gnodes);
   // Hand
   const hz = side.querySelector('.hand');
-  hz.classList.toggle('backs', !W.hands);
-  const hnodes = ps.hand.filter(([id]) => !spotIds.has(id)).map(([id, d]) => { const el = cardFor(id, d, !W.hands); used.add(id); el.classList.remove('tapped', 'att', 'blk', 'sick'); el.dataset.small = '1'; setBadges(el, ''); return el; });
+  const faceUp = W.mode === 'play' ? pi === 0 : W.hands;
+  hz.classList.toggle('backs', !faceUp);
+  const bigHand = W.mode === 'play' && pi === 0 && parseFloat(hz.style.getPropertyValue('--cardw')) >= 70;
+  const hnodes = ps.hand.filter(([id]) => !spotIds.has(id)).map(([id, d]) => { const el = cardFor(id, d, !faceUp); used.add(id); el.classList.remove('tapped', 'att', 'blk', 'sick'); if (bigHand) delete el.dataset.small; else el.dataset.small = '1'; setBadges(el, ''); return el; });
   placeChildren(hz, hnodes);
   // Graveyard top
   const gz = side.querySelector('.stack.gy');
@@ -1330,14 +1438,15 @@ function render(i, animate = true) {
   if (motion) { flip(first, leaving, f); effects(f); }
   else drawBlocks(f, false);
   // Chrome
-  T.turnchip.textContent = f.k === 'start' || f.k === 'mulligan' ? 'Opening hands' : `Turn ${f.s.turn}, ${W.replay.players[f.s.active].name}`;
+  T.turnchip.textContent = f.s.turn === 0 || f.k === 'start' || f.k === 'mulligan' ? 'Opening hands' : `Turn ${f.s.turn}, ${W.mode === 'play' && f.s.active === 0 ? 'your turn' : W.replay.players[f.s.active].name}`;
   T.phases.innerHTML = ['main1', 'combat', 'main2', 'end'].map((p) => `<span class="${f.s.phase === p ? 'on' : ''}">${PHASE_OF[p]}</span>`).join('');
   T.scrub.value = String(i);
   T.trackFill.style.width = `${(i / Math.max(1, fr.length - 1)) * 100}%`;
   T.tlabel.textContent = `${i + 1} / ${fr.length}`;
-  markLog(i);
+  if (f.k === 'ask') markLog(i - 1, true); else markLog(i);
   if (f.k === 'end') showBanner(); else T.banner.hidden = true;
-  T.live.textContent = f.text;
+  T.live.textContent = f.k === 'ask' ? '' : f.text;
+  if (W.mode === 'play') decorate();
 }
 function flip(first, leaving, f) {
   const dur = 420 / Math.sqrt(W.speed);
@@ -1432,11 +1541,13 @@ function effects(f) {
   }
   if (['enter', 'token', 'pump', 'raise', 'tapfx'].includes(f.k)) later(() => { (f.cards || [f.card]).forEach((id) => id != null && pulse(id, 'flash')); }, 250);
 }
-function markLog(i) {
+function markLog(i, back) {
   const cur = T.log.querySelector('.e.cur');
   if (cur) cur.classList.remove('cur');
   let el = T.log.querySelector(`.e[data-f="${i}"]`);
-  if (!el) { // turn frames have no row: highlight the next one
+  if (!el && back) { // waiting for your decision: highlight the latest thing that happened
+    for (let k = i; k >= 0 && !el; k--) el = T.log.querySelector(`.e[data-f="${k}"]`);
+  } else if (!el) { // turn frames have no row: highlight the next one
     for (let k = i; k < W.replay.frames.length && !el; k++) el = T.log.querySelector(`.e[data-f="${k}"]`);
   }
   T.log.querySelectorAll('[data-f]').forEach((e) => e.classList.toggle('future', +e.dataset.f > i));
@@ -1449,17 +1560,19 @@ function markLog(i) {
 function showBanner() {
   const r = W.replay;
   const won = r.winner;
-  const title = won == null ? 'A draw' : `${r.players[won].name} wins`;
+  const playing = W.mode === 'play';
+  const title = won == null ? 'A draw' : playing && won === 0 ? 'You win' : `${r.players[won].name} wins`;
   const why = won == null ? (r.reason === 'turns' ? `Nobody broke through in ${r.turns} turns.` : 'Both players fell at once.') : r.reason === 'decked' ? `${r.players[1 - won].name} ran out of cards on turn ${r.turns}.` : `On turn ${r.turns}, with ${r.players[won].life} life left.`;
   const st = (k) => r.players.map((p) => p.stats[k]);
   const row = (label, vals) => `<tr><td>${label}</td><td>${vals[0]}</td><td>${vals[1]}</td></tr>`;
   T.banner.innerHTML = `<div class="box" role="dialog" aria-label="${esc(title)}">
     <h2>${esc(title)}</h2><p>${esc(why)}</p>
-    <table class="stats"><thead><tr><th></th><th>${esc(r.players[0].name)}</th><th>${esc(r.players[1].name)}</th></tr></thead>
+    <table class="stats"><thead><tr><th></th><th>${playing ? 'You' : esc(r.players[0].name)}</th><th>${esc(r.players[1].name)}</th></tr></thead>
     <tbody>${row('Damage dealt', st('damage'))}${row('Creatures killed', st('kills'))}${row('Spells cast', st('cast'))}${row('Life gained', st('gained'))}${row('Life left', r.players.map((p) => p.life))}</tbody></table>
     <div class="acts">
-      <button type="button" class="pill pill-solid" data-act="rematch">${icon('swords')}Rematch</button>
-      <button type="button" class="pill" data-act="again">${icon('first')}Watch again</button>
+      ${playing ? `<button type="button" class="pill pill-solid" data-act="playagain">${icon('swords')}Play again</button>
+      <button type="button" class="pill" data-act="replay">${icon('first')}Watch the replay</button>` : `<button type="button" class="pill pill-solid" data-act="rematch">${icon('swords')}Rematch</button>
+      <button type="button" class="pill" data-act="again">${icon('first')}Watch again</button>`}
       <button type="button" class="pill" data-act="lobby">Change decks</button>
       <button type="button" class="link-btn" data-act="close">Look at the board</button>
     </div></div>`;
@@ -1510,22 +1623,36 @@ function openLog() { T.logpane.classList.add('open'); }
 function closeLog() { T.logpane.classList.remove('open'); }
 
 /* ---- Inspector ---- */
-function openInspector(el) {
+// Why a card in your hand has no button right now
+function whyNot(def) {
+  if (W.mode !== 'play' || W.inspActs.length || !PL.req || PL.ui !== 'act') return '';
+  const r = PL.req, mana = r.s.p[0].mana;
+  const myMain = r.active === 0 && (r.when === 'main1' || r.when === 'main2');
+  const fast = def.types.includes('Instant') || (def.kw || []).includes('flash');
+  if (def.types.includes('Land')) return myMain ? "You've played your land for this turn." : 'Lands go down in your own main phase.';
+  if (def.spell && def.spell.some((e) => e.k === 'counter')) return "You'll be asked when your opponent casts a spell you can counter.";
+  if (!fast && !myMain) return 'You can cast it in your own main phase.';
+  if (def.mv > mana) return `It costs ${def.mv} and you have ${plural(mana, 'untapped mana source')}.`;
+  return "You can't cast it right now: it needs other colors of mana or a legal target.";
+}
+function openInspector(el, actions) {
   const def = el._def;
   if (!def || el.classList.contains('is-back')) return;
+  W.inspActs = actions || [];
   const id = +el.dataset.id;
   let stateLine = '';
   if (W.replay && S.view === 'watch') {
     const f = W.replay.frames[W.i];
     for (const [pi, p] of f.s.p.entries()) {
       const b = p.bf.find((x) => x.id === id);
+      const whose = W.mode === 'play' && pi === 0 ? 'Yours' : `${esc(W.replay.players[pi].name)}'s`;
       if (b && isCre(def)) {
         const bits = [`<b>${b.p}/${b.t}</b> right now`];
         if (b.tap) bits.push('tapped'); if (b.sick) bits.push('summoning sick'); if (b.att) bits.push('attacking'); if (b.blk) bits.push('blocking');
         if (b.dmg) bits.push(`${b.dmg} damage marked`); if (b.cnt) bits.push(`${plural(b.cnt, '+1/+1 counter')}`); if (b.kw && b.kw.length) bits.push(`has ${b.kw.join(' and ')} this turn`);
-        stateLine = `${esc(W.replay.players[pi].name)}'s, ${bits.join(', ')}.`;
-      } else if (b) stateLine = `${esc(W.replay.players[pi].name)}'s land${b.tap ? ', tapped' : ''}.`;
-      else if (p.hand.some(([h]) => h === id)) stateLine = `In ${esc(W.replay.players[pi].name)}'s hand.`;
+        stateLine = `${whose}, ${bits.join(', ')}.`;
+      } else if (b) stateLine = `${whose === 'Yours' ? 'Your' : whose} land${b.tap ? ', tapped' : ''}.`;
+      else if (p.hand.some(([h]) => h === id)) stateLine = whose === 'Yours' ? `In your hand. ${whyNot(def)}` : `In ${whose} hand.`;
     }
   }
   const big = makeCard(def, `insp-${id}`);
@@ -1543,6 +1670,7 @@ function openInspector(el) {
       <div class="otext">${def.token ? `<p>${esc(def.text || 'A token with no abilities.')}</p>` : textHTML(def.text)}</div>
       ${isCre(def) ? `<div class="ipt">${def.power}/${def.toughness}</div>` : ''}
       ${stateLine ? `<div class="state">${stateLine}</div>` : ''}
+      ${W.inspActs.length ? `<div class="acts">${W.inspActs.map((a, k) => `<button type="button" class="pill${k === 0 ? ' pill-solid' : ''}" data-actk="${k}">${esc(a.label).replace(/\{([^}]+)\}/g, (m, c) => sym(c))}${a.kind === 'cast' ? ` <span style="margin-left:auto">${manaHTML(def.manaCost)}</span>` : ''}</button>`).join('')}${W.inspActs.some((a) => a.specs && a.specs.length) ? '<span class="note">You will choose targets next.</span>' : ''}</div>` : ''}
       ${def.token ? '' : `<div class="links"><a class="btn-ghost" href="${esc(tutor)}">${icon('ext')}Open in Tutor</a></div>`}
     </div>
     <button type="button" class="icon-btn x" data-close aria-label="Close">${icon('x')}</button></div>`;
@@ -1550,7 +1678,7 @@ function openInspector(el) {
   box.hidden = false;
   W.wasPlaying = W.playing;
   stop();
-  box.querySelector('.x').focus();
+  (box.querySelector('[data-actk]') || box.querySelector('.x')).focus();
   W.inspFrom = el;
 }
 function closeInspector() {
@@ -1559,14 +1687,472 @@ function closeInspector() {
   box.hidden = true;
   box.innerHTML = '';
   if (W.inspFrom && W.inspFrom.isConnected) W.inspFrom.focus();
-  if (W.wasPlaying && S.view === 'watch') play();
+  if (W.wasPlaying && S.view === 'watch' && W.mode !== 'play') play();
 }
+/* ============================================================
+   Playing against the AI
+   The engine replays the game from its seed with every answer given so far, then
+   either finishes or asks the next question. We animate whatever is new, then ask.
+   ============================================================ */
+const PL = { on: false, keys: null, decks: null, seed: 0, answers: [], req: null, done: false, shown: -1, ui: 'idle', anim: 0, skip: null, pend: null, picks: new Set(), blocks: new Map(), sel: null, choice: null, imgs: false, toastTurn: 0 };
+const PB = { title: $('#pbTitle'), hint: $('#pbHint'), acts: $('#pbActs') };
+const PLAY_PACE = 1.8;
+const savedPlay = () => store.get('arena.play.v1', null);
+function playStart(seed, answers) {
+  const d0 = deckByKey(S.seats[0]), d1 = deckByKey(S.seats[1]);
+  if (!d0 || !d1) return;
+  stop();
+  clearTimeout(PL.anim);
+  closeChoice();
+  closeInspector();
+  Object.assign(PL, { on: true, keys: S.seats.slice(), decks: mirrorSafe(d0, d1), seed, answers: (answers || []).slice(), req: null, done: false, shown: -1, pend: null, skip: null, imgs: false, toastTurn: 0 });
+  W.mode = 'play';
+  W.seed = seed;
+  W.decks = PL.decks;
+  W.els.clear();
+  T.table.classList.add('playing');
+  T.sides.forEach((s) => { s.innerHTML = ''; });
+  T.spot.innerHTML = '';
+  T.banner.hidden = true;
+  setView('watch', true);
+  advance(false, true);
+}
+function endPlay() {
+  if (!PL.on) return;
+  PL.on = false;
+  clearTimeout(PL.anim);
+  PL.skip = null;
+  closeChoice();
+  W.mode = 'watch';
+  T.table.classList.remove('playing');
+  delete T.table.dataset.ui;
+}
+function advance(animate, first) {
+  let r;
+  try {
+    r = Arena.runInteractive({ decks: PL.decks, seed: PL.seed, human: 0, answers: PL.answers });
+  } catch (err) {
+    // A saved game from an older version can fall out of step: keep the answers that still fit.
+    const m = /answer (\d+)/.exec((err && err.message) || '');
+    if (m && PL.answers.length > +m[1]) { PL.answers = PL.answers.slice(0, +m[1]); return advance(false, first); }
+    throw err;
+  }
+  W.replay = Arena.replayOf(r.G);
+  const last = W.replay.frames.length - 1;
+  if (!r.done) W.replay.frames.push({ k: 'ask', text: '', turn: r.req.turn, who: r.req.active, s: r.req.s });
+  if (first) buildSides();
+  buildLog();
+  if (!PL.imgs) { PL.imgs = true; ensureImages(Object.values(W.replay.defs).filter((d) => !d.token).map((d) => d.name)); }
+  PL.done = r.done;
+  PL.req = r.req;
+  PL.pend = null;
+  const from = PL.shown;
+  PL.shown = last;
+  setUi('busy');
+  const end = W.replay.frames.length - 1;
+  if (animate && from >= 0 && end > from) runFrames(from + 1, end, () => settle(r));
+  else { render(end, false); settle(r); }
+}
+function runFrames(i, end, done) {
+  clearTimeout(PL.anim);
+  PL.skip = () => { clearTimeout(PL.anim); PL.skip = null; render(end, false); done(); };
+  render(i, true);
+  const f = W.replay.frames[i];
+  if (f.k !== 'ask' && f.text) PB.title.textContent = f.text;
+  if (i >= end) { PL.skip = null; done(); return; }
+  const mine = f.who === 0 && f.k !== 'turn';
+  PL.anim = setTimeout(() => runFrames(i + 1, end, done), (frameDur(f) / PLAY_PACE) * (mine ? 0.6 : 1));
+}
+function settle(r) {
+  // A finished game stays saved (so a reload shows how it ended) but no longer waits in the lobby
+  store.set('arena.play.v1', { v: 1, a: PL.keys[0], b: PL.keys[1], seed: PL.seed, answers: PL.answers, turn: r.done ? W.replay.turns : r.req.turn, names: PL.decks.map((d) => d.name), at: Date.now(), done: r.done || undefined });
+  if (r.done) { setUi('over'); return; }
+  if (r.req.active === 0 && r.req.turn > 0 && PL.toastTurn !== r.req.turn && (r.req.type === 'act' || r.req.type === 'attack')) { PL.toastTurn = r.req.turn; toast('Your turn'); }
+  openRequest(r.req);
+}
+function openRequest(req) {
+  PL.pend = null;
+  PL.picks = new Set();
+  PL.blocks = new Map();
+  PL.sel = null;
+  if (req.type === 'attack') { req.must.forEach((id) => PL.picks.add(id)); setUi('attack'); }
+  else if (req.type === 'block') setUi('block');
+  else if (req.type === 'act') setUi('act');
+  else { openChoice(req); setUi('sheet'); }
+}
+function setUi(ui) {
+  PL.ui = ui;
+  T.table.dataset.ui = ui;
+  renderPlaybar();
+  decorate();
+}
+function answer(a) {
+  if (!PL.on || PL.done || PL.ui === 'busy') return;
+  PL.answers.push(a);
+  closeChoice();
+  advance(true);
+}
+function undo() {
+  if (!PL.on || !PL.answers.length) return;
+  clearTimeout(PL.anim);
+  PL.skip = null;
+  PL.answers.pop();
+  closeChoice();
+  closeInspector();
+  T.banner.hidden = true;
+  advance(false);
+}
+const nameOfCard = (id) => { const d = findDefOfId(W.replay.frames[W.i], id); return d ? defOf(d).name : 'This card'; };
+function renderPlaybar() {
+  const r = PL.req, ui = PL.ui;
+  const opp = W.decks ? W.decks[1].name : 'The AI';
+  const undoBtn = PL.answers.length && ui !== 'busy' ? `<button type="button" class="icon-btn" data-pb="undo" aria-label="Undo your last choice" title="Undo">${icon('undo')}</button>` : '';
+  const logBtn = `<button type="button" class="icon-btn logbtn" data-pb="log" aria-label="Game log">${icon('log')}</button>`;
+  const solid = (k, label) => `<button type="button" class="pill pill-solid" data-pb="${k}">${label}</button>`;
+  const ghost = (k, label) => `<button type="button" class="pill" data-pb="${k}">${label}</button>`;
+  let title = '', hint = '', btns = '';
+  if (ui === 'busy') { title = PB.title.textContent || 'The AI is thinking'; btns = ghost('skip', 'Skip ahead'); }
+  else if (ui === 'over') { const won = W.replay.winner; title = won === 0 ? 'You win' : won == null ? 'A draw' : `${opp} wins`; btns = solid('again', 'Play again'); }
+  else if (ui === 'sheet') { title = PL.choice ? PL.choice.title : ''; btns = solid('showsheet', 'Choose'); }
+  else if (ui === 'act') {
+    const w = r.when;
+    if (w === 'main1') {
+      title = 'Your turn';
+      hint = r.actions.some((a) => a.kind === 'land') ? 'Play a land and cast spells, then attack.' : 'Cast spells or use abilities, then attack.';
+      btns = r.canAttack ? ghost('pass-end', 'End turn') + solid('pass-combat', 'Attack') : solid('pass-end', 'End turn');
+    } else if (w === 'main2') { title = 'After combat'; hint = 'Cast anything else, then end your turn.'; btns = solid('pass-end', 'End turn'); }
+    else if (w === 'attackers') {
+      const canBlock = r.s.p[0].bf.some((b) => !b.tap && isCre(defOf(b.d)));
+      title = `${opp} is attacking`;
+      hint = canBlock ? 'Respond with an instant or ability, or pass and then block.' : 'Respond with an instant or ability, or pass.';
+      btns = solid('pass', 'Pass');
+    }
+    else if (w === 'blocks') { title = 'Before damage'; hint = 'Last chance for tricks this combat.'; btns = solid('pass', 'Deal damage'); }
+    else { title = `End of ${opp}'s turn`; hint = 'Cast instants or flash creatures before your turn.'; btns = solid('pass', 'Pass'); }
+  } else if (ui === 'target') {
+    const p = PL.pend, sp = p.a.specs[p.i];
+    title = sp.pair ? (p.pairMine == null ? 'Choose your creature' : 'Choose their creature') : 'Choose a target';
+    hint = `${nameOfCard(p.a.card)}: ${sp.label}`;
+    btns = (sp.may ? ghost('tskip', 'Skip') : '') + ghost('cancel', 'Cancel');
+  } else if (ui === 'attack') {
+    const n = PL.picks.size;
+    title = 'Attack';
+    hint = n ? `${plural(n, 'creature')} attacking. Tap one to change your mind.` : 'Tap your creatures to attack with them.';
+    btns = (r.cands.length > 1 ? ghost('all', n === r.cands.length ? 'None' : 'All') : '') + solid('attack', n ? `Attack with ${n}` : 'No attack');
+  } else if (ui === 'block') {
+    const dmg = incomingDamage(), life = r.s.p[0].life;
+    const lonely = [...PL.blocks].some(([aid, bs]) => bs.length === 1 && r.attackers.find((o) => o.id === aid).menace);
+    title = 'Block';
+    hint = lonely ? 'A creature with menace needs two blockers.' : PL.sel != null ? 'Now tap the attacker it should block.' : `Tap your creature, then an attacker. You'd take ${dmg}${dmg >= life ? ', which is lethal' : ''}.`;
+    btns = solid('blocks', PL.blocks.size ? 'Confirm blocks' : 'No blocks');
+  }
+  PB.title.textContent = title;
+  PB.hint.textContent = hint;
+  PB.hint.hidden = !hint;
+  PB.acts.innerHTML = undoBtn + btns + logBtn;
+}
+function incomingDamage() {
+  const r = PL.req;
+  const atk = r.s.p[1].bf.filter((b) => b.att);
+  let n = 0;
+  for (const b of atk) {
+    const def = defOf(b.d), kws = def.kw.concat(b.kw || []);
+    const p = Math.max(0, b.p) * (kws.includes('double strike') ? 2 : 1);
+    const bs = PL.blocks.get(b.id);
+    if (!bs || !bs.length) n += p;
+    else if (kws.includes('trample')) n += Math.max(0, p - bs.reduce((t, id) => { const x = r.s.p[0].bf.find((y) => y.id === id); return t + (x ? Math.max(0, x.t - (x.dmg || 0)) : 0); }, 0));
+  }
+  return n;
+}
+function currentCands() {
+  const p = PL.pend;
+  if (!p) return [];
+  const sp = p.a.specs[p.i];
+  return sp.pair ? (p.pairMine == null ? sp.mine : sp.theirs) : sp.cands;
+}
+function decorate() {
+  if (W.mode !== 'play') return;
+  $$('.card.can-act, .card.can-target, .card.pick, .card.sel, .card.can-take, .card.pblk', T.board).forEach((c) => c.classList.remove('can-act', 'can-target', 'pick', 'sel', 'can-take', 'pblk'));
+  $$('.life', T.board).forEach((l) => { l.classList.remove('can-target'); l.removeAttribute('tabindex'); l.removeAttribute('role'); });
+  T.fx.querySelectorAll('.pick-line').forEach((x) => x.remove());
+  const r = PL.req;
+  if (!r || !PL.on) return;
+  const el = (id) => { const e = W.els.get(id); return e && e.isConnected ? e : null; };
+  if (PL.ui === 'act') r.actions.forEach((a) => { const e = el(a.card); if (e) e.classList.add('can-act'); });
+  if (PL.ui === 'target') {
+    for (const v of currentCands()) {
+      if (typeof v === 'string') { const l = T.sides[+v.slice(1)].querySelector('.life'); l.classList.add('can-target'); l.tabIndex = 0; l.setAttribute('role', 'button'); }
+      else { const e = el(v); if (e) e.classList.add('can-target'); }
+    }
+    if (PL.pend && PL.pend.pairMine != null) { const e = el(PL.pend.pairMine); if (e) e.classList.add('sel'); }
+  }
+  if (PL.ui === 'attack') r.cands.forEach((id) => { const e = el(id); if (e) { e.classList.add('can-act'); if (PL.picks.has(id)) e.classList.add('pick'); } });
+  if (PL.ui === 'block') {
+    new Set(r.attackers.flatMap((o) => o.by)).forEach((id) => { const e = el(id); if (e) e.classList.add('can-act'); });
+    for (const [, bs] of PL.blocks) bs.forEach((b) => { const e = el(b); if (e) e.classList.add('pblk'); });
+    if (PL.sel != null) {
+      const e = el(PL.sel); if (e) e.classList.add('sel');
+      r.attackers.filter((o) => o.by.includes(PL.sel)).forEach((o) => { const a = el(o.id); if (a) a.classList.add('can-take'); });
+    }
+    for (const [aid, bs] of PL.blocks) bs.forEach((b) => arrow(b, aid, 'blk pick-line'));
+  }
+}
+function onPlayClick(target) {
+  const life = target.closest('.life');
+  const card = target.closest('.card');
+  if (!life && !card) return false;
+  if (card && (card.disabled || card.classList.contains('is-back'))) return true;
+  const id = card ? +card.dataset.id : null;
+  const r = PL.req;
+  if (PL.ui === 'target') {
+    const val = life ? `p${life.dataset.player}` : id;
+    if (currentCands().includes(val)) chooseTarget(val);
+    else if (card) openInspector(card);
+    return true;
+  }
+  if (!card) return true;
+  if (PL.ui === 'attack' && r.cands.includes(id)) {
+    if (!r.must.includes(id)) { if (PL.picks.has(id)) PL.picks.delete(id); else PL.picks.add(id); }
+    renderPlaybar(); decorate();
+    return true;
+  }
+  if (PL.ui === 'block' && handleBlockTap(id)) return true;
+  if (PL.ui === 'act') { openInspector(card, r.actions.filter((a) => a.card === id)); return true; }
+  openInspector(card);
+  return true;
+}
+function handleBlockTap(id) {
+  const r = PL.req;
+  const canBlockIt = r.attackers.some((o) => o.by.includes(id));
+  const isAttacker = r.attackers.some((o) => o.id === id);
+  if (canBlockIt) {
+    for (const [aid, bs] of PL.blocks) {
+      if (!bs.includes(id)) continue;
+      const left = bs.filter((b) => b !== id);
+      if (left.length) PL.blocks.set(aid, left); else PL.blocks.delete(aid);
+      PL.sel = null;
+      renderPlaybar(); decorate();
+      return true;
+    }
+    const opts = r.attackers.filter((o) => o.by.includes(id));
+    if (r.attackers.length === 1 && opts.length === 1) { assignBlock(opts[0].id, id); return true; }
+    PL.sel = PL.sel === id ? null : id;
+    renderPlaybar(); decorate();
+    return true;
+  }
+  if (isAttacker && PL.sel != null) {
+    const o = r.attackers.find((x) => x.id === id);
+    if (o.by.includes(PL.sel)) { assignBlock(id, PL.sel); return true; }
+  }
+  return false;
+}
+function assignBlock(aid, bid) {
+  PL.blocks.set(aid, (PL.blocks.get(aid) || []).concat(bid));
+  PL.sel = null;
+  renderPlaybar(); decorate();
+}
+function startAction(a) {
+  closeInspector();
+  const specs = a.specs || [];
+  if (!specs.length) { answer({ type: 'act', act: a.act, t: [], etb: [] }); return; }
+  PL.pend = { a, i: 0, t: [], etb: [], pairMine: null };
+  setUi('target');
+  autoPick();
+}
+// A target with only one possible choice (a pinger that can only hit the opponent) is picked for you.
+function autoPick() {
+  const p = PL.pend;
+  if (!p) return;
+  const sp = p.a.specs[p.i];
+  if (sp.pair) {
+    if (p.pairMine == null && sp.mine.length === 1) { chooseTarget(sp.mine[0]); return; }
+    if (p.pairMine != null && sp.theirs.length === 1) chooseTarget(sp.theirs[0]);
+  } else if (!sp.may && sp.cands.length === 1) chooseTarget(sp.cands[0]);
+}
+function chooseTarget(val) {
+  const p = PL.pend;
+  if (!p) return;
+  const sp = p.a.specs[p.i];
+  let ref;
+  if (val === 'skip') ref = 'skip';
+  else if (sp.pair) {
+    if (p.pairMine == null) { p.pairMine = val; renderPlaybar(); decorate(); autoPick(); return; }
+    ref = { c: p.pairMine, c2: val };
+  } else ref = typeof val === 'string' ? { p: +val.slice(1) } : { c: val };
+  (p.a.etb ? p.etb : p.t)[sp.k] = ref;
+  p.i++;
+  p.pairMine = null;
+  if (p.i >= p.a.specs.length) { PL.pend = null; answer({ type: 'act', act: p.a.act, t: p.t, etb: p.etb }); return; }
+  renderPlaybar(); decorate(); autoPick();
+}
+/* Choice sheets: mulligans, discards, scry, sacrifices, counterspells */
+const CHOOSE_TEXT = {
+  hand: (n) => [`Discard ${n === 1 ? 'a card' : `${n} cards`}`, 'You can keep seven cards at the end of your turn.'],
+  discard: (n) => [`Discard ${n === 1 ? 'a card' : `${n} cards`}`, 'Your opponent made you discard. You choose which.'],
+  loot: () => ['Discard a card', 'You drew a card; now discard one.'],
+  rummage: () => ['Discard a card', "Then you'll draw a card."],
+  bottom: (n) => [`Put ${n === 1 ? 'a card' : `${n} cards`} on the bottom`, 'That is the price of your mulligan.'],
+  scry: (n) => [`Scry ${n}`, 'Tap any cards to put them on the bottom. The rest stay on top in this order.'],
+  putback: (n) => [`Put ${n} cards back on top`, 'The first card you pick ends up on top of your library.'],
+  sacrifice: () => ['Sacrifice a creature', 'Your opponent made you sacrifice one. You choose which.'],
+};
+function openChoice(req) {
+  const box = $('#sheet');
+  const s = req.s;
+  const defs = Object.assign({}, req.defs || {});
+  s.p.forEach((p) => { p.hand.forEach(([id, d]) => { defs[id] = defs[id] || d; }); p.bf.forEach((b) => { defs[b.id] = defs[b.id] || b.d; }); });
+  (s.stack || []).forEach((x) => { defs[x.id] = x.d; });
+  let title = '', sub = '', ids = [], acts = '', selectable = false;
+  if (req.type === 'mulligan') {
+    ids = req.cards;
+    const lands = ids.filter((id) => defOf(defs[id]).types.includes('Land')).length;
+    title = req.mulligans ? `Keep, and put ${req.mulligans === 1 ? 'a card' : `${req.mulligans} cards`} on the bottom?` : 'Keep this hand?';
+    sub = `${plural(lands, 'land')} in seven cards. You're on the ${req.active === 0 ? 'play' : 'draw'}.`;
+    acts = `<button type="button" class="pill" data-sh="mull">Mulligan</button><button type="button" class="pill pill-solid" data-sh="keep">Keep</button>`;
+  } else if (req.type === 'counter') {
+    ids = [req.spell];
+    title = `Counter ${defOf(defs[req.spell]).name}?`;
+    sub = `${W.decks[1].name} is casting it.`;
+    acts = `<button type="button" class="pill" data-sh="let">Let it resolve</button>` + req.options.map((id) => `<button type="button" class="pill pill-solid" data-sh="counter" data-id="${id}">${esc(defOf(defs[id]).name)} ${manaHTML(defOf(defs[id]).manaCost)}</button>`).join('');
+  } else {
+    ids = req.cards;
+    selectable = true;
+    [title, sub] = (CHOOSE_TEXT[req.reason] || CHOOSE_TEXT.discard)(req.n);
+    acts = `<button type="button" class="pill pill-solid" data-sh="confirm"></button>`;
+  }
+  PL.choice = { req, sel: [], title };
+  box.innerHTML = `<div class="sheet-box" role="dialog" aria-modal="true" aria-labelledby="shTitle">
+    <div class="sheet-head"><div><h2 id="shTitle">${esc(title)}</h2><p class="sub">${esc(sub)}</p></div><button type="button" class="link-btn" data-sh="hide">See the board</button></div>
+    <div class="pick-grid${selectable ? ' selectable' : ''}" id="shGrid"></div>
+    <div class="sheet-acts">${acts}</div></div>`;
+  const grid = box.querySelector('#shGrid');
+  ids.forEach((id) => {
+    const el = makeCard(defOf(defs[id]), `sh${id}`);
+    el.dataset.pick = id;
+    if (!selectable) el.dataset.look = '1';
+    grid.appendChild(el);
+  });
+  box.hidden = false;
+  box.classList.remove('min');
+  updateChoice();
+}
+function updateChoice() {
+  const c = PL.choice;
+  if (!c || c.req.type !== 'choose') return;
+  const { req, sel } = c;
+  $$('#shGrid .card').forEach((el) => {
+    const k = sel.indexOf(+el.dataset.pick);
+    el.classList.toggle('chosen', k >= 0);
+    el.querySelectorAll('.ord').forEach((o) => o.remove());
+    if (k >= 0 && (req.reason === 'putback' || req.reason === 'bottom') && req.n > 1) el.insertAdjacentHTML('beforeend', `<span class="badge ord">${k + 1}</span>`);
+  });
+  const btn = $('#sheet [data-sh="confirm"]');
+  const ok = sel.length >= req.min && sel.length <= req.max;
+  btn.disabled = !ok;
+  btn.textContent = req.reason === 'scry' ? (sel.length ? `Put ${sel.length} on the bottom` : 'Keep them all on top') : req.reason === 'sacrifice' ? 'Sacrifice' : req.reason === 'putback' || req.reason === 'bottom' ? 'Confirm' : `Discard${sel.length ? ` ${sel.length}` : ''}`;
+}
+function closeChoice() {
+  const box = $('#sheet');
+  box.hidden = true;
+  box.innerHTML = '';
+  PL.choice = null;
+}
+function toast(text) {
+  const t = $('#toast');
+  t.textContent = text;
+  t.hidden = false;
+  t.classList.remove('show');
+  void t.offsetWidth;
+  t.classList.add('show');
+  clearTimeout(t._h);
+  t._h = setTimeout(() => { t.hidden = true; }, 1600);
+}
+function toReplay() {
+  const rep = W.replay;
+  endPlay();
+  W.replay = rep;
+  W.seed = null;
+  W.els.clear();
+  T.sides.forEach((s) => { s.innerHTML = ''; });
+  T.spot.innerHTML = '';
+  T.banner.hidden = true;
+  buildSides();
+  buildLog();
+  buildTimeline();
+  render(0, false);
+  setView('watch', false);
+  W.autoplay = setTimeout(() => play(), 400);
+}
+function renderResume() {
+  const box = $('#resume');
+  const sv = savedPlay();
+  if (!sv || sv.done || !deckByKey(sv.a) || !deckByKey(sv.b)) { box.hidden = true; return; }
+  box.hidden = false;
+  box.innerHTML = `<span class="res-text"><b>Your game is waiting.</b> ${esc(sv.names[0])} vs ${esc(sv.names[1])}, turn ${sv.turn || 1}.</span>
+    <span class="res-acts"><button type="button" class="link-btn" data-res="drop">Abandon it</button><button type="button" class="pill pill-solid" data-res="go">${icon('play')}Resume</button></span>`;
+}
+function resumeSaved() {
+  const sv = savedPlay();
+  if (!sv) return;
+  S.seats = [sv.a, sv.b];
+  store.set('arena.seats.v1', S.seats);
+  playStart(sv.seed, sv.answers);
+}
+
 
 /* ============================================================
    Wiring
    ============================================================ */
 function wire() {
   $('#watchBtn').addEventListener('click', () => watch(newSeed()));
+  $('#playBtn').addEventListener('click', () => playStart(newSeed()));
+  $('#resume').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-res]');
+    if (!b) return;
+    if (b.dataset.res === 'go') resumeSaved();
+    else { store.set('arena.play.v1', null); renderResume(); }
+  });
+  PB.acts.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-pb]');
+    if (!b) return;
+    const k = b.dataset.pb;
+    if (k === 'undo') undo();
+    else if (k === 'skip') { if (PL.skip) PL.skip(); }
+    else if (k === 'log') { if (T.logpane.classList.contains('open')) closeLog(); else openLog(); }
+    else if (k === 'pass-combat') answer({ type: 'act', pass: 'combat' });
+    else if (k === 'pass-end') answer({ type: 'act', pass: 'end' });
+    else if (k === 'pass') answer({ type: 'act', pass: true });
+    else if (k === 'cancel') { PL.pend = null; setUi('act'); }
+    else if (k === 'tskip') chooseTarget('skip');
+    else if (k === 'attack') answer({ type: 'attack', ids: [...PL.picks] });
+    else if (k === 'all') { const all = PL.picks.size === PL.req.cands.length; PL.picks = new Set(all ? PL.req.must : PL.req.cands); renderPlaybar(); decorate(); }
+    else if (k === 'blocks') answer({ type: 'block', blocks: [...PL.blocks] });
+    else if (k === 'again') playStart(newSeed());
+    else if (k === 'showsheet') { $('#sheet').hidden = false; }
+  });
+  $('#sheet').addEventListener('click', (e) => {
+    const c = PL.choice;
+    if (!c) return;
+    const b = e.target.closest('[data-sh]');
+    if (b) {
+      const k = b.dataset.sh;
+      if (k === 'keep') answer({ type: 'mulligan', keep: true });
+      else if (k === 'mull') answer({ type: 'mulligan', keep: false });
+      else if (k === 'counter') answer({ type: 'counter', id: +b.dataset.id });
+      else if (k === 'let') answer({ type: 'counter', id: null });
+      else if (k === 'confirm' && !b.disabled) answer({ type: 'choose', ids: c.sel.slice() });
+      else if (k === 'hide') { $('#sheet').hidden = true; }
+      return;
+    }
+    const card = e.target.closest('.card[data-pick]');
+    if (!card) return;
+    if (c.req.type !== 'choose') { openInspector(card); return; }
+    const id = +card.dataset.pick, k = c.sel.indexOf(id);
+    if (k >= 0) c.sel.splice(k, 1);
+    else if (c.req.max === 1) c.sel = [id];
+    else if (c.sel.length < c.req.max) c.sel.push(id);
+    updateChoice();
+  });
   $('#simBtn').addEventListener('click', simulate);
   $('#randBtn').addEventListener('click', randomMatchup);
   $('#swapBtn').addEventListener('click', () => { S.seats.reverse(); S.sim = null; L.sim.hidden = true; store.set('arena.seats.v1', S.seats); renderSeats(); syncHash(false); });
@@ -1626,22 +2212,43 @@ function wire() {
   $('#cLog').addEventListener('click', () => (T.logpane.classList.contains('open') ? closeLog() : openLog()));
   $('#logClose').addEventListener('click', closeLog);
   T.scrub.addEventListener('input', () => { stop(); render(+T.scrub.value, false); });
-  T.log.addEventListener('click', (e) => { const b = e.target.closest('.e[data-f]'); if (b) { stop(); render(+b.dataset.f, false); } });
+  T.log.addEventListener('click', (e) => { if (W.mode === 'play') return; const b = e.target.closest('.e[data-f]'); if (b) { stop(); render(+b.dataset.f, false); } });
   T.banner.addEventListener('click', (e) => {
     const a = e.target.closest('[data-act]');
     if (!a) return;
     if (a.dataset.act === 'rematch') watch(newSeed(), { replace: true });
+    else if (a.dataset.act === 'playagain') playStart(newSeed());
+    else if (a.dataset.act === 'replay') toReplay();
     else if (a.dataset.act === 'again') { T.banner.hidden = true; render(0, false); play(); }
     else if (a.dataset.act === 'lobby') { setView('lobby', true); renderSeats(); }
     else if (a.dataset.act === 'close') T.banner.hidden = true;
   });
   document.addEventListener('click', (e) => {
+    const ak = e.target.closest('#insp [data-actk]');
+    if (ak) { startAction(W.inspActs[+ak.dataset.actk]); return; }
+    if (S.view === 'watch' && W.mode === 'play' && e.target.closest('#board') && onPlayClick(e.target)) return;
     const c = e.target.closest('.card');
     if (c && !c.disabled && (c.closest('#watch') || c.closest('#lobby'))) { openInspector(c); return; }
     if (e.target.closest('#insp [data-close]')) closeInspector();
   });
   document.addEventListener('keydown', (e) => {
     if (!$('#insp').hidden) { if (e.key === 'Escape') { e.preventDefault(); closeInspector(); } return; }
+    if (S.view === 'watch' && W.mode === 'play') {
+      const life = e.target.closest && e.target.closest('.life.can-target');
+      if (life && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onPlayClick(life); return; }
+      if (e.key === 'Escape') {
+        if (!$('#sheet').hidden && PL.choice) { $('#sheet').hidden = true; return; }
+        if (PL.ui === 'target') { PL.pend = null; setUi('act'); return; }
+        if (PL.ui === 'block' && PL.sel != null) { PL.sel = null; renderPlaybar(); decorate(); return; }
+        if (T.logpane.classList.contains('open')) closeLog();
+      }
+      if ((e.key === 'z' || e.key === 'u') && !e.metaKey && !e.ctrlKey && !e.altKey) undo();
+      if ((e.key === ' ' || e.key === 'Enter') && !(e.target.closest && e.target.closest('button, a, input, select, textarea, [role="button"]'))) {
+        const main = $('#sheet').hidden ? PB.acts.querySelector('.pill-solid') : $('#sheet .sheet-acts .pill-solid:not(:disabled)');
+        if (main) { e.preventDefault(); main.click(); }
+      }
+      return;
+    }
     if (S.view !== 'watch' || e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.target.closest && e.target.closest('input, select, textarea')) return;
     if (e.key === ' ' || e.key === 'k') { if (e.target.closest('button') && e.key === ' ') return; e.preventDefault(); W.playing ? stop() : play(); }
@@ -1656,11 +2263,14 @@ function wire() {
     const h = readHash();
     if (h.a) S.seats[0] = h.a.key;
     if (h.b) S.seats[1] = h.b.key;
-    if (h.seed != null && h.a && h.b) { if (!(S.view === 'watch' && W.seed === h.seed)) watch(h.seed, { replace: true }); }
+    if (h.play != null && h.a && h.b) { if (!(PL.on && PL.seed === h.play)) { const sv = savedPlay(); playStart(h.play, sv && sv.seed === h.play && sv.a === h.a.key && sv.b === h.b.key ? sv.answers : []); } }
+    else if (h.seed != null && h.a && h.b) { if (!(S.view === 'watch' && W.mode === 'watch' && W.seed === h.seed)) watch(h.seed, { replace: true }); }
     else if (S.view !== 'lobby') { setView('lobby', false); renderSeats(); }
   });
 }
 W.fxTimers = [];
+W.mode = 'watch';
+W.inspActs = [];
 W.speed = SPEEDS.includes(store.get('arena.speed.v1', 1)) ? store.get('arena.speed.v1', 1) : 1;
 
 async function boot() {
@@ -1686,7 +2296,9 @@ async function boot() {
   renderButtons();
   renderSeats();
   renderPick();
-  if (h.seed != null && h.a && h.b) watch(h.seed, { replace: true, paused: false });
+  renderResume();
+  if (h.play != null && h.a && h.b) { const sv = savedPlay(); playStart(h.play, sv && sv.seed === h.play && sv.a === h.a.key && sv.b === h.b.key ? sv.answers : []); }
+  else if (h.seed != null && h.a && h.b) watch(h.seed, { replace: true, paused: false });
   else syncHash(false);
 }
 boot();
