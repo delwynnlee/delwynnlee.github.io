@@ -209,6 +209,27 @@ svg.i .fill { fill: currentColor; }
 .credits { margin-top: 56px; color: var(--faint); font-size: 13px; line-height: 1.55; max-width: 90ch; }
 .credits a { color: var(--muted); }
 
+.modes { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; margin-top: 24px; }
+.seg-lg button { height: 40px; padding: 0 20px; font-size: 15.5px; font-weight: 600; }
+.learn { display: inline-flex; align-items: center; gap: 12px; padding: 8px 18px 8px 9px; border-radius: 14px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); text-align: left; transition: border-color .15s, background-color .15s; }
+.learn:hover { background: var(--raised); }
+.learn-ic { width: 40px; height: 40px; flex: none; border-radius: 11px; display: grid; place-items: center; background: color-mix(in srgb, var(--m) 20%, transparent); color: var(--m); }
+.learn-ic svg.i { width: 23px; height: 23px; }
+.learn-txt b { display: block; font: 800 16.5px/1.2 var(--serif); }
+.learn-txt span { display: block; color: var(--muted); font-size: 13.5px; }
+.deck-meta .cmd-name { display: inline-flex; align-items: center; gap: 4px; color: var(--text); font-weight: 600; }
+.deck-meta .cmd-name svg.i, .decklist .cmdrow svg.i { width: 15px; height: 15px; color: var(--m); }
+.legends { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 8px; margin-top: 12px; max-height: 372px; overflow: auto; padding: 2px; overscroll-behavior: contain; }
+.legend { display: flex; align-items: stretch; padding: 0; text-align: left; border-radius: 12px; border: 1px solid var(--line); background: var(--raised); color: var(--text); overflow: hidden; min-height: 58px; transition: border-color .15s, box-shadow .15s; }
+.legend:hover { border-color: var(--line-strong); }
+.legend[aria-pressed="true"] { border-color: var(--m); box-shadow: 0 0 0 2px var(--m); }
+.lg-art { width: 62px; flex: none; background: var(--surface) center 25% / cover no-repeat; }
+.lg-body { padding: 7px 10px; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+.lg-body b { font: 700 14.5px/1.15 var(--serif); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lg-meta { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; }
+.lg-meta span { overflow: hidden; text-overflow: ellipsis; }
+.gen-note { margin: 8px 0 0 !important; font-size: 13.5px !important; color: var(--faint) !important; }
+
 /* ============================================================
    Table
    ============================================================ */
@@ -478,6 +499,56 @@ svg.i .fill { fill: currentColor; }
 .insp .acts .pill { justify-content: flex-start; height: auto; min-height: 46px; padding: 9px 16px; text-align: left; line-height: 1.25; }
 .insp .acts .note { color: var(--faint); font-size: 13.5px; }
 .matchup em { font-style: normal; color: var(--faint); font: 500 14px var(--sans); }
+/* Tutorial */
+.lsn-group { margin-top: 30px; }
+.lsn-head h2 { margin: 0; font: 800 24px/1.1 var(--serif); }
+.lsn-head p { margin: 4px 0 0; color: var(--muted); }
+.lessons { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 12px; margin-top: 14px; }
+.lesson { display: flex; align-items: center; gap: 14px; text-align: left; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); color: var(--text); transition: border-color .15s, transform .2s var(--ease), box-shadow .2s; }
+.lesson:hover { border-color: var(--line-strong); transform: translateY(-1px); box-shadow: 0 12px 26px rgba(0, 0, 0, .22); }
+.lesson .ln { width: 40px; height: 40px; flex: none; border-radius: 50%; display: grid; place-items: center; font: 800 18px/1 var(--serif); background: var(--raised); border: 1px solid var(--line-strong); }
+.lesson.done .ln { background: color-mix(in srgb, var(--good) 20%, transparent); color: var(--good); border-color: color-mix(in srgb, var(--good) 45%, transparent); }
+.lesson.next { border-color: color-mix(in srgb, var(--m) 60%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--m) 40%, transparent); }
+.lesson.next .ln { background: var(--m); color: #2a2108; border-color: var(--m); }
+.lesson .lt { flex: 1; min-width: 0; }
+.lesson .lt b { display: block; font: 800 18.5px/1.15 var(--serif); }
+.lesson .lt span { display: block; color: var(--muted); font-size: 14.5px; margin-top: 2px; }
+.lesson .lm { flex: none; font: 700 12.5px/1 var(--sans); color: var(--faint); white-space: nowrap; }
+.lesson.next .lm { color: var(--m); }
+.lesson.done .lm { color: var(--good); }
+.table.coaching .playbar { align-items: flex-end; border-top-color: color-mix(in srgb, var(--m) 55%, transparent); background: linear-gradient(180deg, rgba(64, 52, 30, .62), rgba(32, 29, 39, .97) 70%); }
+.table.coaching .pb-text b { white-space: normal; }
+.table.coaching .pb-text span { white-space: normal; overflow: visible; display: block; -webkit-line-clamp: unset; color: var(--text); opacity: .9; font-size: 15.5px; line-height: 1.42; max-width: 72ch; }
+.pb-kicker { display: block; font: 700 11.5px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--m); margin-bottom: 6px; }
+.card.coach-next .face { animation: coachpulse 1.25s ease-in-out infinite; }
+@keyframes coachpulse { 0%, 100% { box-shadow: 0 0 0 3px var(--m), 0 0 16px rgba(214, 179, 90, .5); } 50% { box-shadow: 0 0 0 5px #ffe3a1, 0 0 34px rgba(255, 214, 120, .9); } }
+.life.coach-next { animation: lifepulse 1.25s ease-in-out infinite; }
+@keyframes lifepulse { 0%, 100% { box-shadow: 0 0 0 2px var(--m), 0 0 14px rgba(214, 179, 90, .5); } 50% { box-shadow: 0 0 0 5px #ffe3a1, 0 0 30px rgba(255, 214, 120, .9); } }
+.pill.coach-next { animation: pillpulse 1.25s ease-in-out infinite; }
+@keyframes pillpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 214, 120, 0); } 50% { box-shadow: 0 0 0 6px rgba(255, 214, 120, .35); } }
+.toast.small { font: 700 17px/1.3 var(--sans); padding: 12px 18px; max-width: min(420px, 86%); text-align: center; }
+.coach-sheet { width: min(640px, 100%); }
+.coach-sheet .tu-kicker { margin: 0 0 6px; font: 700 12px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--m); }
+.coach-sheet h2 { font-size: 27px; }
+.coach-sheet .tu-text { margin: 10px 0 0; font: 400 17.5px/1.5 var(--serif); max-width: 60ch; }
+.tu-points { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 9px; }
+.tu-points li { display: flex; gap: 10px; align-items: flex-start; font-size: 16px; line-height: 1.4; }
+.tu-points svg.i { color: var(--good); width: 20px; height: 20px; margin-top: 1px; }
+.tu-dots { margin-right: auto; display: inline-flex; gap: 6px; align-items: center; }
+.tu-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line-strong); }
+.tu-dots i.on { background: var(--text); }
+.tu-tip { margin: 10px 0 0 !important; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--m) 13%, transparent); border: 1px solid color-mix(in srgb, var(--m) 35%, transparent); color: var(--text) !important; font-size: 14.5px; }
+/* Commander */
+.life .cdb { position: absolute; right: -9px; bottom: -10px; display: inline-flex; align-items: center; gap: 2px; padding: 2px 6px 2px 4px; border-radius: 999px; font: 800 12px/1 var(--sans); color: #2a2108; background: var(--m); border: 1px solid rgba(0, 0, 0, .4); box-shadow: 0 2px 6px rgba(0, 0, 0, .45); font-variant-numeric: tabular-nums; }
+.life .cdb svg.i { width: 11px; height: 11px; }
+.life .cdb.hot { background: #ff9d6e; }
+.pile .ph.star { display: grid; place-items: center; color: color-mix(in srgb, var(--m) 70%, transparent); font-size: 14px; border-color: color-mix(in srgb, var(--m) 45%, transparent); }
+.pile .taxn { color: var(--m); }
+.card .cmdb { left: -4px; top: -5px; background: var(--m); color: #2a2108; border: 1px solid rgba(0, 0, 0, .4); }
+.card .taxb { right: -4px; top: -5px; background: #15131a; color: var(--m); border: 1px solid color-mix(in srgb, var(--m) 60%, transparent); }
+.card.incmd .face { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--m) 50%, transparent); }
+.myhand .card.incmd { margin-right: calc(var(--cardw) * .22); }
+.card.incmd.can-act .face { box-shadow: 0 0 0 2px rgba(255, 216, 140, .95), 0 0 18px rgba(255, 200, 110, .45); }
 
 /* ============================================================
    Narrow screens
@@ -521,6 +592,12 @@ svg.i .fill { fill: currentColor; }
   .go-row .pill { flex: none; padding: 0 14px; }
   .go-row #watchBtn { flex: 1 1 auto; }
   .go-row .lbl { display: none; }
+  .modes { margin-top: 18px; }
+  .modes .seg-lg { width: 100%; }
+  .seg-lg button { flex: 1 1 0; }
+  .learn { width: 100%; }
+  .legends { grid-template-columns: minmax(0, 1fr); max-height: 300px; }
+  .lg-art { width: 52px; }
   .go-row .lbl-s { display: inline; }
   #randBtn { width: 42px; padding: 0; }
   #swapBtn { display: none; }
@@ -561,6 +638,16 @@ svg.i .fill { fill: currentColor; }
   .pick-grid { gap: 8px; }
   .pick-grid .card { --cardw: min(29vw, 112px); }
   .sheet-acts .pill { flex: 1 1 auto; }
+  .table.coaching .playbar { flex-direction: column; align-items: stretch; gap: 8px; }
+  .table.coaching .pb-text span { font-size: 14.5px; }
+  .table.coaching .pb-acts { justify-content: flex-end; }
+  .table.coaching .pb-acts:not(:has(.pill)) .icon-btn { display: none; }
+  .table.coaching .pb-acts:not(:has(.pill)) { display: none; }
+  .lessons { grid-template-columns: minmax(0, 1fr); }
+  .lesson { padding: 12px 13px; gap: 12px; }
+  .lesson .lm { display: none; }
+  .coach-sheet h2 { font-size: 23px; }
+  .coach-sheet .tu-text { font-size: 16.5px; }
   .insp { padding: 10px; }
   .insp-box { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 16px; }
   .insp .card { --cardw: min(250px, 66vw); justify-self: center; }
@@ -587,10 +674,17 @@ svg.i .fill { fill: currentColor; }
 <main id="lobby" class="lobby">
   <section class="hero">
     <h1>Arena</h1>
-    <p>Pick two decks, then play against the AI yourself or watch two AI players fight it out with real Magic cards. Every attack, block and counterspell is played by the rules.</p>
+    <p id="heroText">Pick two decks, then play against the AI yourself or watch two AI players fight it out with real Magic cards. Every attack, block and counterspell is played by the rules.</p>
   </section>
   <p class="boot" id="boot" role="status">Shuffling up the card pool</p>
   <div id="lobbyBody" hidden>
+    <div class="modes">
+      <div class="seg seg-lg" role="group" aria-label="Format" id="fmtSeg">
+        <button type="button" data-fmt="standard" aria-pressed="true">Standard</button>
+        <button type="button" data-fmt="commander" aria-pressed="false">Commander</button>
+      </div>
+      <button type="button" class="learn" id="learnBtn"></button>
+    </div>
     <div class="resume" id="resume" hidden></div>
     <div class="seats" id="seats"></div>
     <div class="go-row">
@@ -619,6 +713,14 @@ svg.i .fill { fill: currentColor; }
       Arena is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. &copy;Wizards of the Coast LLC.
     </footer>
   </div>
+</main>
+
+<main id="learn" class="lobby" hidden>
+  <section class="hero">
+    <h1>Learn to play</h1>
+    <p>Seven short lessons, from your first land to winning with commander damage. Each one sets up a board and walks you through it, one tap at a time.</p>
+  </section>
+  <div id="lessons"></div>
 </main>
 
 <section id="watch" class="watch" hidden>
@@ -661,8 +763,10 @@ svg.i .fill { fill: currentColor; }
 <div class="insp" id="insp" role="dialog" aria-modal="true" aria-labelledby="inspName" hidden></div>
 <div class="sheet" id="sheet" hidden></div>
 
-<script src="engine.js?v=2"></script>
-<script src="decks.js?v=2"></script>
+<script src="engine.js?v=3"></script>
+<script src="decks.js?v=3"></script>
+<script src="commanders.js?v=3"></script>
+<script src="tutorial.js?v=3"></script>
 <script>
 'use strict';
 /* ============================================================
@@ -698,6 +802,9 @@ const ICON = {
   die: '<rect x="4" y="4" width="16" height="16" rx="3.6"/><circle class="fill" cx="8.6" cy="8.6" r="1.25"/><circle class="fill" cx="15.4" cy="8.6" r="1.25"/><circle class="fill" cx="12" cy="12" r="1.25"/><circle class="fill" cx="8.6" cy="15.4" r="1.25"/><circle class="fill" cx="15.4" cy="15.4" r="1.25"/>',
   back: '<path d="M14.5 5.5L8 12l6.5 6.5"/>',
   sparkle: '<path d="M11 4l1.7 4.8L17.5 10.5l-4.8 1.7L11 17l-1.7-4.8L4.5 10.5l4.8-1.7z"/><path d="M18 14.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
+  star: '<path class="fill" d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.6L12 16.5l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/>',
+  cap: '<path d="M2.8 9.5L12 5l9.2 4.5L12 14z"/><path d="M6.5 11.4v4.3c1.6 1.5 3.4 2.2 5.5 2.2s3.9-.7 5.5-2.2v-4.3M21.2 9.5v5.2"/>',
+  check: '<path d="M5.5 12.5l4.2 4.2 8.8-9.4"/>',
   undo: '<path d="M9 7.5h6.2a4.3 4.3 0 0 1 0 8.6H9.5"/><path d="M11.8 4.6L8.8 7.5l3 3"/>',
   ext: '<path d="M13.5 5.5h5v5M18.5 5.5L11 13M16.5 13.5v4a1.5 1.5 0 0 1-1.5 1.5H7a1.5 1.5 0 0 1-1.5-1.5V9.5A1.5 1.5 0 0 1 7 8h4"/>',
 };
@@ -776,6 +883,7 @@ function finishDeck(d, extra) {
   const nonland = d.list.filter(({ def }) => !def.types.includes('Land'));
   if (!d.face) d.face = nonland.slice().sort((a, b) => b.def.value * (b.def.types.includes('Creature') ? 1.2 : 1) - a.def.value * (a.def.types.includes('Creature') ? 1.2 : 1))[0].def.name;
   d.accent = COLOR_VAR[d.colors[0]] || 'var(--c)';
+  d.size = d.commander ? 100 : 60;
   DECKS.set(d.key, d);
   return d;
 }
@@ -802,11 +910,44 @@ function genDeck(colors, archetype, seed) {
   d.blurb = describeDeck(d);
   return d;
 }
+/* Commander decks: Claude's (k.id) and built around any legend (kg.slug.plan.seed) */
+const CMDR = { specs: window.ARENA_COMMANDERS || [], legends: [] };
+const isCmdKey = (key) => /^kg?\./.test(key || '');
+function cmdDeck(spec) {
+  const key = `k.${spec.id}`;
+  if (DECKS.has(key)) return DECKS.get(key);
+  const commander = DATA.byName.get(spec.commander);
+  if (!commander) return null;
+  const d = Arena.buildCommanderDeck(DATA.pool, { commander, archetype: spec.archetype, seed: spec.seed, name: spec.name, include: spec.include });
+  return finishDeck(d, { key, by: 'claude', blurb: spec.blurb, face: commander.name });
+}
+function describeCmdDeck(d) {
+  const creatures = countOf(d, (x) => x.types.includes('Creature'));
+  const ramp = countOf(d, (x) => x.types.includes('Creature') && !!x.mana);
+  const removal = countOf(d, (x) => ['removal', 'burn', 'sweeper'].includes(x.role));
+  const lands = countOf(d, (x) => x.types.includes('Land'));
+  const plan = { aggro: 'to attack early and often', midrange: 'to trade early and win with bigger threats', control: 'to answer everything and win late' }[d.archetype];
+  return `Built just now around ${d.commander.name}, ${plan}: ${creatures} creatures${ramp ? ` (${ramp} of them make mana)` : ''}, ${removal} ways to deal with a creature and ${lands} lands.`;
+}
+function genCmdDeck(slug, archetype, seed) {
+  const key = `kg.${slug}.${archetype}.${seed}`;
+  if (DECKS.has(key)) return DECKS.get(key);
+  const commander = CMDR.legends.find((x) => x.id === slug);
+  if (!commander) return null;
+  const d = Arena.buildCommanderDeck(DATA.pool, { commander, archetype, seed });
+  finishDeck(d, { key, by: 'gen', seed, face: commander.name });
+  d.blurb = describeCmdDeck(d);
+  return d;
+}
 function deckByKey(key) {
   if (!key) return null;
   if (DECKS.has(key)) return DECKS.get(key);
-  const m = /^g\.([WUBRG]{1,2})\.(aggro|midrange|control)\.(\d{1,10})$/.exec(key);
+  let m = /^g\.([WUBRG]{1,2})\.(aggro|midrange|control)\.(\d{1,10})$/.exec(key);
   if (m) return genDeck(m[1].split(''), m[2], +m[3]);
+  m = /^k\.([a-z0-9-]+)$/.exec(key);
+  if (m) { const spec = CMDR.specs.find((x) => x.id === m[1]); return spec ? cmdDeck(spec) : null; }
+  m = /^kg\.([a-z0-9-]+)\.(aggro|midrange|control)\.(\d{1,10})$/.exec(key);
+  if (m) return genCmdDeck(m[1], m[2], +m[3]);
   return null;
 }
 const newSeed = () => (Math.random() * 2 ** 31) >>> 0;
@@ -899,8 +1040,35 @@ function makeCard(def, id, opts = {}) {
 /* ============================================================
    App state, routing
    ============================================================ */
-const S = { view: 'lobby', seats: [null, null], active: 0, src: 'claude', gen: { colors: ['R', 'G'], arch: 'aggro' }, recent: store.get('arena.recent.v1', []), sim: null };
+const S = { view: 'lobby', format: 'standard', seats: [null, null], active: 0, src: 'claude', gen: { colors: ['R', 'G'], arch: 'aggro' }, cgen: { colors: [], arch: 'auto', pick: null }, recent: [], sim: null };
+const FMT = {
+  standard: { seatsKey: 'arena.seats.v1', recentKey: 'arena.recent.v1', defaults: () => [`c.${window.ARENA_DECKS[0].id}`, `c.${window.ARENA_DECKS[2].id}`],
+    hero: 'Pick two decks, then play against the AI yourself or watch two AI players fight it out with real Magic cards. Every attack, block and counterspell is played by the rules.' },
+  commander: { seatsKey: 'arena.cseats.v1', recentKey: 'arena.crecent.v1', defaults: () => ['k.rorix', 'k.akroma'],
+    hero: 'Commander, one on one: 100-card decks with a single copy of each card, 40 life each, and a legendary commander you can cast again and again from the command zone.' },
+};
+const saveSeats = () => store.set(FMT[S.format].seatsKey, S.seats);
+function setFormat(fmt, seats) {
+  if (!FMT[fmt]) return;
+  const changed = S.format !== fmt;
+  S.format = fmt;
+  store.set('arena.format.v1', fmt);
+  const saved = seats || store.get(FMT[fmt].seatsKey, null);
+  const def = FMT[fmt].defaults();
+  S.seats = [0, 1].map((i) => (saved && deckByKey(saved[i]) ? saved[i] : def[i]));
+  S.recent = store.get(FMT[fmt].recentKey, []).filter((k) => isCmdKey(k) === (fmt === 'commander'));
+  if (changed) { S.active = 0; S.sim = null; L.sim.hidden = true; openLists.clear(); }
+  renderFormat();
+}
+function renderFormat() {
+  $$('#fmtSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.fmt === S.format)));
+  $('#heroText').textContent = FMT[S.format].hero;
+  document.body.dataset.fmt = S.format;
+  renderLearnBtn();
+}
 function hashFor() {
+  if (S.view === 'learn') return '#learn';
+  if (S.view === 'watch' && TU.on && !TU.lesson.practice) return `#lesson=${TU.lesson.id}`;
   const p = new URLSearchParams();
   if (S.seats[0]) p.set('a', S.seats[0]);
   if (S.seats[1]) p.set('b', S.seats[1]);
@@ -917,7 +1085,7 @@ function readHash() {
   const p = new URLSearchParams(location.hash.slice(1));
   const a = deckByKey(p.get('a')), b = deckByKey(p.get('b'));
   const seed = p.get('seed'), pl = p.get('play');
-  return { a, b, seed: seed != null && /^\d{1,10}$/.test(seed) ? +seed : null, play: pl != null && /^\d{1,10}$/.test(pl) ? +pl : null };
+  return { a, b, seed: seed != null && /^\d{1,10}$/.test(seed) ? +seed : null, play: pl != null && /^\d{1,10}$/.test(pl) ? +pl : null, learn: p.has('learn'), lesson: p.get('lesson') };
 }
 
 /* ============================================================
@@ -931,15 +1099,16 @@ function curveHTML(d) {
   return `<div class="curve" aria-label="Mana curve: ${buckets.map((n, k) => `${n} at ${k === 5 ? '6 or more' : k + 1}`).join(', ')}" style="--accent:${d.accent}">${buckets.map((n, k) => `<div><i style="height:${Math.round((n / max) * 100)}%"></i><b>${k === 5 ? '6+' : k + 1}</b></div>`).join('')}</div>`;
 }
 function listHTML(d) {
+  const head = d.commander ? `<h4>Commander</h4><div class="row cmdrow"><span class="n">${icon('star')}</span><span class="nm">${esc(d.commander.name)}</span><span class="mc">${manaHTML(d.commander.manaCost)}</span></div>` : '';
   const groups = [['Creatures', (x) => x.types.includes('Creature')], ['Spells', (x) => !x.types.includes('Creature') && !x.types.includes('Land')], ['Lands', (x) => x.types.includes('Land')]];
-  return `<div class="decklist">${groups.map(([label, f]) => {
+  return `<div class="decklist">${head}${groups.map(([label, f]) => {
     const rows = d.list.filter(({ def }) => f(def)).sort((a, b) => a.def.mv - b.def.mv || a.def.name.localeCompare(b.def.name));
     if (!rows.length) return '';
     return `<h4>${label} (${rows.reduce((s, x) => s + x.n, 0)})</h4>${rows.map(({ def, n }) => `<div class="row"><span class="n">${n}</span><span class="nm">${esc(def.name)}</span><span class="mc">${manaHTML(def.manaCost)}</span></div>`).join('')}`;
   }).join('')}</div>`;
 }
 function metaHTML(d) {
-  return `<div class="deck-meta"><span class="cols" aria-label="${d.colors.map((c) => COLOR_NAME[c]).join(' and ')}">${colorsHTML(d.colors)}</span><span class="arch">${ARCH_LABEL[d.archetype]}</span><span>${d.by === 'claude' ? 'Designed by Claude' : 'Built by the generator'}</span></div>`;
+  return `<div class="deck-meta"><span class="cols" aria-label="${d.colors.map((c) => COLOR_NAME[c]).join(' and ')}">${colorsHTML(d.colors)}</span><span class="arch">${ARCH_LABEL[d.archetype]}</span>${d.commander ? `<span class="cmd-name">${icon('star')}${esc(d.commander.name)}</span>` : ''}<span class="by">${d.by === 'claude' ? 'Designed by Claude' : 'Built by the generator'}</span></div>`;
 }
 const openLists = new Set();
 function renderSeats() {
@@ -950,7 +1119,7 @@ function renderSeats() {
     return `<div class="seat" data-seat="${i}" data-on="${S.active === i}">`
       + `<div class="seat-art" data-art="${esc(d.face)}" style="${artOf(d.face) ? `background-image:url(&quot;${esc(artOf(d.face))}&quot;)` : ''}"><button type="button" class="seat-tag" data-pick="${i}" aria-pressed="${S.active === i}" aria-label="Choose a deck for ${seatName(i)}">${seatName(i)}${S.active === i ? ', choosing' : ''}</button></div>`
       + `<div class="seat-body"><h3 class="deck-name">${esc(d.name)}</h3>${metaHTML(d)}<p class="blurb">${esc(d.blurb)}</p>${curveHTML(d)}`
-      + `<div class="seat-foot"><button type="button" class="link-btn" data-list="${i}" aria-expanded="${open}">${open ? 'Hide the list' : 'See all 60 cards'}</button><span class="faint">${countOf(d, (x) => x.types.includes('Creature'))} creatures, ${countOf(d, (x) => x.types.includes('Land'))} lands</span></div>`
+      + `<div class="seat-foot"><button type="button" class="link-btn" data-list="${i}" aria-expanded="${open}">${open ? 'Hide the list' : `See all ${d.size} cards`}</button><span class="faint">${countOf(d, (x) => x.types.includes('Creature'))} creatures, ${countOf(d, (x) => x.types.includes('Land'))} lands</span></div>`
       + `${open ? listHTML(d) : ''}</div></div>`;
   });
   L.seats.innerHTML = `${parts[0]}<span class="vs-big" aria-hidden="true">vs</span>${parts[1]}`;
@@ -962,7 +1131,7 @@ function renderSeats() {
 }
 function tileHTML(d) {
   return `<button type="button" class="tile" data-key="${esc(d.key)}"><div class="tile-art" data-art="${esc(d.face)}" style="${artOf(d.face) ? `background-image:url(&quot;${esc(artOf(d.face))}&quot;)` : ''}"></div>`
-    + `<div class="tile-body"><h3 class="deck-name">${esc(d.name)}</h3>${metaHTML(d).replace(/<span>(Designed by Claude|Built by the generator)<\/span>/, '')}<p class="blurb">${esc(d.blurb)}</p></div></button>`;
+    + `<div class="tile-body"><h3 class="deck-name">${esc(d.name)}</h3>${metaHTML(d).replace(/<span class="by">[^<]*<\/span>/, '')}<p class="blurb">${esc(d.blurb)}</p></div></button>`;
 }
 function markTile(t) {
   const key = t.dataset.key;
@@ -972,8 +1141,63 @@ function markTile(t) {
   if (!b) { b = document.createElement('span'); b.className = 'in-seat'; t.appendChild(b); }
   b.textContent = where.length === 2 ? 'Both seats' : seatName(where[0]);
 }
+function legendHTML(d) {
+  const id = Arena.colorIdentity(d);
+  return `<button type="button" class="legend" data-cmd="${esc(d.id)}" aria-pressed="${S.cgen.pick === d.id}"><span class="lg-art" data-art="${esc(d.name)}" style="${artOf(d.name) ? `background-image:url(&quot;${esc(artOf(d.name))}&quot;)` : ''}"></span>`
+    + `<span class="lg-body"><b>${esc(d.name)}</b><span class="lg-meta">${colorsHTML(id)}<span>${d.power}/${d.toughness}${d.kw.length ? `, ${esc(d.kw.slice(0, 2).join(', '))}` : ''}</span></span></span></button>`;
+}
+function renderCmdPick() {
+  if (S.src === 'claude') {
+    const ds = CMDR.specs.map(cmdDeck).filter(Boolean);
+    L.pickBody.innerHTML = `<div class="deck-grid">${ds.map(tileHTML).join('')}</div>`;
+    ensureImages(ds.map((d) => d.face));
+    return;
+  }
+  const g = S.cgen;
+  const shown = CMDR.legends.filter((d) => g.colors.every((c) => Arena.colorIdentity(d).includes(c)));
+  const pick = CMDR.legends.find((d) => d.id === g.pick);
+  const recent = S.recent.map(deckByKey).filter(Boolean);
+  L.pickBody.innerHTML = `<div class="gen">
+    <div class="gen-box">
+      <h3>Build around a commander</h3>
+      <p>Pick any of the ${CMDR.legends.length} legendary creatures the engine can play. The generator fills 99 cards in its colors: a curve of creatures, removal, card draw, mana creatures and lands.</p>
+      <p class="gen-label" id="cgColorsLbl">Show commanders with</p>
+      <div class="pips" role="group" aria-labelledby="cgColorsLbl">${['W', 'U', 'B', 'R', 'G'].map((c) => `<button type="button" class="pip" data-cc="${c}" aria-pressed="${g.colors.includes(c)}" aria-label="${COLOR_NAME[c]}">${sym(c)}</button>`).join('')}</div>
+      <div class="legends" role="group" aria-label="Commanders">${shown.length ? shown.map(legendHTML).join('') : '<p class="empty-note">No commander has all of those colors.</p>'}</div>
+      <p class="gen-label" style="margin-top:16px" id="cgArchLbl">Plan</p>
+      <div class="seg" role="group" aria-labelledby="cgArchLbl" id="cArchSeg">${['auto', 'aggro', 'midrange', 'control'].map((a) => `<button type="button" data-carch="${a}" aria-pressed="${g.arch === a}">${a === 'auto' ? 'Auto' : ARCH_LABEL[a]}</button>`).join('')}</div>
+      ${pick ? `<p class="gen-note">Auto plays ${esc(pick.name.split(',')[0])} as ${ARCH_LABEL[Arena.commanderArchetype(pick)].toLowerCase()}.</p>` : ''}
+      <div class="gen-row">
+        <button type="button" class="pill pill-solid" id="cgenGo"${pick ? '' : ' disabled'}>${icon('sparkle')}${pick ? `Build around ${esc(pick.name.split(',')[0])}` : 'Pick a commander'}</button>
+        <button type="button" class="pill" id="cgenRand">${icon('die')}Surprise me</button>
+      </div>
+    </div>
+    <div class="gen-box">
+      <h3>Recent builds</h3>
+      <p>Your last few Commander decks, so a good one isn't lost.</p>
+      <div class="recent">${recent.length ? recent.map(tileHTML).join('') : '<p class="empty-note">Nothing yet. Build a deck and it will show up here.</p>'}</div>
+    </div>
+  </div>`;
+  ensureImages(shown.map((d) => d.name).concat(recent.map((d) => d.face)));
+}
+function buildCmdFromPanel(random) {
+  let pick = CMDR.legends.find((d) => d.id === S.cgen.pick);
+  if (random || !pick) {
+    const pool = CMDR.legends.filter((d) => S.cgen.colors.every((c) => Arena.colorIdentity(d).includes(c)));
+    pick = (pool.length ? pool : CMDR.legends)[Math.floor(Math.random() * (pool.length || CMDR.legends.length))];
+    S.cgen.pick = pick.id;
+  }
+  const arch = random || S.cgen.arch === 'auto' ? Arena.commanderArchetype(pick) : S.cgen.arch;
+  const d = genCmdDeck(pick.id, arch, newSeed());
+  S.recent = [d.key].concat(S.recent.filter((k) => k !== d.key)).slice(0, 5);
+  store.set(FMT.commander.recentKey, S.recent);
+  setSeat(d.key);
+  renderPick();
+}
 function renderPick() {
   $$('#srcSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.src === S.src)));
+  $$('#srcSeg button')[1].textContent = S.format === 'commander' ? 'Pick a commander' : 'Build one';
+  if (S.format === 'commander') { renderCmdPick(); $$('.tile', L.pickBody).forEach(markTile); return; }
   if (S.src === 'claude') {
     const ds = window.ARENA_DECKS.map((x) => DECKS.get(`c.${x.id}`)).filter(Boolean);
     L.pickBody.innerHTML = `<div class="deck-grid">${ds.map(tileHTML).join('')}</div>`;
@@ -1008,7 +1232,7 @@ function setSeat(key) {
   if (S.active === 0 && S.seats[1] && !openLists.size) S.active = 1;
   S.sim = null;
   L.sim.hidden = true;
-  store.set('arena.seats.v1', S.seats);
+  saveSeats();
   renderSeats();
   renderButtons();
   syncHash(false);
@@ -1041,6 +1265,20 @@ function buildFromPanel(random) {
   renderPick();
 }
 function randomMatchup() {
+  if (S.format === 'commander') {
+    const ids = CMDR.specs.map((x) => `k.${x.id}`);
+    const a = ids[Math.floor(Math.random() * ids.length)];
+    let b = a;
+    if (Math.random() < 0.3) { const c = CMDR.legends[Math.floor(Math.random() * CMDR.legends.length)]; b = genCmdDeck(c.id, Arena.commanderArchetype(c), newSeed()).key; }
+    else while (b === a) b = ids[Math.floor(Math.random() * ids.length)];
+    S.seats = [a, b];
+    S.sim = null;
+    L.sim.hidden = true;
+    saveSeats();
+    renderSeats();
+    syncHash(false);
+    return;
+  }
   const ids = window.ARENA_DECKS.map((x) => `c.${x.id}`);
   const a = ids[Math.floor(Math.random() * ids.length)];
   let b = ids[Math.floor(Math.random() * ids.length)];
@@ -1052,7 +1290,7 @@ function randomMatchup() {
   S.seats = [a, b];
   S.sim = null;
   L.sim.hidden = true;
-  store.set('arena.seats.v1', S.seats);
+  saveSeats();
   renderSeats();
   syncHash(false);
 }
@@ -1124,7 +1362,7 @@ const SPEEDS = [0.5, 1, 2, 4];
 const DUR = {
   start: 1500, mulligan: 1000, turn: 1000, land: 650, cast: 1400, countered: 1300, enter: 750, attack: 1150, block: 1250, noblock: 800,
   damage: 1500, hit: 1150, die: 950, exile: 950, bounce: 950, token: 850, pump: 950, draw: 650, life: 850, discard: 900, scry: 700, raise: 900,
-  tapfx: 900, fog: 1100, fight: 1300, sac: 1000, reveal: 1000, cycle: 800, fizzle: 1000, info: 800, end: 0,
+  tapfx: 900, fog: 1100, fight: 1300, sac: 1000, reveal: 1000, cycle: 800, fizzle: 1000, info: 800, command: 1300, end: 0,
 };
 const PHASE_OF = { begin: 'Draw', main1: 'Main', combat: 'Combat', main2: 'Main 2', end: 'End' };
 function watch(seed, opts = {}) {
@@ -1155,14 +1393,24 @@ function watch(seed, opts = {}) {
 function setView(view, push) {
   S.view = view;
   $('#lobby').hidden = view !== 'lobby';
+  $('#learn').hidden = view !== 'learn';
   $('#watch').hidden = view !== 'watch';
   const mu = $('#matchup'), back = $('#toLobby');
   if (view === 'watch') {
     mu.hidden = false;
-    mu.innerHTML = `<span>${esc(W.decks[0].name)}${W.mode === 'play' ? ' <em>(you)</em>' : ''}</span><span class="vs">vs</span><span>${esc(W.decks[1].name)}</span>`;
+    mu.innerHTML = TU.on ? `<span>${TU.lesson.practice ? 'Practice game' : `Lesson ${lessonNo(TU.lesson)}: ${esc(TU.lesson.title)}`}</span>`
+      : `<span>${esc(W.decks[0].name)}${W.mode === 'play' ? ' <em>(you)</em>' : ''}</span><span class="vs">vs</span><span>${esc(W.decks[1].name)}</span>`;
+    back.hidden = false;
+    back.innerHTML = `${icon('back')}<span>${TU.on ? 'Lessons' : 'Decks'}</span>`;
+    document.title = TU.on ? `${TU.lesson.title}: Learn to play` : `${W.mode === 'play' ? 'Playing ' : ''}${W.decks[0].name} vs ${W.decks[1].name}: Arena`;
+  } else if (view === 'learn') {
+    stop();
+    endPlay();
+    mu.hidden = true;
     back.hidden = false;
     back.innerHTML = `${icon('back')}<span>Decks</span>`;
-    document.title = `${W.mode === 'play' ? 'Playing ' : ''}${W.decks[0].name} vs ${W.decks[1].name}: Arena`;
+    document.title = 'Learn to play: Arena';
+    closeLog();
   } else {
     stop();
     endPlay();
@@ -1179,14 +1427,16 @@ function buildSides() {
   for (const pi of [0, 1]) {
     const pl = W.replay.players[pi];
     const mine = W.mode === 'play' && pi === 0;
+    const cmdFmt = W.replay.format === 'commander';
     T.sides[pi].style.setProperty('--pc', playerColor(pi));
     T.sides[pi].innerHTML = `
       <div class="pbar">
-        <span class="life" data-player="${pi}" aria-label="Life"><span class="lv">20</span><small>life</small></span>
+        <span class="life" data-player="${pi}" aria-label="Life"><span class="lv">${cmdFmt ? 40 : 20}</span><small>life</small>${cmdFmt ? '<span class="cdb" hidden></span>' : ''}</span>
         <span class="who"><span class="nm">${esc(pl.name)}</span><span class="sub"></span></span>
         <span class="mana" title="Untapped mana"><b class="mn">0</b> mana</span>
         ${mine ? '<span class="grow"></span><div class="row-zone hand myhand" aria-label="Your hand"></div>' : '<div class="row-zone hand" aria-label="Hand"></div>'}
         <span class="zones">
+          ${cmdFmt && !mine ? '<span class="pile cmdz" title="Command zone"><span class="stack cz"></span><span class="lbl">Commander</span><b class="taxn"></b></span>' : ''}
           <span class="pile" title="Library"><span class="stack lib"></span><span class="lbl">Library</span><b class="libn">0</b></span>
           <span class="pile" title="Graveyard"><span class="stack gy"></span><span class="lbl">Graveyard</span><b class="gyn">0</b></span>
         </span>
@@ -1209,7 +1459,7 @@ function buildLog() {
     const head = f.k === 'turn' ? `Turn ${f.turn}: ${W.replay.players[f.who].name}` : k === 0 ? 'Opening hands' : null;
     if (head && head !== cur) { cur = head; html.push(`<div class="th" data-f="${k}" style="--dot:${playerColor(f.who)}"><i></i>${esc(head)}</div>`); }
     if (f.k === 'turn') return;
-    html.push(`<button type="button" class="e${f.k === 'end' ? ' big' : ''}" data-f="${k}" style="--dot:${playerColor(f.who)}">${esc(f.text)}</button>`);
+    html.push(`<button type="button" class="e${f.k === 'end' ? ' big' : ''}" data-f="${k}" style="--dot:${playerColor(f.who)}">${esc(f.text).replace(/\{([^}]+)\}/g, (m, c) => sym(c))}</button>`);
   });
   T.log.innerHTML = html.join('');
 }
@@ -1279,7 +1529,7 @@ function sizeZones(pi, ps, ctx) {
   const lavail = Math.max(100, side.querySelector('.lands').clientWidth - 4);
   const lw = clamp(Math.min(landH / 1.42, (lavail - 6 * groups) / Math.max(1, groups * 1.25 + 0.3)), phone ? 18 : 26, phone ? 44 : 64);
   // Hand: as big as the bar allows, overlapping more (then shrinking) when it gets crowded
-  const hn = ps.hand.length;
+  const hn = ps.hand.length + (myHand && ps.cmd ? ps.cmd.length : 0);
   const hz = side.querySelector('.hand');
   const room = Math.max(40, hz.clientWidth - 8);
   let hw = myHand ? clamp(handH / 1.4, phone ? 40 : 52, phone ? 72 : 112) : clamp(handH / 1.4, phone ? 16 : 24, phone ? 33 : 47);
@@ -1310,10 +1560,22 @@ function renderSide(pi, ps, f, used) {
     if (W.animating) { lifeEl.classList.remove('hurt', 'heal'); void lifeEl.offsetWidth; lifeEl.classList.add(ps.life < prev ? 'hurt' : 'heal'); }
   }
   lifeEl.setAttribute('aria-label', `${W.replay.players[pi].name} life ${ps.life}`);
+  const cdb = lifeEl.querySelector('.cdb');
+  if (cdb) {
+    const cd = Math.max(0, ...Object.values(ps.cd || {}));
+    cdb.hidden = !cd;
+    if (cd) {
+      cdb.innerHTML = `${icon('star')}${cd}`;
+      cdb.classList.toggle('hot', cd >= 15);
+      cdb.title = `Commander damage taken: ${cd} of 21`;
+      lifeEl.setAttribute('aria-label', `${W.replay.players[pi].name} life ${ps.life}, commander damage ${cd} of 21`);
+    }
+  }
   side.querySelector('.libn').textContent = ps.lib;
   side.querySelector('.mn').textContent = ps.mana != null ? ps.mana : '';
   const pl = W.replay.players[pi];
-  side.querySelector('.who .sub').textContent = `${W.mode === 'play' ? (pi === 0 ? 'You' : `AI, ${ARCH_LABEL[pl.persona].toLowerCase()}`) : ARCH_LABEL[pl.persona]}${pl.mulligans ? `, mulliganed to ${7 - pl.mulligans}` : ''}`;
+  const mull = pl.mulligans ? (pl.kept === 7 ? ', free mulligan' : `, mulliganed to ${pl.kept != null ? pl.kept : 7 - pl.mulligans}`) : '';
+  side.querySelector('.who .sub').textContent = `${W.mode === 'play' ? (pi === 0 ? 'You' : `AI, ${ARCH_LABEL[pl.persona].toLowerCase()}`) : ARCH_LABEL[pl.persona]}${mull}`;
   side.querySelector('.gyn').textContent = ps.gyN;
   const { cres, lands } = sizeZones(pi, ps);
   const spotIds = new Set((f.s.stack || []).map((x) => x.id).concat(f.res ? [f.res] : []));
@@ -1335,6 +1597,8 @@ function renderSide(pi, ps, f, used) {
     if (b.cnt) badges += `<span class="badge cnt" title="+1/+1 counters">+${b.cnt}</span>`;
     if (b.kw && b.kw.length) badges += `<span class="badge kwb" title="${esc(b.kw.join(', '))}">${esc(b.kw.length > 1 ? `+${b.kw.length}` : shortKw(b.kw[0]))}</span>`;
     if (b.tok) badges += '<span class="badge tokb">Token</span>';
+    if (b.cmdr) badges += '<span class="badge cmdb" title="Commander">★</span>';
+    el.classList.remove('incmd');
     setBadges(el, badges);
     el.setAttribute('aria-label', `${def.name}, ${b.p}/${b.t}${b.tap ? ', tapped' : ''}${b.att ? ', attacking' : ''}${b.blk ? ', blocking' : ''}${b.dmg ? `, ${b.dmg} damage` : ''}`);
     return el;
@@ -1367,8 +1631,25 @@ function renderSide(pi, ps, f, used) {
   const faceUp = W.mode === 'play' ? pi === 0 : W.hands;
   hz.classList.toggle('backs', !faceUp);
   const bigHand = W.mode === 'play' && pi === 0 && parseFloat(hz.style.getPropertyValue('--cardw')) >= 70;
-  const hnodes = ps.hand.filter(([id]) => !spotIds.has(id)).map(([id, d]) => { const el = cardFor(id, d, !faceUp); used.add(id); el.classList.remove('tapped', 'att', 'blk', 'sick'); if (bigHand) delete el.dataset.small; else el.dataset.small = '1'; setBadges(el, ''); return el; });
-  placeChildren(hz, hnodes);
+  const hnodes = ps.hand.filter(([id]) => !spotIds.has(id)).map(([id, d]) => { const el = cardFor(id, d, !faceUp); used.add(id); el.classList.remove('tapped', 'att', 'blk', 'sick', 'incmd'); if (bigHand) delete el.dataset.small; else el.dataset.small = '1'; setBadges(el, ''); return el; });
+  // The command zone: your commander waits at the left of your hand; anyone else's sits in its own pile
+  const cmdCards = (ps.cmd || []).filter(([id]) => !spotIds.has(id)).map(([id, d]) => {
+    const el = cardFor(id, d);
+    used.add(id);
+    el.classList.remove('tapped', 'att', 'blk', 'sick');
+    el.classList.add('incmd');
+    return el;
+  });
+  const myCmd = W.mode === 'play' && pi === 0;
+  if (myCmd) cmdCards.forEach((el) => { if (bigHand) delete el.dataset.small; else el.dataset.small = '1'; setBadges(el, `<span class="badge cmdb" title="Commander">★</span>${ps.tax ? `<span class="badge taxb" title="Commander tax">+${ps.tax}</span>` : ''}`); });
+  placeChildren(hz, myCmd ? cmdCards.concat(hnodes) : hnodes);
+  const czone = side.querySelector('.stack.cz');
+  if (czone) {
+    side.querySelector('.taxn').textContent = ps.tax ? `+${ps.tax}` : '';
+    side.querySelector('.taxn').title = ps.tax ? `Commander tax: ${ps.tax} more mana` : '';
+    if (cmdCards.length) { cmdCards.forEach((el) => { el.dataset.small = '1'; setBadges(el, ''); }); placeChildren(czone, cmdCards); }
+    else czone.innerHTML = '<span class="ph star" title="Commander is out of the command zone">★</span>';
+  }
   // Graveyard top
   const gz = side.querySelector('.stack.gy');
   const top = ps.gy.filter(([id]) => !spotIds.has(id)).slice(-1)[0];
@@ -1410,6 +1691,7 @@ function renderSpot(f, used) {
 }
 function findDefOfId(f, id) {
   for (const p of f.s.p) {
+    for (const [i, d] of p.cmd || []) if (i === id) return d;
     for (const [i, d] of p.gy) if (i === id) return d;
     for (const [i, d] of p.hand) if (i === id) return d;
     for (const b of p.bf) if (b.id === id) return b.d;
@@ -1444,7 +1726,7 @@ function render(i, animate = true) {
   T.trackFill.style.width = `${(i / Math.max(1, fr.length - 1)) * 100}%`;
   T.tlabel.textContent = `${i + 1} / ${fr.length}`;
   if (f.k === 'ask') markLog(i - 1, true); else markLog(i);
-  if (f.k === 'end') showBanner(); else T.banner.hidden = true;
+  if (f.k === 'end' && !(TU.on && $('#sheet').querySelector('.coach-sheet'))) showBanner(); else T.banner.hidden = true;
   T.live.textContent = f.k === 'ask' ? '' : f.text;
   if (W.mode === 'play') decorate();
 }
@@ -1539,7 +1821,7 @@ function effects(f) {
       if (f.k === 'hit' && f.cards && !hits.length) f.cards.forEach((id) => { floatAt(id, `−${f.amount}`); pulse(id, 'struck'); });
     }, 300);
   }
-  if (['enter', 'token', 'pump', 'raise', 'tapfx'].includes(f.k)) later(() => { (f.cards || [f.card]).forEach((id) => id != null && pulse(id, 'flash')); }, 250);
+  if (['enter', 'token', 'pump', 'raise', 'tapfx', 'command'].includes(f.k)) later(() => { (f.cards || [f.card]).forEach((id) => id != null && pulse(id, 'flash')); }, 250);
 }
 function markLog(i, back) {
   const cur = T.log.querySelector('.e.cur');
@@ -1562,18 +1844,23 @@ function showBanner() {
   const won = r.winner;
   const playing = W.mode === 'play';
   const title = won == null ? 'A draw' : playing && won === 0 ? 'You win' : `${r.players[won].name} wins`;
-  const why = won == null ? (r.reason === 'turns' ? `Nobody broke through in ${r.turns} turns.` : 'Both players fell at once.') : r.reason === 'decked' ? `${r.players[1 - won].name} ran out of cards on turn ${r.turns}.` : `On turn ${r.turns}, with ${r.players[won].life} life left.`;
+  const cmdName = won != null && r.players[won].cmd ? r.defs[r.players[won].cmd.d].name : 'their commander';
+  const why = won == null ? (r.reason === 'turns' ? `Nobody broke through in ${r.turns} turns.` : 'Both players fell at once.')
+    : r.reason === 'decked' ? `${r.players[1 - won].name} ran out of cards on turn ${r.turns}.`
+    : r.reason === 'commander' ? `${cmdName} dealt 21 commander damage on turn ${r.turns}, with ${r.players[1 - won].life} life still on the board.`
+    : `On turn ${r.turns}, with ${r.players[won].life} life left.`;
   const st = (k) => r.players.map((p) => p.stats[k]);
   const row = (label, vals) => `<tr><td>${label}</td><td>${vals[0]}</td><td>${vals[1]}</td></tr>`;
   T.banner.innerHTML = `<div class="box" role="dialog" aria-label="${esc(title)}">
     <h2>${esc(title)}</h2><p>${esc(why)}</p>
     <table class="stats"><thead><tr><th></th><th>${playing ? 'You' : esc(r.players[0].name)}</th><th>${esc(r.players[1].name)}</th></tr></thead>
-    <tbody>${row('Damage dealt', st('damage'))}${row('Creatures killed', st('kills'))}${row('Spells cast', st('cast'))}${row('Life gained', st('gained'))}${row('Life left', r.players.map((p) => p.life))}</tbody></table>
+    <tbody>${row('Damage dealt', st('damage'))}${row('Creatures killed', st('kills'))}${row('Spells cast', st('cast'))}${row('Life gained', st('gained'))}${row('Life left', r.players.map((p) => p.life))}${r.format === 'commander' ? row('Commander damage taken', r.players.map((p) => p.cmdDmg || 0)) : ''}</tbody></table>
     <div class="acts">
-      ${playing ? `<button type="button" class="pill pill-solid" data-act="playagain">${icon('swords')}Play again</button>
+      ${TU.on ? `<button type="button" class="pill pill-solid" data-act="relesson">${icon('first')}${TU.lesson.practice ? 'Play again' : 'Replay the lesson'}</button>
+      <button type="button" class="pill" data-act="lessons">All lessons</button>` : playing ? `<button type="button" class="pill pill-solid" data-act="playagain">${icon('swords')}Play again</button>
       <button type="button" class="pill" data-act="replay">${icon('first')}Watch the replay</button>` : `<button type="button" class="pill pill-solid" data-act="rematch">${icon('swords')}Rematch</button>
       <button type="button" class="pill" data-act="again">${icon('first')}Watch again</button>`}
-      <button type="button" class="pill" data-act="lobby">Change decks</button>
+      ${TU.on ? '' : '<button type="button" class="pill" data-act="lobby">Change decks</button>'}
       <button type="button" class="link-btn" data-act="close">Look at the board</button>
     </div></div>`;
   T.banner.hidden = false;
@@ -1624,7 +1911,7 @@ function closeLog() { T.logpane.classList.remove('open'); }
 
 /* ---- Inspector ---- */
 // Why a card in your hand has no button right now
-function whyNot(def) {
+function whyNot(def, tax = 0) {
   if (W.mode !== 'play' || W.inspActs.length || !PL.req || PL.ui !== 'act') return '';
   const r = PL.req, mana = r.s.p[0].mana;
   const myMain = r.active === 0 && (r.when === 'main1' || r.when === 'main2');
@@ -1632,7 +1919,7 @@ function whyNot(def) {
   if (def.types.includes('Land')) return myMain ? "You've played your land for this turn." : 'Lands go down in your own main phase.';
   if (def.spell && def.spell.some((e) => e.k === 'counter')) return "You'll be asked when your opponent casts a spell you can counter.";
   if (!fast && !myMain) return 'You can cast it in your own main phase.';
-  if (def.mv > mana) return `It costs ${def.mv} and you have ${plural(mana, 'untapped mana source')}.`;
+  if (def.mv + tax > mana) return `It costs ${def.mv + tax}${tax ? ' with the tax' : ''} and you have ${plural(mana, 'untapped mana source')}.`;
   return "You can't cast it right now: it needs other colors of mana or a legal target.";
 }
 function openInspector(el, actions) {
@@ -1653,6 +1940,10 @@ function openInspector(el, actions) {
         stateLine = `${whose}, ${bits.join(', ')}.`;
       } else if (b) stateLine = `${whose === 'Yours' ? 'Your' : whose} land${b.tap ? ', tapped' : ''}.`;
       else if (p.hand.some(([h]) => h === id)) stateLine = whose === 'Yours' ? `In your hand. ${whyNot(def)}` : `In ${whose} hand.`;
+      else if ((p.cmd || []).some(([h]) => h === id)) {
+        stateLine = `${whose === 'Yours' ? 'Your commander, waiting' : `${whose} commander, waiting`} in the command zone.${p.tax ? ` Commander tax: ${sym(String(p.tax))} more each cast.` : ' Cast it from here like a card in hand.'}`;
+        if (whose === 'Yours') stateLine += ` ${whyNot(def, p.tax || 0)}`;
+      } else if (b && b.cmdr && whose === 'Yours') stateLine += ' Your commander.';
     }
   }
   const big = makeCard(def, `insp-${id}`);
@@ -1670,7 +1961,7 @@ function openInspector(el, actions) {
       <div class="otext">${def.token ? `<p>${esc(def.text || 'A token with no abilities.')}</p>` : textHTML(def.text)}</div>
       ${isCre(def) ? `<div class="ipt">${def.power}/${def.toughness}</div>` : ''}
       ${stateLine ? `<div class="state">${stateLine}</div>` : ''}
-      ${W.inspActs.length ? `<div class="acts">${W.inspActs.map((a, k) => `<button type="button" class="pill${k === 0 ? ' pill-solid' : ''}" data-actk="${k}">${esc(a.label).replace(/\{([^}]+)\}/g, (m, c) => sym(c))}${a.kind === 'cast' ? ` <span style="margin-left:auto">${manaHTML(def.manaCost)}</span>` : ''}</button>`).join('')}${W.inspActs.some((a) => a.specs && a.specs.length) ? '<span class="note">You will choose targets next.</span>' : ''}</div>` : ''}
+      ${W.inspActs.length ? `<div class="acts">${W.inspActs.map((a, k) => `<button type="button" class="pill${k === 0 ? ' pill-solid' : ''}" data-actk="${k}">${esc(a.label).replace(/\{([^}]+)\}/g, (m, c) => sym(c))}${a.kind === 'cast' ? ` <span style="margin-left:auto">${manaHTML(a.cmd ? a.cost : def.manaCost)}</span>` : ''}</button>`).join('')}${W.inspActs.some((a) => a.specs && a.specs.length) ? '<span class="note">You will choose targets next.</span>' : ''}</div>` : ''}
       ${def.token ? '' : `<div class="links"><a class="btn-ghost" href="${esc(tutor)}">${icon('ext')}Open in Tutor</a></div>`}
     </div>
     <button type="button" class="icon-btn x" data-close aria-label="Close">${icon('x')}</button></div>`;
@@ -1698,14 +1989,15 @@ const PL = { on: false, keys: null, decks: null, seed: 0, answers: [], req: null
 const PB = { title: $('#pbTitle'), hint: $('#pbHint'), acts: $('#pbActs') };
 const PLAY_PACE = 1.8;
 const savedPlay = () => store.get('arena.play.v1', null);
-function playStart(seed, answers) {
-  const d0 = deckByKey(S.seats[0]), d1 = deckByKey(S.seats[1]);
+function playStart(seed, answers, opts = {}) {
+  const d0 = opts.decks ? opts.decks[0] : deckByKey(S.seats[0]), d1 = opts.decks ? opts.decks[1] : deckByKey(S.seats[1]);
   if (!d0 || !d1) return;
+  if (!opts.lesson) endLesson();
   stop();
   clearTimeout(PL.anim);
   closeChoice();
   closeInspector();
-  Object.assign(PL, { on: true, keys: S.seats.slice(), decks: mirrorSafe(d0, d1), seed, answers: (answers || []).slice(), req: null, done: false, shown: -1, pend: null, skip: null, imgs: false, toastTurn: 0 });
+  Object.assign(PL, { held: null, on: true, keys: opts.decks ? null : S.seats.slice(), decks: opts.decks || mirrorSafe(d0, d1), setup: opts.setup || null, seed, answers: (answers || []).slice(), req: null, done: false, shown: -1, pend: null, skip: null, imgs: false, toastTurn: 0 });
   W.mode = 'play';
   W.seed = seed;
   W.decks = PL.decks;
@@ -1714,10 +2006,11 @@ function playStart(seed, answers) {
   T.sides.forEach((s) => { s.innerHTML = ''; });
   T.spot.innerHTML = '';
   T.banner.hidden = true;
-  setView('watch', true);
+  setView('watch', !opts.replace);
   advance(false, true);
 }
 function endPlay() {
+  endLesson();
   if (!PL.on) return;
   PL.on = false;
   clearTimeout(PL.anim);
@@ -1730,7 +2023,7 @@ function endPlay() {
 function advance(animate, first) {
   let r;
   try {
-    r = Arena.runInteractive({ decks: PL.decks, seed: PL.seed, human: 0, answers: PL.answers });
+    r = Arena.runInteractive({ decks: PL.decks, seed: PL.seed, human: 0, answers: PL.answers, setup: PL.setup });
   } catch (err) {
     // A saved game from an older version can fall out of step: keep the answers that still fit.
     const m = /answer (\d+)/.exec((err && err.message) || '');
@@ -1750,6 +2043,7 @@ function advance(animate, first) {
   PL.shown = last;
   setUi('busy');
   const end = W.replay.frames.length - 1;
+  if (first && TU.on && PL.setup && end > 0) { PL.held = { end, r }; render(0, false); return; }
   if (animate && from >= 0 && end > from) runFrames(from + 1, end, () => settle(r));
   else { render(end, false); settle(r); }
 }
@@ -1758,15 +2052,21 @@ function runFrames(i, end, done) {
   PL.skip = () => { clearTimeout(PL.anim); PL.skip = null; render(end, false); done(); };
   render(i, true);
   const f = W.replay.frames[i];
-  if (f.k !== 'ask' && f.text) PB.title.textContent = f.text;
+  if (f.k !== 'ask' && f.text) { const k = PB.title.querySelector('.pb-kicker'); PB.title.innerHTML = `${k ? k.outerHTML : ''}${esc(f.text).replace(/\{([^}]+)\}/g, (m, c) => sym(c))}`; }
   if (i >= end) { PL.skip = null; done(); return; }
   const mine = f.who === 0 && f.k !== 'turn';
-  PL.anim = setTimeout(() => runFrames(i + 1, end, done), (frameDur(f) / PLAY_PACE) * (mine ? 0.6 : 1));
+  const pace = TU.on && TU.strict ? 1.15 : PLAY_PACE;
+  PL.anim = setTimeout(() => runFrames(i + 1, end, done), (frameDur(f) / pace) * (mine ? 0.6 : 1));
 }
 function settle(r) {
-  // A finished game stays saved (so a reload shows how it ended) but no longer waits in the lobby
-  store.set('arena.play.v1', { v: 1, a: PL.keys[0], b: PL.keys[1], seed: PL.seed, answers: PL.answers, turn: r.done ? W.replay.turns : r.req.turn, names: PL.decks.map((d) => d.name), at: Date.now(), done: r.done || undefined });
-  if (r.done) { setUi('over'); return; }
+  // A finished game stays saved (so a reload shows how it ended) but no longer waits in the lobby. Lessons aren't saved.
+  if (PL.keys) store.set('arena.play.v1', { v: 1, a: PL.keys[0], b: PL.keys[1], seed: PL.seed, answers: PL.answers, turn: r.done ? W.replay.turns : r.req.turn, names: PL.decks.map((d) => d.name), at: Date.now(), done: r.done || undefined });
+  if (r.done) {
+    setUi('over');
+    if (TU.on && !TU.completed && (W.replay.winner === 0 || TU.lesson.practice)) lessonComplete();
+    return;
+  }
+  if (TU.on && TU.strict && TU.step >= TU.lesson.steps.length) { TU.strict = false; openRequest(r.req); lessonComplete(); return; }
   if (r.req.active === 0 && r.req.turn > 0 && PL.toastTurn !== r.req.turn && (r.req.type === 'act' || r.req.type === 'attack')) { PL.toastTurn = r.req.turn; toast('Your turn'); }
   openRequest(r.req);
 }
@@ -1775,6 +2075,7 @@ function openRequest(req) {
   PL.picks = new Set();
   PL.blocks = new Map();
   PL.sel = null;
+  coachFor(req);
   if (req.type === 'attack') { req.must.forEach((id) => PL.picks.add(id)); setUi('attack'); }
   else if (req.type === 'block') setUi('block');
   else if (req.type === 'act') setUi('act');
@@ -1788,12 +2089,17 @@ function setUi(ui) {
 }
 function answer(a) {
   if (!PL.on || PL.done || PL.ui === 'busy') return;
+  if (coachOn()) {
+    if (!TUTOR.matches(TU.exp, a)) { nudge('Not quite. Follow the coach for this one.'); renderPlaybar(); decorate(); return; }
+    TU.step++;
+  }
+  const tt = $('#toast'); if (!tt.hidden && tt.textContent === 'Your turn') { clearTimeout(tt._h); tt.hidden = true; }
   PL.answers.push(a);
   closeChoice();
   advance(true);
 }
 function undo() {
-  if (!PL.on || !PL.answers.length) return;
+  if (!PL.on || !PL.answers.length || (TU.on && TU.strict)) return;
   clearTimeout(PL.anim);
   PL.skip = null;
   PL.answers.pop();
@@ -1806,13 +2112,13 @@ const nameOfCard = (id) => { const d = findDefOfId(W.replay.frames[W.i], id); re
 function renderPlaybar() {
   const r = PL.req, ui = PL.ui;
   const opp = W.decks ? W.decks[1].name : 'The AI';
-  const undoBtn = PL.answers.length && ui !== 'busy' ? `<button type="button" class="icon-btn" data-pb="undo" aria-label="Undo your last choice" title="Undo">${icon('undo')}</button>` : '';
+  const undoBtn = PL.answers.length && ui !== 'busy' && !(TU.on && TU.strict) ? `<button type="button" class="icon-btn" data-pb="undo" aria-label="Undo your last choice" title="Undo">${icon('undo')}</button>` : '';
   const logBtn = `<button type="button" class="icon-btn logbtn" data-pb="log" aria-label="Game log">${icon('log')}</button>`;
   const solid = (k, label) => `<button type="button" class="pill pill-solid" data-pb="${k}">${label}</button>`;
   const ghost = (k, label) => `<button type="button" class="pill" data-pb="${k}">${label}</button>`;
   let title = '', hint = '', btns = '';
-  if (ui === 'busy') { title = PB.title.textContent || 'The AI is thinking'; btns = ghost('skip', 'Skip ahead'); }
-  else if (ui === 'over') { const won = W.replay.winner; title = won === 0 ? 'You win' : won == null ? 'A draw' : `${opp} wins`; btns = solid('again', 'Play again'); }
+  if (ui === 'busy') { const k = PB.title.querySelector('.pb-kicker'); title = (k ? PB.title.textContent.slice(k.textContent.length) : PB.title.textContent) || 'The AI is thinking'; btns = ghost('skip', 'Skip ahead'); }
+  else if (ui === 'over') { const won = W.replay.winner; title = won === 0 ? 'You win' : won == null ? 'A draw' : `${opp} wins`; btns = TU.on ? ghost('lessons', 'All lessons') + solid('relesson', TU.lesson.practice ? 'Play again' : 'Replay the lesson') : solid('again', 'Play again'); }
   else if (ui === 'sheet') { title = PL.choice ? PL.choice.title : ''; btns = solid('showsheet', 'Choose'); }
   else if (ui === 'act') {
     const w = r.when;
@@ -1840,29 +2146,57 @@ function renderPlaybar() {
     hint = n ? `${plural(n, 'creature')} attacking. Tap one to change your mind.` : 'Tap your creatures to attack with them.';
     btns = (r.cands.length > 1 ? ghost('all', n === r.cands.length ? 'None' : 'All') : '') + solid('attack', n ? `Attack with ${n}` : 'No attack');
   } else if (ui === 'block') {
-    const dmg = incomingDamage(), life = r.s.p[0].life;
+    const inc = incoming();
     const lonely = [...PL.blocks].some(([aid, bs]) => bs.length === 1 && r.attackers.find((o) => o.id === aid).menace);
     title = 'Block';
-    hint = lonely ? 'A creature with menace needs two blockers.' : PL.sel != null ? 'Now tap the attacker it should block.' : `Tap your creature, then an attacker. You'd take ${dmg}${dmg >= life ? ', which is lethal' : ''}.`;
+    hint = lonely ? 'A creature with menace needs two blockers.' : PL.sel != null ? 'Now tap the attacker it should block.' : `Tap your creature, then an attacker. You'd take ${inc.n}${inc.lethal ? ', which is lethal' : inc.cmdLethal ? ', and 21 commander damage loses the game' : ''}.`;
     btns = solid('blocks', PL.blocks.size ? 'Confirm blocks' : 'No blocks');
   }
-  PB.title.textContent = title;
-  PB.hint.textContent = hint;
+  // The coach takes over the bar: the step's words, and only the button the step asks for
+  let kicker = '';
+  if (coachOn() && ui !== 'busy' && ui !== 'over') {
+    const step = TU.lesson.steps[TU.step], e = TU.exp;
+    kicker = `Lesson ${lessonNo(TU.lesson)} · step ${TU.step + 1} of ${TU.lesson.steps.length}`;
+    title = step.title;
+    hint = step.say;
+    btns = '';
+    if (e.kind === 'pass') {
+      const k = e.answer.pass === 'combat' ? 'pass-combat' : e.answer.pass === 'end' ? 'pass-end' : 'pass';
+      btns = `<button type="button" class="pill pill-solid coach-next" data-pb="${k}">${k === 'pass-combat' ? 'Go to combat' : k === 'pass-end' ? 'End turn' : 'Pass'}</button>`;
+    } else if (ui === 'attack' && e.kind === 'attack' && PL.picks.size === e.ids.length && e.ids.every((id) => PL.picks.has(id))) {
+      btns = `<button type="button" class="pill pill-solid coach-next" data-pb="attack">Attack with ${e.ids.length}</button>`;
+    } else if (ui === 'block' && e.kind === 'block' && TUTOR.matches(e, { type: 'block', blocks: [...PL.blocks] })) {
+      btns = '<button type="button" class="pill pill-solid coach-next" data-pb="blocks">Confirm block</button>';
+    }
+  } else if (TU.on && TU.strict && ui === 'busy') {
+    kicker = `Lesson ${lessonNo(TU.lesson)} · watch the board`;
+  } else if (TU.on && TU.tip && ui !== 'busy' && ui !== 'over' && ui !== 'sheet') {
+    kicker = `Tip · ${TU.tip.title}`;
+    hint = TU.tip.say;
+  }
+  T.table.classList.toggle('coaching', !!kicker);
+  PB.title.innerHTML = `${kicker ? `<span class="pb-kicker">${esc(kicker)}</span>` : ''}${esc(title)}`;
+  PB.hint.innerHTML = kicker ? coachHTML(hint) : esc(hint);
   PB.hint.hidden = !hint;
   PB.acts.innerHTML = undoBtn + btns + logBtn;
 }
-function incomingDamage() {
+// Damage that would get through with the blocks chosen so far, and how much of it comes from a commander
+function incoming() {
   const r = PL.req;
   const atk = r.s.p[1].bf.filter((b) => b.att);
-  let n = 0;
+  let n = 0, cmd = 0;
   for (const b of atk) {
     const def = defOf(b.d), kws = def.kw.concat(b.kw || []);
     const p = Math.max(0, b.p) * (kws.includes('double strike') ? 2 : 1);
     const bs = PL.blocks.get(b.id);
-    if (!bs || !bs.length) n += p;
-    else if (kws.includes('trample')) n += Math.max(0, p - bs.reduce((t, id) => { const x = r.s.p[0].bf.find((y) => y.id === id); return t + (x ? Math.max(0, x.t - (x.dmg || 0)) : 0); }, 0));
+    let through = 0;
+    if (!bs || !bs.length) through = p;
+    else if (kws.includes('trample')) through = Math.max(0, p - bs.reduce((t, id) => { const x = r.s.p[0].bf.find((y) => y.id === id); return t + (x ? Math.max(0, x.t - (x.dmg || 0)) : 0); }, 0));
+    n += through;
+    if (b.cmdr) cmd += through;
   }
-  return n;
+  const cdNow = Math.max(0, ...Object.values(r.s.p[0].cd || {}));
+  return { n, lethal: n >= r.s.p[0].life, cmdLethal: !!cmd && cdNow + cmd >= 21 };
 }
 function currentCands() {
   const p = PL.pend;
@@ -1872,23 +2206,27 @@ function currentCands() {
 }
 function decorate() {
   if (W.mode !== 'play') return;
-  $$('.card.can-act, .card.can-target, .card.pick, .card.sel, .card.can-take, .card.pblk', T.board).forEach((c) => c.classList.remove('can-act', 'can-target', 'pick', 'sel', 'can-take', 'pblk'));
-  $$('.life', T.board).forEach((l) => { l.classList.remove('can-target'); l.removeAttribute('tabindex'); l.removeAttribute('role'); });
+  $$('.card.can-act, .card.can-target, .card.pick, .card.sel, .card.can-take, .card.pblk, .card.coach-next', T.board).forEach((c) => c.classList.remove('can-act', 'can-target', 'pick', 'sel', 'can-take', 'pblk', 'coach-next'));
+  $$('.life', T.board).forEach((l) => { l.classList.remove('can-target', 'coach-next'); l.removeAttribute('tabindex'); l.removeAttribute('role'); });
   T.fx.querySelectorAll('.pick-line').forEach((x) => x.remove());
   const r = PL.req;
   if (!r || !PL.on) return;
   const el = (id) => { const e = W.els.get(id); return e && e.isConnected ? e : null; };
-  if (PL.ui === 'act') r.actions.forEach((a) => { const e = el(a.card); if (e) e.classList.add('can-act'); });
+  const coach = coachOn() ? TU.exp : null;
+  if (PL.ui === 'act') r.actions.forEach((a) => { if (!allowedAct(a)) return; const e = el(a.card); if (e) { e.classList.add('can-act'); if (coach) e.classList.add('coach-next'); } });
   if (PL.ui === 'target') {
     for (const v of currentCands()) {
-      if (typeof v === 'string') { const l = T.sides[+v.slice(1)].querySelector('.life'); l.classList.add('can-target'); l.tabIndex = 0; l.setAttribute('role', 'button'); }
-      else { const e = el(v); if (e) e.classList.add('can-target'); }
+      if (!allowedTarget(v)) continue;
+      if (typeof v === 'string') { const l = T.sides[+v.slice(1)].querySelector('.life'); l.classList.add('can-target'); if (coach) l.classList.add('coach-next'); l.tabIndex = 0; l.setAttribute('role', 'button'); }
+      else { const e = el(v); if (e) { e.classList.add('can-target'); if (coach) e.classList.add('coach-next'); } }
     }
     if (PL.pend && PL.pend.pairMine != null) { const e = el(PL.pend.pairMine); if (e) e.classList.add('sel'); }
   }
-  if (PL.ui === 'attack') r.cands.forEach((id) => { const e = el(id); if (e) { e.classList.add('can-act'); if (PL.picks.has(id)) e.classList.add('pick'); } });
+  if (PL.ui === 'attack') r.cands.forEach((id) => { if (coach && !coach.ids.includes(id)) return; const e = el(id); if (e) { e.classList.add('can-act'); if (PL.picks.has(id)) e.classList.add('pick'); else if (coach) e.classList.add('coach-next'); } });
   if (PL.ui === 'block') {
-    new Set(r.attackers.flatMap((o) => o.by)).forEach((id) => { const e = el(id); if (e) e.classList.add('can-act'); });
+    const wantB = coach && coach.kind === 'block' ? coach.blocks.flatMap(([, bs]) => bs) : null;
+    new Set(r.attackers.flatMap((o) => o.by)).forEach((id) => { if (wantB && !wantB.includes(id)) return; const e = el(id); if (e) { e.classList.add('can-act'); if (wantB && PL.sel == null && ![...PL.blocks.values()].flat().includes(id)) e.classList.add('coach-next'); } });
+    if (wantB && PL.sel != null) coach.blocks.filter(([, bs]) => bs.includes(PL.sel)).forEach(([aid]) => { const e = el(aid); if (e) e.classList.add('coach-next'); });
     for (const [, bs] of PL.blocks) bs.forEach((b) => { const e = el(b); if (e) e.classList.add('pblk'); });
     if (PL.sel != null) {
       const e = el(PL.sel); if (e) e.classList.add('sel');
@@ -1906,18 +2244,25 @@ function onPlayClick(target) {
   const r = PL.req;
   if (PL.ui === 'target') {
     const val = life ? `p${life.dataset.player}` : id;
-    if (currentCands().includes(val)) chooseTarget(val);
+    if (currentCands().includes(val) && allowedTarget(val)) chooseTarget(val);
+    else if (coachOn()) nudge('Tap the glowing target.');
     else if (card) openInspector(card);
     return true;
   }
   if (!card) return true;
   if (PL.ui === 'attack' && r.cands.includes(id)) {
+    if (coachOn() && !TU.exp.ids.includes(id)) { nudge(`Not this one. ${TU.lesson.steps[TU.step].title}.`); return true; }
     if (!r.must.includes(id)) { if (PL.picks.has(id)) PL.picks.delete(id); else PL.picks.add(id); }
     renderPlaybar(); decorate();
     return true;
   }
   if (PL.ui === 'block' && handleBlockTap(id)) return true;
-  if (PL.ui === 'act') { openInspector(card, r.actions.filter((a) => a.card === id)); return true; }
+  if (PL.ui === 'act') {
+    const acts = r.actions.filter((a) => a.card === id && allowedAct(a));
+    if (coachOn() && !acts.length && r.actions.some((a) => a.card === id)) nudge(TU.exp.kind === 'pass' ? `Not now. Choose ${PB.acts.querySelector('.coach-next') ? PB.acts.querySelector('.coach-next').textContent : 'the glowing button'}.` : 'Not yet. Tap the glowing card.');
+    openInspector(card, acts);
+    return true;
+  }
   openInspector(card);
   return true;
 }
@@ -1925,6 +2270,11 @@ function handleBlockTap(id) {
   const r = PL.req;
   const canBlockIt = r.attackers.some((o) => o.by.includes(id));
   const isAttacker = r.attackers.some((o) => o.id === id);
+  if (coachOn() && TU.exp.kind === 'block') {
+    const want = TU.exp.blocks;
+    if (canBlockIt && !want.some(([, bs]) => bs.includes(id))) { nudge('Block with the glowing creature.'); return true; }
+    if (isAttacker && PL.sel != null && !want.some(([aid, bs]) => aid === id && bs.includes(PL.sel))) { nudge('Block the glowing attacker.'); return true; }
+  }
   if (canBlockIt) {
     for (const [aid, bs] of PL.blocks) {
       if (!bs.includes(id)) continue;
@@ -2006,8 +2356,9 @@ function openChoice(req) {
   if (req.type === 'mulligan') {
     ids = req.cards;
     const lands = ids.filter((id) => defOf(defs[id]).types.includes('Land')).length;
-    title = req.mulligans ? `Keep, and put ${req.mulligans === 1 ? 'a card' : `${req.mulligans} cards`} on the bottom?` : 'Keep this hand?';
-    sub = `${plural(lands, 'land')} in seven cards. You're on the ${req.active === 0 ? 'play' : 'draw'}.`;
+    const bottom = req.bottom != null ? req.bottom : req.mulligans;
+    title = bottom ? `Keep, and put ${bottom === 1 ? 'a card' : `${bottom} cards`} on the bottom?` : 'Keep this hand?';
+    sub = `${plural(lands, 'land')} in seven cards. You're on the ${req.active === 0 ? 'play' : 'draw'}.${req.free ? ' In Commander your first mulligan is free.' : ''}`;
     acts = `<button type="button" class="pill" data-sh="mull">Mulligan</button><button type="button" class="pill pill-solid" data-sh="keep">Keep</button>`;
   } else if (req.type === 'counter') {
     ids = [req.spell];
@@ -2022,7 +2373,7 @@ function openChoice(req) {
   }
   PL.choice = { req, sel: [], title };
   box.innerHTML = `<div class="sheet-box" role="dialog" aria-modal="true" aria-labelledby="shTitle">
-    <div class="sheet-head"><div><h2 id="shTitle">${esc(title)}</h2><p class="sub">${esc(sub)}</p></div><button type="button" class="link-btn" data-sh="hide">See the board</button></div>
+    <div class="sheet-head"><div><h2 id="shTitle">${esc(title)}</h2><p class="sub">${esc(sub)}</p>${TU.on && TU.tip ? `<p class="tu-tip"><b>Tip.</b> ${coachHTML(TU.tip.say)}</p>` : ''}</div><button type="button" class="link-btn" data-sh="hide">See the board</button></div>
     <div class="pick-grid${selectable ? ' selectable' : ''}" id="shGrid"></div>
     <div class="sheet-acts">${acts}</div></div>`;
   const grid = box.querySelector('#shGrid');
@@ -2094,11 +2445,147 @@ function renderResume() {
 function resumeSaved() {
   const sv = savedPlay();
   if (!sv) return;
-  S.seats = [sv.a, sv.b];
-  store.set('arena.seats.v1', S.seats);
+  setFormat(isCmdKey(sv.a) ? 'commander' : 'standard', [sv.a, sv.b]);
+  saveSeats();
   playStart(sv.seed, sv.answers);
 }
+const tutDone = () => new Set((store.get('arena.tut.v1', null) || { done: [] }).done);
+function renderLearnBtn() {
+  const done = tutDone();
+  const n = window.ARENA_TUTORIAL.LESSONS.length;
+  const left = window.ARENA_TUTORIAL.LESSONS.filter((x) => !done.has(x.id)).length;
+  const head = done.size ? (left ? 'Continue the tutorial' : 'Tutorial complete') : S.format === 'commander' ? 'New to Commander?' : 'New to Magic?';
+  $('#learnBtn').innerHTML = `<span class="learn-ic">${icon('cap')}</span><span class="learn-txt"><b>${head}</b><span>${done.size ? `${n - left} of ${n} lessons done` : `Learn to play in ${n} short lessons`}</span></span>`;
+}
 
+
+
+/* ============================================================
+   Tutorial: lessons with a coach
+   A lesson is a scripted game. Each step names one action; the coach explains it in the action bar,
+   the thing to tap pulses, and nothing else can be done until it's done. The practice game is a
+   free game with tips the first time something new comes up.
+   ============================================================ */
+const TUTOR = window.ARENA_TUTORIAL;
+const TU = { on: false, lesson: null, step: 0, exp: null, strict: false, tips: new Set(), tip: null, completed: false, pages: null };
+const lessonById = (id) => TUTOR.LESSONS.find((x) => x.id === id);
+const lessonNo = (l) => TUTOR.LESSONS.indexOf(l) + 1;
+const coachOn = () => TU.on && TU.strict && !!TU.exp;
+const coachHTML = (text) => esc(text).replace(/\{([^}]+)\}/g, (m, c) => sym(c));
+const nameById = (id) => { const f = W.replay.frames[W.replay.frames.length - 1]; const d = f && findDefOfId(f, id); return d ? defOf(d).name : null; };
+function markLessonDone(id) { const d = tutDone(); d.add(id); store.set('arena.tut.v1', { done: [...d] }); }
+function renderLessons() {
+  const done = tutDone();
+  const next = TUTOR.LESSONS.find((x) => !done.has(x.id));
+  const groups = [['basics', 'Magic basics', 'New to Magic? Start here: mana, combat and instants.'], ['commander', 'Commander', 'What makes Commander different, then a full game with tips.']];
+  $('#lessons').innerHTML = groups.map(([g, label, sub]) => `<section class="lsn-group">
+    <div class="lsn-head"><h2>${label}</h2><p>${sub}</p></div>
+    <div class="lessons">${TUTOR.LESSONS.filter((x) => x.group === g).map((x) => {
+      const isDone = done.has(x.id), isNext = next === x;
+      return `<button type="button" class="lesson${isDone ? ' done' : ''}${isNext ? ' next' : ''}" data-lesson="${x.id}"><span class="ln">${isDone ? icon('check') : lessonNo(x)}</span>`
+        + `<span class="lt"><b>${esc(x.title)}</b><span>${esc(x.blurb)}</span></span><span class="lm">${isDone ? 'Done' : isNext ? 'Up next' : esc(x.time)}</span></button>`;
+    }).join('')}</div></section>`).join('');
+}
+function goLessons(push = true) {
+  setView('learn', push);
+  renderLessons();
+}
+function lessonStart(id, replace) {
+  const lesson = lessonById(id);
+  if (!lesson) return;
+  closeChoice();
+  closeInspector();
+  Object.assign(TU, { on: true, lesson, step: 0, exp: null, tip: null, strict: !lesson.practice, tips: new Set(), completed: false, pages: null });
+  if (lesson.practice) {
+    setFormat('commander', [lesson.you.deck, lesson.foe.deck]);
+    playStart(newSeed(), [], { replace, lesson: true });
+  } else {
+    let built;
+    try { built = TUTOR.build(lesson, (n) => DATA.byName.get(n)); } catch (err) { TU.on = false; toast("This lesson couldn't load"); return; }
+    playStart(lesson.seed || 1, [], { decks: built.decks, setup: built.setup, replace, lesson: true });
+  }
+  openPages(lesson.intro, `Lesson ${lessonNo(lesson)} of ${TUTOR.LESSONS.length}`, () => {
+    if (PL.held) { const h = PL.held; PL.held = null; runFrames(1, h.end, () => settle(h.r)); return; }
+    if (PL.ui === 'sheet' && PL.req && !PL.done) openChoice(PL.req);
+    refreshCoach();
+  });
+}
+function endLesson() {
+  if (!TU.on) return;
+  Object.assign(TU, { on: false, lesson: null, exp: null, tip: null, strict: false, pages: null });
+  T.table.classList.remove('coaching');
+}
+// Work out what the coach wants for this question (or which tip applies) before the bar is drawn
+function coachFor(req) {
+  TU.exp = null;
+  TU.tip = null;
+  if (!TU.on) return;
+  if (TU.strict) {
+    const step = TU.lesson.steps[TU.step];
+    TU.exp = step ? TUTOR.resolve(step, req, nameById) : null;
+    if (!TU.exp) TU.strict = false; // off the script: carry on as a free game
+  } else if (TU.lesson && TU.lesson.practice && !TU.completed) {
+    const tip = TUTOR.TIPS.find((t) => !TU.tips.has(t.id) && t.when(req, req.s));
+    if (tip) { TU.tips.add(tip.id); TU.tip = tip; }
+  }
+}
+function refreshCoach() { if (PL.on && PL.req && PL.ui !== 'busy') { renderPlaybar(); decorate(); } }
+const allowedAct = (a) => !coachOn() || (TU.exp.kind === 'act' && TU.exp.action.act === a.act);
+const allowedTarget = (v) => !coachOn() || !PL.pend || TU.exp.targets[PL.pend.i] === v;
+function nudge(text) {
+  const t = $('#toast');
+  t.classList.add('small');
+  toast(text || 'Follow the coach: tap the glowing card.');
+  clearTimeout(t._s);
+  t._s = setTimeout(() => t.classList.remove('small'), 1700);
+}
+function openPages(pages, kicker, done, final) {
+  if (!pages || !pages.length) { if (done) done(); return; }
+  const box = $('#sheet');
+  let k = 0;
+  const draw = () => {
+    const pg = pages[k], last = k === pages.length - 1;
+    box.innerHTML = `<div class="sheet-box coach-sheet" role="dialog" aria-modal="true" aria-labelledby="tuTitle">
+      <p class="tu-kicker">${esc(kicker)}</p>
+      <h2 id="tuTitle">${esc(pg.title)}</h2>
+      ${pg.text ? `<p class="tu-text">${coachHTML(pg.text)}</p>` : ''}
+      ${pg.points ? `<ul class="tu-points">${pg.points.map((x) => `<li>${icon('check')}<span>${coachHTML(x)}</span></li>`).join('')}</ul>` : ''}
+      <div class="sheet-acts">${pages.length > 1 ? `<span class="tu-dots" aria-hidden="true">${pages.map((_, i) => `<i class="${i === k ? 'on' : ''}"></i>`).join('')}</span>` : ''}${last && final ? final : `<button type="button" class="pill pill-solid" data-tu="next">${last ? (TU.lesson && TU.lesson.practice ? 'Deal me in' : 'Start the lesson') : 'Next'}</button>`}</div>
+    </div>`;
+    box.hidden = false;
+    box.classList.remove('min');
+    const f = box.querySelector('.sheet-acts .pill-solid') || box.querySelector('[data-tu]');
+    if (f) f.focus();
+  };
+  TU.pages = { next() { if (k < pages.length - 1) { k++; draw(); } else { TU.pages = null; box.hidden = true; box.innerHTML = ''; if (done) done(); } } };
+  draw();
+}
+function lessonComplete() {
+  const L = TU.lesson;
+  if (!L) return;
+  TU.strict = false;
+  TU.exp = null;
+  TU.completed = true;
+  T.banner.hidden = true;
+  markLessonDone(L.id);
+  renderLearnBtn();
+  const next = TUTOR.LESSONS[lessonNo(L)];
+  const won = PL.done && W.replay.winner === 0;
+  const title = L.practice ? (won ? 'You won your first Commander game' : W.replay.winner == null ? 'A hard-fought draw' : 'The AI won this time') : L.outro.title;
+  const text = L.practice ? (won ? 'Every lesson came together. The Commander lobby has eight decks and 58 commanders to build around.' : 'Commander games swing a lot. Try again, or pick a different deck in the Commander lobby.') : '';
+  const final = `${next ? `<button type="button" class="pill pill-solid" data-tu="lesson" data-id="${next.id}">Next: ${esc(next.title)}</button>` : `<button type="button" class="pill pill-solid" data-tu="play">Play Commander</button>`}`
+    + `<button type="button" class="pill" data-tu="lessons">All lessons</button>${PL.done ? '' : '<button type="button" class="link-btn" data-tu="keep">Keep playing</button>'}`;
+  refreshCoach();
+  openPages([{ title, text, points: L.outro.points }], L.practice ? 'Practice game' : `Lesson ${lessonNo(L)} complete`, null, final);
+}
+function tuAction(k, b) {
+  if (k === 'next') { if (TU.pages) TU.pages.next(); }
+  else if (k === 'lesson') lessonStart(b.dataset.id);
+  else if (k === 'lessons') goLessons();
+  else if (k === 'keep') { closeChoice(); if (PL.ui === 'sheet' && PL.req && !PL.done) openChoice(PL.req); refreshCoach(); }
+  else if (k === 'play') { setView('lobby', true); setFormat('commander'); renderSeats(); renderPick(); renderButtons(); syncHash(false); }
+  else if (k === 'retry') lessonStart(TU.lesson.id);
+}
 
 /* ============================================================
    Wiring
@@ -2128,9 +2615,13 @@ function wire() {
     else if (k === 'all') { const all = PL.picks.size === PL.req.cands.length; PL.picks = new Set(all ? PL.req.must : PL.req.cands); renderPlaybar(); decorate(); }
     else if (k === 'blocks') answer({ type: 'block', blocks: [...PL.blocks] });
     else if (k === 'again') playStart(newSeed());
+    else if (k === 'relesson') lessonStart(TU.lesson.id);
+    else if (k === 'lessons') goLessons();
     else if (k === 'showsheet') { $('#sheet').hidden = false; }
   });
   $('#sheet').addEventListener('click', (e) => {
+    const tb = e.target.closest('[data-tu]');
+    if (tb) { tuAction(tb.dataset.tu, tb); return; }
     const c = PL.choice;
     if (!c) return;
     const b = e.target.closest('[data-sh]');
@@ -2155,8 +2646,11 @@ function wire() {
   });
   $('#simBtn').addEventListener('click', simulate);
   $('#randBtn').addEventListener('click', randomMatchup);
-  $('#swapBtn').addEventListener('click', () => { S.seats.reverse(); S.sim = null; L.sim.hidden = true; store.set('arena.seats.v1', S.seats); renderSeats(); syncHash(false); });
-  $('#toLobby').addEventListener('click', () => { setView('lobby', true); renderSeats(); });
+  $('#swapBtn').addEventListener('click', () => { S.seats.reverse(); S.sim = null; L.sim.hidden = true; saveSeats(); renderSeats(); syncHash(false); });
+  $('#fmtSeg').addEventListener('click', (e) => { const b = e.target.closest('button[data-fmt]'); if (!b || b.dataset.fmt === S.format) return; setFormat(b.dataset.fmt); renderSeats(); renderPick(); renderButtons(); syncHash(false); });
+  $('#toLobby').addEventListener('click', () => { if (S.view === 'watch' && TU.on) { goLessons(); return; } setView('lobby', true); renderSeats(); });
+  $('#learnBtn').addEventListener('click', () => goLessons());
+  $('#lessons').addEventListener('click', (e) => { const b = e.target.closest('[data-lesson]'); if (b) lessonStart(b.dataset.lesson); });
   L.seats.addEventListener('click', (e) => {
     const lb = e.target.closest('[data-list]');
     if (lb) { const i = +lb.dataset.list; openLists.has(i) ? openLists.delete(i) : openLists.add(i); renderSeats(); return; }
@@ -2172,8 +2666,8 @@ function wire() {
   $('#srcSeg').addEventListener('click', (e) => { const b = e.target.closest('button[data-src]'); if (!b) return; S.src = b.dataset.src; renderPick(); });
   L.pickBody.addEventListener('click', (e) => {
     const t = e.target.closest('.tile');
-    if (t) { setSeat(t.dataset.key); return; }
-    const pip = e.target.closest('.pip');
+    if (t) { setSeat(t.dataset.key); if (S.format === 'commander' && S.src === 'gen') renderPick(); return; }
+    const pip = e.target.closest('.pip[data-c]');
     if (pip) {
       const c = pip.dataset.c;
       let cs = S.gen.colors.includes(c) ? S.gen.colors.filter((x) => x !== c) : S.gen.colors.concat(c);
@@ -2187,6 +2681,14 @@ function wire() {
     if (ab) { S.gen.arch = ab.dataset.arch; $$('#archSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.arch === S.gen.arch))); return; }
     if (e.target.closest('#genGo')) buildFromPanel(false);
     if (e.target.closest('#genRand')) buildFromPanel(true);
+    const lg = e.target.closest('.legend');
+    if (lg) { S.cgen.pick = lg.dataset.cmd; renderPick(); const again = L.pickBody.querySelector(`.legend[data-cmd="${CSS.escape(lg.dataset.cmd)}"]`); if (again && e.detail === 0) again.focus(); return; }
+    const cc = e.target.closest('[data-cc]');
+    if (cc) { const c = cc.dataset.cc; S.cgen.colors = S.cgen.colors.includes(c) ? S.cgen.colors.filter((x) => x !== c) : S.cgen.colors.concat(c); renderPick(); return; }
+    const ca = e.target.closest('[data-carch]');
+    if (ca) { S.cgen.arch = ca.dataset.carch; $$('#cArchSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.carch === S.cgen.arch))); return; }
+    if (e.target.closest('#cgenGo')) buildCmdFromPanel(false);
+    if (e.target.closest('#cgenRand')) buildCmdFromPanel(true);
   });
   L.sim.addEventListener('click', (e) => {
     const g = e.target.closest('[data-g]');
@@ -2218,6 +2720,8 @@ function wire() {
     if (!a) return;
     if (a.dataset.act === 'rematch') watch(newSeed(), { replace: true });
     else if (a.dataset.act === 'playagain') playStart(newSeed());
+    else if (a.dataset.act === 'relesson') lessonStart(TU.lesson.id);
+    else if (a.dataset.act === 'lessons') goLessons();
     else if (a.dataset.act === 'replay') toReplay();
     else if (a.dataset.act === 'again') { T.banner.hidden = true; render(0, false); play(); }
     else if (a.dataset.act === 'lobby') { setView('lobby', true); renderSeats(); }
@@ -2237,6 +2741,7 @@ function wire() {
       const life = e.target.closest && e.target.closest('.life.can-target');
       if (life && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onPlayClick(life); return; }
       if (e.key === 'Escape') {
+        if (!$('#sheet').hidden && $('#sheet .coach-sheet')) return;
         if (!$('#sheet').hidden && PL.choice) { $('#sheet').hidden = true; return; }
         if (PL.ui === 'target') { PL.pend = null; setUi('act'); return; }
         if (PL.ui === 'block' && PL.sel != null) { PL.sel = null; renderPlaybar(); decorate(); return; }
@@ -2245,6 +2750,7 @@ function wire() {
       if ((e.key === 'z' || e.key === 'u') && !e.metaKey && !e.ctrlKey && !e.altKey) undo();
       if ((e.key === ' ' || e.key === 'Enter') && !(e.target.closest && e.target.closest('button, a, input, select, textarea, [role="button"]'))) {
         const main = $('#sheet').hidden ? PB.acts.querySelector('.pill-solid') : $('#sheet .sheet-acts .pill-solid:not(:disabled)');
+        if (!$('#sheet').hidden && $('#sheet .coach-sheet') && main) { e.preventDefault(); main.click(); return; }
         if (main) { e.preventDefault(); main.click(); }
       }
       return;
@@ -2259,10 +2765,23 @@ function wire() {
   });
   let rz = 0;
   window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (S.view === 'watch' && W.replay) render(W.i, false); }, 120); });
+  // The board shrinks and grows with the action bar (coach text can be a few lines long)
+  let lastH = 0;
+  if (window.ResizeObserver) new ResizeObserver(() => {
+    const h = T.board.clientHeight;
+    if (Math.abs(h - lastH) < 4) return;
+    lastH = h;
+    clearTimeout(rz);
+    rz = setTimeout(() => { if (S.view === 'watch' && W.replay) render(W.i, false); }, 60);
+  }).observe(T.board);
   window.addEventListener('popstate', () => {
     const h = readHash();
-    if (h.a) S.seats[0] = h.a.key;
-    if (h.b) S.seats[1] = h.b.key;
+    if (h.lesson && lessonById(h.lesson)) { if (!(TU.on && TU.lesson.id === h.lesson && S.view === 'watch')) lessonStart(h.lesson, true); return; }
+    if (h.learn) { if (S.view !== 'learn') { setView('learn', false); renderLessons(); } return; }
+    if (h.a && h.b && isCmdKey(h.a.key) === isCmdKey(h.b.key)) {
+      const f = isCmdKey(h.a.key) ? 'commander' : 'standard';
+      if (f !== S.format) { setFormat(f, [h.a.key, h.b.key]); renderPick(); } else S.seats = [h.a.key, h.b.key];
+    }
     if (h.play != null && h.a && h.b) { if (!(PL.on && PL.seed === h.play)) { const sv = savedPlay(); playStart(h.play, sv && sv.seed === h.play && sv.a === h.a.key && sv.b === h.b.key ? sv.answers : []); } }
     else if (h.seed != null && h.a && h.b) { if (!(S.view === 'watch' && W.mode === 'watch' && W.seed === h.seed)) watch(h.seed, { replace: true }); }
     else if (S.view !== 'lobby') { setView('lobby', false); renderSeats(); }
@@ -2283,21 +2802,19 @@ async function boot() {
     return;
   }
   for (const spec of window.ARENA_DECKS) claudeDeck(spec);
+  CMDR.legends = DATA.pool.filter(Arena.canCommand).sort((a, b) => a.name.localeCompare(b.name));
   const h = readHash();
-  const saved = store.get('arena.seats.v1', null);
-  const ids = window.ARENA_DECKS.map((x) => `c.${x.id}`);
-  S.seats = [h.a ? h.a.key : null, h.b ? h.b.key : null];
-  if (!S.seats[0] && saved && deckByKey(saved[0])) S.seats[0] = saved[0];
-  if (!S.seats[1] && saved && deckByKey(saved[1])) S.seats[1] = saved[1];
-  if (!S.seats[0]) S.seats[0] = ids[0];
-  if (!S.seats[1]) S.seats[1] = ids[2];
+  const hashSeats = h.a && h.b && isCmdKey(h.a.key) === isCmdKey(h.b.key) ? [h.a.key, h.b.key] : null;
+  setFormat(hashSeats ? (isCmdKey(hashSeats[0]) ? 'commander' : 'standard') : store.get('arena.format.v1', 'standard') === 'commander' ? 'commander' : 'standard', hashSeats);
   L.boot.hidden = true;
   L.body.hidden = false;
   renderButtons();
   renderSeats();
   renderPick();
   renderResume();
-  if (h.play != null && h.a && h.b) { const sv = savedPlay(); playStart(h.play, sv && sv.seed === h.play && sv.a === h.a.key && sv.b === h.b.key ? sv.answers : []); }
+  if (h.lesson && lessonById(h.lesson)) lessonStart(h.lesson, true);
+  else if (h.learn) { setView('learn', false); renderLessons(); }
+  else if (h.play != null && h.a && h.b) { const sv = savedPlay(); playStart(h.play, sv && sv.seed === h.play && sv.a === h.a.key && sv.b === h.b.key ? sv.answers : []); }
   else if (h.seed != null && h.a && h.b) watch(h.seed, { replace: true, paused: false });
   else syncHash(false);
 }

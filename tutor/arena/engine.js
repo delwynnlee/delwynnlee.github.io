@@ -481,6 +481,8 @@ function makeRng(seed) {
    3. The game
    ============================================================ */
 const MAX_TURNS = 70;
+// Commander: 40 life, 21 combat damage from one commander knocks a player out, {2} more per earlier cast from the command zone.
+const CMD = { life: 40, lethal: 21, tax: 2 };
 const PERSONAS = {
   aggro:    { attack: 0.85, faceBurn: 0.75, hold: 0.15, counterBar: 8,   chump: 0.25, label: 'Aggro' },
   midrange: { attack: 0.55, faceBurn: 0.3,  hold: 0.45, counterBar: 6.5, chump: 0.45, label: 'Midrange' },
@@ -513,19 +515,36 @@ function newCard(G, def, owner) {
   return { id: G.nextId++, def, owner, ctrl: owner, tapped: false, sick: true, dmg: 0, dt: false, cnt: 0, tp: 0, tt: 0, tkw: [],
     token: false, attacking: false, blocked: false, blocking: 0, blockedBy: [], pumps: 0, stun: false };
 }
-function createGame({ decks, seed, first = null, record = true, human = null, answers = [] }) {
+// `setup` starts a game from a fixed position instead of shuffled opening hands (the tutorial uses it):
+// { turn, active, text, players: [{ life, library (top card first), hand, bf: [{ def, tapped, sick, cnt }], gy, cmdOnBf, cmdCasts, cmdDmg }] }
+function createGame({ decks, seed, first = null, record = true, human = null, answers = [], setup = null }) {
   const rng = makeRng(seed == null ? Date.now() : seed);
+  const format = decks.every((d) => d.commander) ? 'commander' : 'standard';
   const G = { rng, seed, turn: 0, active: 0, first: 0, players: [], frames: [], record, over: false, winner: null, reason: '',
-    stack: [], defs: {}, nextId: 1, phase: 'setup', human, answers, qi: 0 };
+    stack: [], defs: {}, nextId: 1, phase: 'setup', human, answers, qi: 0, format, setup };
   decks.forEach((d, i) => {
-    const P = { i, name: d.name, persona: PERSONAS[d.archetype] ? d.archetype : 'midrange', colors: d.colors || [], life: 20,
-      library: [], hand: [], bf: [], gy: [], exile: [], landsPlayed: 0, lost: false, decked: false, mulligans: 0,
+    const P = { i, name: d.name, persona: PERSONAS[d.archetype] ? d.archetype : 'midrange', colors: d.colors || [], life: format === 'commander' ? CMD.life : 20,
+      library: [], hand: [], bf: [], gy: [], exile: [], landsPlayed: 0, lost: false, decked: false, mulligans: 0, bottomed: 0,
+      command: [], cmd: null, cmdCasts: 0, cmdDmg: {},
       stats: { cast: 0, damage: 0, kills: 0, gained: 0, landsPlayed: 0 } };
-    for (const def of d.cards) { G.defs[def.id] = def; P.library.push(newCard(G, def, i)); }
+    const mk = (def) => { G.defs[def.id] = def; return newCard(G, def, i); };
+    if (d.commander) { const c = mk(d.commander); c.cmdr = true; P.cmd = c; P.command.push(c); }
+    const su = setup && setup.players && setup.players[i];
+    if (su) {
+      if (su.life != null) P.life = su.life;
+      P.library = (su.library || []).map(mk).reverse();
+      P.hand = (su.hand || []).map(mk);
+      for (const b of su.bf || []) { const c = mk(b.def); c.tapped = !!b.tapped; c.sick = !!b.sick; c.cnt = b.cnt || 0; P.bf.push(c); }
+      P.gy = (su.gy || []).map(mk);
+      if (P.cmd && su.cmdOnBf) { P.command = []; P.cmd.sick = !!su.cmdSick; P.bf.push(P.cmd); }
+      P.cmdCasts = su.cmdCasts || 0;
+    } else for (const def of d.cards) P.library.push(mk(def));
     G.players.push(P);
   });
-  G.active = first != null ? first : rng.int(2);
+  if (setup) G.players.forEach((P, i) => { const su = setup.players && setup.players[i], O = G.players[1 - i]; if (su && su.cmdDmg && O.cmd) P.cmdDmg[O.cmd.id] = su.cmdDmg; });
+  G.active = setup ? setup.active || 0 : first != null ? first : rng.int(2);
   G.first = G.active;
+  if (setup) G.turn = (setup.turn || 1) - 1;
   return G;
 }
 
@@ -547,9 +566,11 @@ function snap(G) {
         if (c.blocking) o.blk = c.blocking;
         if (c.tp || c.tt) o.buff = c.tp + c.tt >= 0 ? 1 : -1;
         if (c.tkw.length) o.kw = c.tkw.slice();
+        if (c.cmdr) o.cmdr = 1;
         return o;
       }),
       gy: P.gy.slice(-6).map((c) => [c.id, c.def.id]), gyN: P.gy.length, ex: P.exile.length,
+      ...(G.format === 'commander' ? { cmd: P.command.map((c) => [c.id, c.def.id]), tax: P.cmdCasts * CMD.tax, cd: Object.assign({}, P.cmdDmg) } : null),
     })),
     stack: G.stack.map((s) => ({ id: s.card.id, d: s.card.def.id, who: s.P.i })),
   };
@@ -600,8 +621,26 @@ function dieNow(G, list, why) {
   died.forEach((c) => { if (c.def.dies.length && !G.over) resolveEffects(G, owners[dead.indexOf(c)], c.def.dies, c, null, 'dies'); });
   leaves(G, dead.map((c, k) => ({ c, P: owners[k] })));
 }
+// A commander put into a graveyard, exile or a library goes to the command zone instead (its owner always takes that choice).
+function cmdHome(G) {
+  if (G.format !== 'commander') return;
+  for (const P of G.players) {
+    const c = P.cmd;
+    if (!c) continue;
+    for (const zone of [P.gy, P.exile, P.library]) {
+      const k = zone.indexOf(c);
+      if (k < 0) continue;
+      zone.splice(k, 1);
+      resetCard(c);
+      P.command.push(c);
+      emit(G, 'command', `${c.def.name} returns to the command zone. Casting it again costs {${CMD.tax * P.cmdCasts}} more.`, { who: P.i, card: c.id });
+    }
+  }
+}
+const cmdKO = (G, P) => G.format === 'commander' && Object.values(P.cmdDmg).some((n) => n >= CMD.lethal);
 function sba(G) {
   for (let guard = 0; guard < 25 && !G.over; guard++) {
+    cmdHome(G);
     const dying = [], legend = [];
     for (const P of G.players) {
       const legends = new Map();
@@ -612,9 +651,9 @@ function sba(G) {
     }
     for (const c of dying) G.players[1 - c.ctrl].stats.kills++;
     const all = [...new Set(dying.concat(legend))];
-    if (all.length) dieNow(G, all);
+    if (all.length) { dieNow(G, all); cmdHome(G); }
     let lost = false;
-    for (const P of G.players) if (!P.lost && (P.life <= 0 || P.decked)) { P.lost = true; lost = true; }
+    for (const P of G.players) if (!P.lost && (P.life <= 0 || P.decked || cmdKO(G, P))) { P.lost = true; lost = true; }
     if (lost || G.players.some((P) => P.lost)) { endGame(G); return; }
     if (!all.length) return;
   }
@@ -627,8 +666,9 @@ function endGame(G, why) {
   if (alive.length === 1) {
     const W = alive[0], L = other(G, W);
     G.winner = W.i;
-    G.reason = L.decked && L.life > 0 ? 'decked' : 'life';
-    emit(G, 'end', `${W.name} wins on turn ${G.turn}${G.reason === 'decked' ? `, as ${L.name} can't draw a card` : ''}.`, { who: W.i });
+    G.reason = L.life > 0 && cmdKO(G, L) ? 'commander' : L.decked && L.life > 0 ? 'decked' : 'life';
+    const why = G.reason === 'decked' ? `, as ${L.name} can't draw a card` : G.reason === 'commander' ? ` with ${CMD.lethal} commander damage from ${W.cmd ? W.cmd.def.name : 'their commander'}` : '';
+    emit(G, 'end', `${W.name} wins on turn ${G.turn}${why}.`, { who: W.i });
   } else { G.winner = null; G.reason = 'both'; emit(G, 'end', 'Both players fall at once. The game is a draw.'); }
 }
 
@@ -1174,13 +1214,20 @@ function threatOf(G, O, item) {
   });
   return s;
 }
+// What a card costs to cast right now: a commander in the command zone pays {2} more for each earlier cast from there.
+function castCost(P, card) {
+  if (!P.command.includes(card)) return card.def.cost;
+  return Object.assign({}, card.def.cost, { g: card.def.cost.g + CMD.tax * P.cmdCasts });
+}
 function castSpell(G, P, card, targets, etbTargets) {
-  if (!pay(P, card.def.cost)) return false;
-  P.hand.splice(P.hand.indexOf(card), 1);
+  const fromCmd = P.command.includes(card);
+  if (!pay(P, castCost(P, card))) return false;
+  if (fromCmd) { P.command.splice(P.command.indexOf(card), 1); P.cmdCasts++; }
+  else P.hand.splice(P.hand.indexOf(card), 1);
   const item = { card, P, targets: targets || [] };
   G.stack.push(item);
   P.stats.cast++;
-  emit(G, 'cast', `${P.name} casts ${card.def.name}${targetText(G, item.targets)}.`, { who: P.i, card: card.id, targets: targetIds(item.targets) });
+  emit(G, 'cast', `${P.name} casts ${card.def.name}${fromCmd ? ' from the command zone' : ''}${targetText(G, item.targets)}.`, { who: P.i, card: card.id, targets: targetIds(item.targets) });
   if (!card.def.types.includes('Creature')) for (const x of P.bf) if (isCreature(x) && has(x, 'prowess')) { x.tp++; x.tt++; }
   const O = other(G, P);
   let cs = null;
@@ -1224,6 +1271,7 @@ function castSpell(G, P, card, targets, etbTargets) {
     emit(G, 'countered', `${unless ? `${P.name} can't pay ${unless}. ` : ''}${card.def.name} is countered.`, { who: O.i, cards: [card.id] });
     const rest = cs.def.spell.filter((e) => e.k !== 'counter');
     if (rest.length) { G.resolving = cs.id; resolveEffects(G, O, rest, cs, null, 'trigger'); G.resolving = 0; }
+    cmdHome(G);
     return true;
   }
   G.stack.pop();
@@ -1294,7 +1342,7 @@ function hasHeldTricks(P) {
 function evalCast(G, P, card, ctx) {
   const def = card.def;
   const per = PERSONAS[P.persona];
-  if (isLand(card) || !canPay(P, def.cost)) return null;
+  if (isLand(card) || !canPay(P, castCost(P, card))) return null;
   if (def.types.includes('Creature')) {
     if (def.sacAtEnd && ctx !== 'main1') return null;
     let s = 2 + def.value * 0.6 + def.mv * 0.35;
@@ -1303,6 +1351,7 @@ function evalCast(G, P, card, ctx) {
     if (ctx === 'main1' && !def.kw.includes('haste') && hasHeldTricks(P) && P.persona !== 'aggro') s -= 1;
     if (def.kw.includes('flash') && ctx !== 'end' && per.hold >= 0.6) s -= 1.5;
     if (def.supertypes.includes('Legendary') && P.bf.some((c) => c.def.name === def.name)) return null;
+    if (P.command.includes(card)) s -= CMD.tax * P.cmdCasts * 0.3; // the tax makes a recast worse value than a fresh card
     return { score: s, targets: [] };
   }
   const ch = chooseTargets(G, P, def.spell, ctx, card);
@@ -1324,14 +1373,14 @@ function aiMain(G, P, which) {
   if (P.landsPlayed === 0) { const land = chooseLand(G, P); if (land) playLand(G, P, land); }
   for (let guard = 0; guard < 14 && !G.over; guard++) {
     let best = null;
-    for (const c of P.hand) {
+    for (const c of P.hand.concat(P.command)) {
       if (isLand(c)) continue;
       const r = evalCast(G, P, c, ctx);
       if (!r) continue;
       // Keep counterspell mana open on the opponent's turn while they still have cards to cast.
       const holdBar = P.persona === 'control' ? 7 : P.persona === 'midrange' && ctx === 'main2' ? 4.5 : 0;
       const cnt = holdBar && other(G, P).hand.length >= 2 ? cheapestCounter(P) : null;
-      if (cnt && cnt !== c && r.score < holdBar && !canPayBoth(P, c.def.cost, cnt.def.cost)) continue;
+      if (cnt && cnt !== c && r.score < holdBar && !canPayBoth(P, castCost(P, c), cnt.def.cost)) continue;
       if (!best || r.score > best.score) best = { c, ...r };
     }
     if (ctx === 'main2') {
@@ -1395,6 +1444,7 @@ function aiAttackers(G, A, D) {
   const burnInHand = A.hand.filter((c) => c.def.spell && c.def.spell.some((e) => e.k === 'dmg' && e.to !== 'creature') && canPay(A, c.def.cost))
     .reduce((s, c) => s + c.def.spell.filter((e) => e.k === 'dmg').reduce((x, e) => x + e.n, 0), 0);
   if (unblockedDamage(G, reachable, D) + burnInHand >= D.life) return cands;
+  if (G.format === 'commander' && reachable.some((c) => c.cmdr && !blockersFor(G, D, c).length && dmgOut(c) >= CMD.lethal - (D.cmdDmg[c.id] || 0))) return cands;
   const chosen = [];
   for (const c of cands) {
     if (c.def.mustAttack || c.def.sacAtEnd) { chosen.push(c); continue; }
@@ -1468,7 +1518,8 @@ function aiBlocks(G, D, A, attackers) {
       else if (trade.length) pick = [trade[0].b];
     }
     if (!pick && cands.length >= 2 && (needTwo || cv(a) >= 4.5)) pick = bestDoubleBlock(G, a, cands);
-    if (!pick && !needTwo && (incoming >= D.life || (incoming >= D.life - 3 && G.rng.next() < per.chump))) {
+    const cmdLethal = G.format === 'commander' && a.cmdr && dmgOut(a) >= CMD.lethal - (D.cmdDmg[a.id] || 0);
+    if (!pick && !needTwo && (incoming >= D.life || cmdLethal || (incoming >= D.life - 3 && G.rng.next() < per.chump))) {
       const chumps = scored.slice().sort((x, y) => cv(x.b) - cv(y.b));
       if (chumps.length && !has(a, 'trample')) pick = [chumps[0].b];
     }
@@ -1520,7 +1571,10 @@ function combatDamage(G, A, D, attackers, step) {
     const P = ctrlOf(G, ev.src);
     let dealt = ev.n;
     if (ev.toC) dealt = damageCreature(G, ev.toC, ev.n, ev.src);
-    else { damagePlayer(G, ev.to, ev.n, ev.src, P); hitPlayer.set(ev.src, (hitPlayer.get(ev.src) || 0) + ev.n); }
+    else {
+      damagePlayer(G, ev.to, ev.n, ev.src, P); hitPlayer.set(ev.src, (hitPlayer.get(ev.src) || 0) + ev.n);
+      if (ev.src.cmdr) ev.to.cmdDmg[ev.src.id] = (ev.to.cmdDmg[ev.src.id] || 0) + ev.n;
+    }
     if (dealt && has(ev.src, 'lifelink')) gainLife(G, P, dealt);
   }
   const toPlayer = events.filter((e) => e.to);
@@ -1778,9 +1832,9 @@ function aiInstantWindow(G, P, when) {
   if (when === 'end') { aiCycle(G, P); aiUtility(G, P); }
   for (let guard = 0; guard < 4 && !G.over; guard++) {
     let best = null;
-    for (const card of P.hand) {
+    for (const card of P.hand.concat(P.command)) {
       const d = card.def;
-      if (!isInstantSpeed(d) || !canPay(P, d.cost)) continue;
+      if (!isInstantSpeed(d) || !canPay(P, castCost(P, card))) continue;
       if (d.spell && d.spell.some((e) => e.k === 'counter')) continue;
       let r = null;
       if (d.types.includes('Creature')) {
@@ -1875,6 +1929,8 @@ function sacrificeChoice(G, Q, cs) {
   if (cs.length === 1) return cs[0];
   return pickCards(G, { type: 'choose', reason: 'sacrifice', n: 1, min: 1, max: 1, zone: 'battlefield', cards: cs.map((c) => c.id) }, cs, 1)[0];
 }
+const freeMulls = (G) => (G.format === 'commander' ? 1 : 0);
+const toBottom = (G, m) => Math.max(0, m - freeMulls(G));
 function humanOpeningHand(G, P) {
   for (let m = 0; m <= 3; m++) {
     P.library.push(...P.hand); P.hand = [];
@@ -1882,10 +1938,13 @@ function humanOpeningHand(G, P) {
     drawCards(G, P, 7);
     P.mulligans = m;
     if (m === 3) break;
-    if (ask(G, { type: 'mulligan', mulligans: m, cards: P.hand.map((c) => c.id) }).keep) break;
+    const req = { type: 'mulligan', mulligans: m, cards: P.hand.map((c) => c.id) };
+    if (freeMulls(G)) Object.assign(req, { bottom: toBottom(G, m), free: toBottom(G, m + 1) === 0 });
+    if (ask(G, req).keep) break;
   }
-  if (P.mulligans) {
-    const n = P.mulligans;
+  P.bottomed = toBottom(G, P.mulligans);
+  if (P.bottomed) {
+    const n = P.bottomed;
     const chosen = pickCards(G, { type: 'choose', reason: 'bottom', n, min: n, max: n, zone: 'hand', cards: P.hand.map((c) => c.id) }, P.hand, n);
     for (const c of chosen) { P.hand.splice(P.hand.indexOf(c), 1); P.library.unshift(c); }
   }
@@ -1941,11 +2000,11 @@ function humanActions(G, P, when) {
   const acts = [];
   const sorcery = G.active === P.i && (when === 'main1' || when === 'main2') && !G.stack.length;
   if (sorcery && P.landsPlayed === 0) for (const c of P.hand) if (isLand(c)) acts.push({ act: `land:${c.id}`, kind: 'land', card: c.id, label: 'Play this land' });
-  for (const c of P.hand) {
+  for (const c of P.hand.concat(P.command)) {
     const d = c.def;
     if (isLand(c) || (!sorcery && !isInstantSpeed(d))) continue;
     if (d.spell && d.spell.some((e) => e.k === 'counter')) continue; // counterspells are offered when a spell is cast
-    if (!canPay(P, d.cost)) continue;
+    if (!canPay(P, castCost(P, c))) continue;
     const cre = d.types.includes('Creature');
     const specs = [];
     let ok = true;
@@ -1955,7 +2014,9 @@ function humanActions(G, P, when) {
       if (sp) specs.push(sp);
       else if (!cre && !e.may) ok = false;
     });
-    if (ok) acts.push({ act: `cast:${c.id}`, kind: 'cast', card: c.id, label: `Cast ${d.name}`, specs, etb: cre });
+    const fromCmd = P.command.includes(c);
+    if (ok) acts.push(Object.assign({ act: `cast:${c.id}`, kind: 'cast', card: c.id, label: `Cast ${d.name}${fromCmd ? ' from the command zone' : ''}`, specs, etb: cre },
+      fromCmd ? { cmd: true, cost: costText(castCost(P, c)), tax: CMD.tax * P.cmdCasts } : null));
   }
   for (const c of P.bf) {
     if (!isCreature(c)) continue;
@@ -1990,14 +2051,15 @@ function applyAction(G, P, a) {
   const [kind, idStr] = String(a.act).split(':');
   const id = +idStr;
   const inHand = P.hand.find((c) => c.id === id);
+  const toCast = inHand || P.command.find((c) => c.id === id);
   const mine = P.bf.find((c) => c.id === id);
   const t0 = (a.t || []).map((r) => fromRef(G, r));
   switch (kind) {
     case 'land': if (inHand) playLand(G, P, inHand); break;
     case 'cast':
-      if (!inHand) break;
-      if (inHand.def.types.includes('Creature')) castSpell(G, P, inHand, [], inHand.def.etb.map((e, k) => fromRef(G, (a.etb || [])[k])));
-      else castSpell(G, P, inHand, inHand.def.spell.map((e, k) => (e.k === 'divided' ? { plan: dividePlan(G, P, e, inHand).plan } : t0[k] || null)));
+      if (!toCast) break;
+      if (toCast.def.types.includes('Creature')) castSpell(G, P, toCast, [], toCast.def.etb.map((e, k) => fromRef(G, (a.etb || [])[k])));
+      else castSpell(G, P, toCast, toCast.def.spell.map((e, k) => (e.k === 'divided' ? { plan: dividePlan(G, P, e, toCast).plan } : t0[k] || null)));
       break;
     case 'ping': if (mine && t0[0] && t0[0] !== 'skip') firePing(G, P, { src: mine, target: t0[0] }); break;
     case 'pump': {
@@ -2077,8 +2139,8 @@ function humanBlocks(G, D, A, attackers) {
   }
   return map;
 }
-function runInteractive({ decks, seed, human = 0, answers = [] }) {
-  const G = createGame({ decks, seed, record: true, human, answers });
+function runInteractive({ decks, seed, human = 0, answers = [], setup = null }) {
+  const G = createGame({ decks, seed, record: true, human, answers, setup });
   try {
     playGame(G);
     return { G, done: true, req: null };
@@ -2099,7 +2161,8 @@ function openingHand(G, P) {
     P.mulligans = m;
     if (m === 2 || (lands >= 2 && lands <= 5)) break;
   }
-  for (let k = 0; k < P.mulligans; k++) {
+  P.bottomed = toBottom(G, P.mulligans);
+  for (let k = 0; k < P.bottomed; k++) {
     const lands = P.hand.filter(isLand);
     const pick = lands.length > 3 ? lands[0] : P.hand.filter((c) => !isLand(c)).sort((a, b) => b.def.mv - a.def.mv)[0] || P.hand[0];
     P.hand.splice(P.hand.indexOf(pick), 1);
@@ -2127,15 +2190,18 @@ function takeTurn(G) {
   if (oneTurn.length) { emit(G, 'sac', `${nameList(oneTurn)} ${oneTurn.length > 1 ? 'are' : 'is'} sacrificed at the end step.`, { who: P.i, cards: oneTurn.map((c) => c.id) }); dieNow(G, oneTurn); sba(G); if (G.over) return; }
   if (isHuman(G, other(G, P))) humanWindow(G, other(G, P), 'end'); else aiInstantWindow(G, other(G, P), 'end');
   if (G.over) return;
-  if (P.hand.length > 7) { const n = P.hand.length - 7; discardChoice(G, P, n, 'hand'); emit(G, 'discard', `${P.name} discards ${n === 1 ? 'a card' : `${n} cards`} to hand size.`, { who: P.i }); }
+  if (P.hand.length > 7) { const n = P.hand.length - 7; discardChoice(G, P, n, 'hand'); emit(G, 'discard', `${P.name} discards ${n === 1 ? 'a card' : `${n} cards`} to hand size.`, { who: P.i }); cmdHome(G); }
   for (const Q of G.players) for (const c of Q.bf) { c.dmg = 0; c.dt = false; c.tp = 0; c.tt = 0; c.tkw = []; c.pumps = 0; c.noBlock = false; c.exileDead = false; }
   G.fog = false;
   G.active = 1 - G.active;
 }
 function playGame(G) {
-  for (const P of G.players) openingHand(G, P);
-  emit(G, 'start', `${G.players[0].name} vs ${G.players[1].name}. ${G.players[G.first].name} goes first.`, { who: G.first });
-  for (const P of G.players) if (P.mulligans) emit(G, 'mulligan', `${P.name} mulligans to ${7 - P.mulligans}.`, { who: P.i });
+  if (G.setup) emit(G, 'start', G.setup.text || `${G.players[0].name} vs ${G.players[1].name}.`, { who: G.first });
+  else {
+    for (const P of G.players) openingHand(G, P);
+    emit(G, 'start', `${G.players[0].name} vs ${G.players[1].name}. ${G.players[G.first].name} goes first.`, { who: G.first });
+    for (const P of G.players) if (P.mulligans) emit(G, 'mulligan', G.format === 'commander' ? `${P.name} mulligans${P.mulligans === 1 ? ' for free' : ''} and keeps ${7 - P.bottomed}.` : `${P.name} mulligans to ${7 - P.mulligans}.`, { who: P.i });
+  }
   while (!G.over && G.turn < MAX_TURNS) takeTurn(G);
   if (!G.over) endGame(G, 'turns');
   return G;
@@ -2149,8 +2215,9 @@ function replayOf(G) {
   const used = {};
   for (const id of Object.keys(G.defs)) used[id] = G.defs[id];
   return {
-    seed: G.seed, first: G.first, winner: G.winner, reason: G.reason, turns: G.turn,
-    players: G.players.map((P) => ({ name: P.name, persona: P.persona, colors: P.colors, life: P.life, stats: P.stats, mulligans: P.mulligans })),
+    seed: G.seed, first: G.first, winner: G.winner, reason: G.reason, turns: G.turn, format: G.format,
+    players: G.players.map((P) => ({ name: P.name, persona: P.persona, colors: P.colors, life: P.life, stats: P.stats, mulligans: P.mulligans, kept: 7 - P.bottomed,
+      cmd: P.cmd ? { id: P.cmd.id, d: P.cmd.def.id } : null, cmdDmg: Object.values(P.cmdDmg).reduce((s, n) => Math.max(s, n), 0) })),
     defs: used, frames: G.frames,
   };
 }
@@ -2255,6 +2322,121 @@ function buildDeck(pool, { colors, archetype = 'midrange', seed, name }) {
   const deckName = name || (tribe && tribe[1] >= 8 ? `${guildName(colors)} ${tribe[0]} ${noun}` : `${guildName(colors)} ${noun}`);
   return deckFromList(deckName, colors, archetype, list);
 }
+/* ---------- Commander decks: 99 different cards (basic lands aside) in the commander's colors ---------- */
+const CMDR_ARCH = {
+  aggro:    { lands: 35, curve: { 1: 7, 2: 12, 3: 10, 4: 7, 5: 4, 6: 2 }, roles: { removal: 10, burn: 4, trick: 4, draw: 2, counter: 0, sweeper: 0, tokens: 2 } },
+  midrange: { lands: 37, curve: { 1: 3, 2: 9, 3: 9, 4: 8, 5: 6, 6: 4, 7: 2 }, roles: { removal: 11, burn: 0, trick: 2, draw: 4, counter: 1, sweeper: 1, tokens: 2 } },
+  control:  { lands: 38, curve: { 2: 5, 3: 6, 4: 6, 5: 5, 6: 4, 7: 2 }, roles: { removal: 12, burn: 0, trick: 2, draw: 7, counter: 7, sweeper: 3, tokens: 2 } },
+};
+const CMD_BANNED = new Set(['Ancestral Recall', 'Balance', 'Biorhythm', 'Channel', 'Coalition Victory', 'Emrakul, the Aeons Torn', 'Erayo, Soratami Ascendant', 'Falling Star', 'Flash', 'Gifts Ungiven', 'Griselbrand',
+  'Hullbreacher', 'Iona, Shield of Emeria', 'Karakas', 'Leovold, Emissary of Trest', 'Library of Alexandria', 'Limited Resources', 'Lutri, the Spellchaser', 'Nadu, Winged Wisdom', 'Primeval Titan', 'Prophet of Kruphix',
+  'Rofellos, Llanowar Emissary', 'Sundering Titan', 'Sway of the Stars', 'Sylvan Primordial', 'Time Walk', 'Tolarian Academy', 'Trade Secrets', 'Upheaval', 'Worldfire', 'Timetwister', 'Wheel of Fortune']);
+// Colors in the mana cost and rules text (not reminder text). A deck may only use cards inside its commander's identity.
+function colorIdentity(def) {
+  const s = new Set(def.colors);
+  // Basic lands carry their color in the type line; "one mana of any color" adds nothing to identity
+  if (def.types.includes('Land') && def.mana && def.mana.length < 5) def.mana.forEach((c) => { if (COLORS.includes(c)) s.add(c); });
+  const text = `${def.manaCost || ''} ${(def.text || '').replace(/\([^()]*\)/g, '')}`;
+  for (const m of text.matchAll(/\{([^}]+)\}/g)) for (const c of COLORS) if (m[1].toUpperCase().split('/').includes(c)) s.add(c);
+  return COLORS.filter((c) => s.has(c));
+}
+const canCommand = (def) => def.supertypes.includes('Legendary') && def.types.includes('Creature');
+function commanderArchetype(def) {
+  const id = colorIdentity(def);
+  if (def.mv <= 3 || (def.kw.includes('haste') && def.mv <= 4)) return 'aggro';
+  if (id.includes('U') && !id.includes('R') && !id.includes('G')) return 'control';
+  return 'midrange';
+}
+const shortName = (name) => name.split(',')[0].replace(/^The /, '');
+function buildCommanderDeck(pool, { commander, archetype, seed, name, include = [], exclude = [] }) {
+  const rng = makeRng(seed == null ? 1 : seed);
+  archetype = archetype || commanderArchetype(commander);
+  const cfg = CMDR_ARCH[archetype] || CMDR_ARCH.midrange;
+  const ident = colorIdentity(commander);
+  const inId = (d) => colorIdentity(d).every((c) => ident.includes(c));
+  const skip = new Set(exclude);
+  const nonland = pool.filter((d) => !d.types.includes('Land') && d.name !== commander.name && !CMD_BANNED.has(d.name) && !skip.has(d.name) && inId(d) && d.mv <= 8);
+  const tribes = new Set(commander.sub);
+  const ramp = commander.mv >= 5 || archetype !== 'aggro';
+  const spellsMatter = commander.kw.includes('prowess');
+  const lifeMatters = commander.onGain && commander.onGain.length;
+  const scoreCache = new Map();
+  const baseScore = (d) => {
+    let s = efficiency(d) * 10;
+    const creature = d.types.includes('Creature');
+    if (archetype === 'aggro' && creature) s += (d.kw.includes('haste') ? 1.5 : 0) + d.power * 0.35 + (d.power / Math.max(1, d.mv)) * 2.2 - (d.kw.includes('defender') ? 6 : 0) - Math.max(0, d.toughness - d.power) * 0.3 - (d.power < 2 ? 1.2 : 0);
+    if (archetype === 'control' && creature) s += (d.kw.includes('flying') ? 1 : 0) + d.etb.length * 1.2 + d.toughness * 0.15 + (d.kw.includes('defender') ? -2 : 0);
+    if (archetype === 'midrange' && creature) s += d.etb.length * 0.6 + (d.kw.includes('defender') ? -3 : 0);
+    // Forty life and a long game: bigger threats and card flow matter more than in a 20-life game
+    if (archetype !== 'aggro') s += Math.min(d.mv, 6) * 0.22;
+    if (creature && d.mana) s += ramp ? 2.2 : 0.8;
+    if (creature && d.sub.some((t) => tribes.has(t))) s += 1.1;
+    if (spellsMatter && !creature) s += 0.9;
+    if (lifeMatters && (d.kw.includes('lifelink') || (d.spell || d.etb).some((e) => e.k === 'gain'))) s += 1.2;
+    if (ident.length > 1 && d.colors.length > 1) s += 0.8;
+    if (!d.colors.length && !d.mana) s -= 1.2;
+    if (!creature && d.spell.some((e) => e.k === 'draw' || e.k === 'brainstorm')) s += archetype === 'aggro' ? 0 : 0.8;
+    return s + rng.next() * 2.6;
+  };
+  const score = (d) => { if (!scoreCache.has(d)) scoreCache.set(d, baseScore(d)); return scoreCache.get(d); };
+  const picks = new Set();
+  for (const n of include) { const d = nonland.find((x) => x.name === n); if (d) picks.add(d); }
+  const fill = (cands, need) => {
+    const sorted = cands.filter((d) => !picks.has(d)).sort((a, b) => score(b) - score(a));
+    for (let k = 0; k < sorted.length && need > 0; k++, need--) picks.add(sorted[k]);
+    return need;
+  };
+  const spellsTotal = 99 - cfg.lands;
+  const curveMv = (d, mv) => (+mv === 7 ? d.mv >= 7 : d.mv === +mv);
+  for (const [mv, n] of Object.entries(cfg.curve)) {
+    const have = [...picks].filter((d) => d.types.includes('Creature') && curveMv(d, mv)).length;
+    fill(nonland.filter((d) => d.types.includes('Creature') && curveMv(d, mv)), n - have);
+  }
+  const byRole = (r) => nonland.filter((d) => d.role === r && efficiency(d) >= 0.3);
+  for (const [role, n] of Object.entries(cfg.roles)) {
+    if (!n) continue;
+    const have = [...picks].filter((d) => d.role === role).length;
+    if (role === 'removal') fill(byRole('removal').concat(archetype === 'aggro' ? byRole('burn') : []), n - have);
+    else fill(byRole(role), n - have);
+  }
+  if (picks.size < spellsTotal) fill(nonland.filter((d) => (d.types.includes('Creature') ? d.mv <= 6 : ['removal', 'draw', 'tokens', 'burn'].includes(d.role))), spellsTotal - picks.size);
+  if (picks.size < spellsTotal) fill(nonland, spellsTotal - picks.size);
+  const keep = new Set(include);
+  while (picks.size > spellsTotal) { const worst = [...picks].filter((d) => !keep.has(d.name)).sort((a, b) => score(a) - score(b))[0]; picks.delete(worst); }
+  // Lands: every land must stay inside the identity. Untapped duals first, then the ones that gain life or scry.
+  const lands = new Map();
+  const landOk = (d) => d.types.includes('Land') && !d.supertypes.includes('Basic') && d.mana && d.mana.every((c) => c === 'C' || ident.includes(c)) && !CMD_BANNED.has(d.name);
+  const landScore = (d) => {
+    const colorsMade = d.mana.filter((c) => ident.includes(c)).length;
+    let v = colorsMade * 2 - (d.etbTapped ? 1.6 : 0) + (d.checkland ? 0.8 : 0) + d.etb.reduce((x, e) => x + Math.max(0, effectValue(e)), 0) + (d.cycling ? 0.6 : 0);
+    if (d.etb.some((e) => effectValue(e) < 0)) v -= 2;
+    return v + rng.next() * 0.3;
+  };
+  const nonbasics = pool.filter(landOk).sort((a, b) => landScore(b) - landScore(a));
+  const wantNon = ident.length >= 2 ? Math.min(10, 3 + ident.length * 3) : 2;
+  for (const d of nonbasics) {
+    if (lands.size >= wantNon) break;
+    if (ident.length >= 2 && d.mana.filter((c) => ident.includes(c)).length < 2) continue;
+    if (ident.length < 2 && !(d.cycling || d.etb.some((e) => effectValue(e) > 0))) continue;
+    lands.set(d, 1);
+  }
+  const pips = Object.fromEntries(ident.map((c) => [c, 0]));
+  for (const d of picks) for (const c of ident) pips[c] += d.cost[c];
+  for (const c of ident) pips[c] += commander.cost[c] * 3;
+  const basicsLeft = cfg.lands - lands.size;
+  const pipTotal = Object.values(pips).reduce((x, n) => x + n, 0) || 1;
+  const BASIC = { W: 'Plains', U: 'Island', B: 'Swamp', R: 'Mountain', G: 'Forest' };
+  let assigned = 0;
+  const idOrBasic = ident.length ? ident : [];
+  idOrBasic.forEach((c, k) => {
+    const n = k === idOrBasic.length - 1 ? basicsLeft - assigned : Math.round((basicsLeft * pips[c]) / pipTotal);
+    const basic = pool.find((d) => d.name === BASIC[c]);
+    if (basic && n > 0) { lands.set(basic, n); assigned += n; }
+  });
+  const list = [...picks].map((def) => ({ def, n: 1 })).concat([...lands].map(([def, n]) => ({ def, n })));
+  const noun = rng.pick({ aggro: ['Charge', 'Onslaught', 'Raiders', 'Blitz'], midrange: ['Host', 'Legion', 'Court', 'Vanguard'], control: ['Archive', 'Conclave', 'Tower', 'Wardens'] }[archetype] || ['Host']);
+  return deckFromList(name || `${shortName(commander.name)}'s ${noun}`, ident, archetype, list, { commander, format: 'commander' });
+}
 function deckFromList(name, colors, archetype, list, extra) {
   const cards = [];
   list.forEach(({ def, n }) => { for (let k = 0; k < n; k++) cards.push(def); });
@@ -2265,6 +2447,7 @@ return {
   compileCard, parseCost, parseTarget, parseSentence, cardValue, efficiency, makeRng, KW, COLORS, slug,
   PERSONAS, ARCH, MAX_TURNS, createGame, playGame, runMatch, replayOf, buildDeck, deckFromList, guildName,
   runInteractive, NeedInput, humanActions, attackCandidates, costText,
+  CMD, CMDR_ARCH, CMD_BANNED, colorIdentity, canCommand, commanderArchetype, buildCommanderDeck,
   _internal: { cv, fight, kills, canBlock, planPayment, manaSources, evalEffect, chooseTargets, aiAttackers, aiBlocks, sba, snap, newCard, castSpell, resolveEffects, combat, takeTurn, enterBattlefield, forecast, protectedFrom, targetOk, pow, tou },
 };
 });
