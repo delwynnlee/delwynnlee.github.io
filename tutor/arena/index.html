@@ -238,7 +238,7 @@ svg.i .fill { fill: currentColor; }
   position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden;
   background: radial-gradient(900px 420px at 50% 50%, rgba(236, 229, 216, .045), transparent 72%);
 }
-.board { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 8px 16px 6px; }
+.board { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 8px 16px 6px; touch-action: manipulation; }
 .side { position: relative; isolation: isolate; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: 6px; padding: 6px 10px; border-radius: 18px; }
 .side::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
   background: radial-gradient(80% 90% at 50% var(--glow-y, 0%), color-mix(in srgb, var(--pc, var(--c)) 9%, transparent), transparent 75%);
@@ -441,7 +441,7 @@ svg.i .fill { fill: currentColor; }
 /* ============================================================
    Playing against the AI
    ============================================================ */
-.playbar { display: none; flex: none; align-items: center; gap: 12px; min-height: 64px; padding: 9px 14px calc(9px + var(--safe-b)); border-top: 1px solid var(--line); background: rgba(32, 29, 39, .96); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+.playbar { touch-action: manipulation; display: none; flex: none; align-items: center; gap: 12px; min-height: 64px; padding: 9px 14px calc(9px + var(--safe-b)); border-top: 1px solid var(--line); background: rgba(32, 29, 39, .96); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
 .table.playing .playbar { display: flex; }
 .table.playing .ctrl { display: none; }
 .pb-text { flex: 1; min-width: 0; }
@@ -550,6 +550,52 @@ svg.i .fill { fill: currentColor; }
 .myhand .card.incmd { margin-right: calc(var(--cardw) * .22); }
 .card.incmd.can-act .face { box-shadow: 0 0 0 2px rgba(255, 216, 140, .95), 0 0 18px rgba(255, 200, 110, .45); }
 
+/* Tiles: art, a readable name and the basics, for cards too small to read as printed */
+.ctile { display: none; position: absolute; left: 50%; top: 50%; width: var(--cardw); height: calc(var(--cardw) * 1.3968); translate: -50% -50%; overflow: hidden; container-type: inline-size; background: var(--tca, #3b3642); color: #fff; text-align: left;
+  transition: rotate .35s var(--ease), width .35s var(--ease), height .35s var(--ease); }
+/* A tapped card turns sideways, but its tile turns back so the name stays upright */
+.card.tapped .ctile { rotate: -90deg; width: calc(var(--cardw) * 1.3968); height: var(--cardw); }
+.card[data-tile] .ctile { display: block; }
+.card[data-tile] .face > img, .card[data-tile] .face > .tc { visibility: hidden; }
+.ct-art { position: absolute; inset: 0; background: radial-gradient(circle at 32% 34%, rgba(255, 255, 255, .3), transparent 60%) center 30% / cover no-repeat; }
+.ctile::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 3px 0 var(--tc, #8a8494), inset 0 0 0 1px rgba(0, 0, 0, .4); }
+.ct-top { position: absolute; left: 0; right: 0; top: 0; display: flex; flex-direction: column; gap: 3cqw; padding: 8cqw 7cqw 15cqw; background: linear-gradient(180deg, rgba(12, 10, 16, .92) 0 56%, rgba(12, 10, 16, 0)); }
+.ct-name { font: 700 clamp(9px, 13.5cqw, 13.5px)/1.12 var(--sans); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; text-shadow: 0 1px 2px rgba(0, 0, 0, .8); }
+.ct-cost { display: flex; flex-wrap: wrap; gap: 1px; font-size: clamp(9px, 12cqw, 13px); line-height: 1; }
+.ct-cost .sym, .ct-sym .sym { margin: 0; }
+.ct-type { position: absolute; left: 0; right: 0; bottom: 0; padding: 15cqw 7cqw 6cqw; font: 600 clamp(8.5px, 11cqw, 12px)/1.1 var(--sans); color: rgba(255, 255, 255, .92); background: linear-gradient(0deg, rgba(12, 10, 16, .92) 0 50%, rgba(12, 10, 16, 0)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ct-sym { position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%); display: flex; gap: 2px; font-size: clamp(13px, 40cqw, 26px); line-height: 1; filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .85)); }
+.creatures .ct-type, .creatures .ct-cost { display: none; }
+.ct-kw { display: none; position: absolute; left: 0; right: 0; bottom: 0; padding: 16cqw 32cqw 7cqw 7cqw; background: linear-gradient(0deg, rgba(12, 10, 16, .9) 0 50%, rgba(12, 10, 16, 0)); }
+.ct-kw span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font: 600 clamp(8.5px, 10.5cqw, 12px)/1.15 var(--sans); color: #ffe7b8; }
+.creatures .ct-kw { display: block; }
+/* On a tile the commander's star sits in front of its name instead of over it */
+.card[data-tile] > .cmdb, .card[data-tile] > .tokb { display: none; }
+.ct-tok { font-style: normal; font-weight: 600; color: rgba(255, 255, 255, .6); }
+.card[data-tile]:has(> .cmdb) .ct-name::before { content: "★ "; color: var(--m); }
+.lands .ct-top, .lands .ct-type { display: none; }
+@container (max-width: 46px) { .ct-top, .ct-type { display: none; } }
+@container (max-width: 64px) { .creatures .ct-kw { display: none; } }
+/* The opponent's spell, big enough to read, until you've seen it */
+.spotlight { position: absolute; inset: 0; z-index: 38; display: grid; place-items: center; padding: 10px; }
+.sl-scrim { position: absolute; inset: 0; background: rgba(14, 12, 18, .62); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); animation: fadein .25s; }
+.sl-box { position: relative; display: flex; flex-direction: column; align-items: center; gap: 9px; width: min(440px, 100%); text-align: center; animation: slrise .35s var(--ease); }
+@keyframes slrise { from { opacity: 0; transform: translateY(14px) scale(.97); } }
+.sl-kick { margin: 0; font: 700 12.5px/1.2 var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--m); }
+.sl-card .card { --cardw: var(--slw, 250px); cursor: zoom-in; }
+.sl-card .card .face { box-shadow: 0 26px 70px rgba(0, 0, 0, .65), 0 0 0 1px rgba(236, 229, 216, .22); }
+.sl-name { margin: 2px 0 0; font: 800 22px/1.15 var(--serif); }
+.sl-what { margin: -3px 0 0; font-size: 15.5px; line-height: 1.4; color: var(--text); opacity: .9; max-width: 36ch; }
+.sl-what b { color: #ffd2a1; font-weight: 700; }
+.sl-acts { display: flex; gap: 8px; margin-top: 2px; }
+.sl-acts .pill { min-width: 150px; height: 44px; justify-content: center; }
+.sl-foot { display: flex; align-items: center; gap: 14px; font-size: 13.5px; color: var(--faint); }
+.sl-foot .link-btn { font-size: 13.5px; color: var(--muted); }
+.sl-bar { position: absolute; left: 25%; right: 25%; bottom: -8px; height: 3px; border-radius: 2px; background: var(--text); opacity: .55; transform-origin: left; animation: slbar var(--sl-ms, 2.6s) linear forwards; }
+@keyframes slbar { to { transform: scaleX(0); } }
+.gback { display: none; flex: none; }
+.pick-grid.one .card { --cardw: min(220px, 52vw); }
+
 /* ============================================================
    Narrow screens
    ============================================================ */
@@ -651,6 +697,35 @@ svg.i .fill { fill: currentColor; }
   .insp { padding: 10px; }
   .insp-box { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 16px; }
   .insp .card { --cardw: min(250px, 66vw); justify-self: center; }
+  body.in-game { --header-h: 0px; }
+  body.in-game .top { display: none; }
+  body.in-game .watch { margin-top: var(--safe-t); height: calc(100dvh - var(--safe-t)); min-height: 0; }
+  body.in-game .midline { display: none; }
+  body.in-game .side[data-p="0"] { margin-top: 4px; }
+  body.in-game .gback { display: inline-flex; width: 34px; height: 34px; border-radius: 10px; margin-right: -2px; }
+  body.in-game .pbar { gap: 7px; }
+  body.in-game .side[data-p="1"] .pbar { gap: 6px; }
+  body.in-game .side[data-p="1"] .libp, body.in-game .side[data-p="1"] .mana { display: none; }
+  body.in-game .side[data-p="1"] .pbar .hand { min-width: 56px; }
+  body.in-game .side[data-p="1"] .who { flex: 0 1 auto; max-width: none; }
+  body.in-game .side.stack .pbar .myhand { justify-content: flex-start; overflow-x: auto; overflow-y: hidden; gap: 6px; padding: 10px 4px 2px; margin: 0 -4px; scrollbar-width: none; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scroll-padding-inline: 4px; }
+  body.in-game .myhand::-webkit-scrollbar { display: none; }
+  body.in-game .myhand .card { margin: 0; scroll-snap-align: start; }
+  body.in-game .myhand .card:first-child { margin-left: auto; }
+  body.in-game .myhand .card:last-child { margin-right: auto; }
+  body.in-game .myhand .card.incmd:not(:last-child) { margin-right: 6px; }
+  body.in-game .myhand[data-more="r"] { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 30px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 30px), transparent); }
+  body.in-game .myhand[data-more="l"] { -webkit-mask-image: linear-gradient(90deg, transparent, #000 30px); mask-image: linear-gradient(90deg, transparent, #000 30px); }
+  body.in-game .myhand[data-more="l r"] { -webkit-mask-image: linear-gradient(90deg, transparent, #000 30px, #000 calc(100% - 30px), transparent); mask-image: linear-gradient(90deg, transparent, #000 30px, #000 calc(100% - 30px), transparent); }
+  .sl-name { font-size: 20px; }
+  .sl-what { font-size: 14.5px; }
+}
+@media (max-height: 500px) {
+  body.in-game { --header-h: 0px; }
+  body.in-game .top { display: none; }
+  body.in-game .watch { margin-top: var(--safe-t); height: calc(100dvh - var(--safe-t)); min-height: 0; }
+  body.in-game .midline { display: none; }
+  body.in-game .gback { display: inline-flex; width: 34px; height: 34px; border-radius: 10px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
@@ -734,6 +809,7 @@ svg.i .fill { fill: currentColor; }
       <div class="floaters" id="floaters" aria-hidden="true"></div>
       <div class="banner" id="banner" hidden></div>
       <div class="toast" id="toast" hidden aria-hidden="true"></div>
+      <div class="spotlight" id="spotlight" hidden></div>
     </div>
     <div class="ctrl" id="ctrl">
       <button type="button" class="icon-btn hide-s" id="cFirst" aria-label="Back to the start"></button>
@@ -1007,6 +1083,19 @@ function textCard(def) {
   return `<div class="tc ${toneClass(def)}"><div class="tc-top"><span class="tc-name">${esc(def.name)}</span><span class="tc-cost">${manaHTML(def.manaCost)}</span></div>`
     + `<div class="tc-art"></div><div class="tc-type">${esc(def.typeLine)}</div><div class="tc-text">${esc(body).replace(/\{([^}]+)\}/g, (m, c) => sym(c))}</div>${pt}</div>`;
 }
+// A tile is the same card cut down for small sizes: its art, a name you can read, and its cost and type
+const cardTileType = (def) => {
+  const main = ['Creature', 'Land', 'Instant', 'Sorcery', 'Artifact', 'Enchantment', 'Planeswalker'].find((x) => def.types.includes(x)) || def.typeLine;
+  return main === 'Creature' ? `Creature ${def.power}/${def.toughness}` : main;
+};
+function cardTileHTML(def) {
+  const art = !def.token && artOf(def.name);
+  const land = def.types.includes('Land');
+  const syms = land && def.mana && def.mana.length && def.mana.length < 5 ? `<span class="ct-sym">${def.mana.map((c) => sym(c)).join('')}</span>` : '';
+  return `<span class="ctile ${toneClass(def)}" aria-hidden="true"><span class="ct-art"${def.token ? '' : ` data-art="${esc(def.name)}"`}${art ? ` style="background-image:url(&quot;${esc(art)}&quot;)"` : ''}></span>`
+    + `<span class="ct-top"><span class="ct-name">${esc(def.name)}${def.token ? ' <i class="ct-tok">token</i>' : ''}</span>${!land && def.manaCost ? `<span class="ct-cost">${manaHTML(def.manaCost)}</span>` : ''}</span>${syms}<span class="ct-type">${esc(cardTileType(def))}</span>`
+    + `${def.kw && def.kw.length ? `<span class="ct-kw"><span>${esc(def.kw.map((k) => k[0].toUpperCase() + k.slice(1)).join(', '))}</span></span>` : ''}</span>`;
+}
 function fillFace(el) {
   const def = el._def;
   const face = el.querySelector('.face');
@@ -1017,11 +1106,12 @@ function fillFace(el) {
     img.alt = def.name;
     img.decoding = 'async';
     img.draggable = false;
-    img.onerror = () => { face.innerHTML = textCard(def); delete IMG.map[def.name]; store.set('arena.img.v1', IMG.map); };
+    img.onerror = () => { face.innerHTML = textCard(def) + cardTileHTML(def); delete IMG.map[def.name]; store.set('arena.img.v1', IMG.map); };
     img.src = src;
     face.innerHTML = '';
     face.appendChild(img);
   } else face.innerHTML = textCard(def);
+  face.insertAdjacentHTML('beforeend', cardTileHTML(def));
 }
 function makeCard(def, id, opts = {}) {
   const el = document.createElement('button');
@@ -1356,7 +1446,7 @@ const W = { replay: null, seed: null, decks: null, i: 0, playing: false, speed: 
 const T = {
   table: $('#table'), board: $('#board'), sides: [$('#side0'), $('#side1')], spot: $('#spot'), fx: $('#fx'), floaters: $('#floaters'), banner: $('#banner'),
   turnchip: $('#turnchip'), phases: $('#phases'), log: $('#log'), logpane: $('#logpane'), scrub: $('#scrub'), track: $('#track'), trackFill: $('#trackFill'), tlabel: $('#tlabel'),
-  play: $('#cPlay'), hands: $('#cHands'), live: $('#live'),
+  play: $('#cPlay'), hands: $('#cHands'), live: $('#live'), spotlight: $('#spotlight'),
 };
 const SPEEDS = [0.5, 1, 2, 4];
 const DUR = {
@@ -1420,6 +1510,7 @@ function setView(view, push) {
     document.title = 'Arena: watch AI players battle with Magic cards';
     closeLog();
   }
+  syncChrome();
   syncHash(push);
   window.scrollTo(0, 0);
 }
@@ -1431,13 +1522,14 @@ function buildSides() {
     T.sides[pi].style.setProperty('--pc', playerColor(pi));
     T.sides[pi].innerHTML = `
       <div class="pbar">
+        ${pi === 1 && W.mode === 'play' ? `<button type="button" class="icon-btn gback" aria-label="${TU.on ? 'Back to the lessons' : 'Leave the game'}" title="${TU.on ? 'Lessons' : 'Decks'}">${icon('back')}</button>` : ''}
         <span class="life" data-player="${pi}" aria-label="Life"><span class="lv">${cmdFmt ? 40 : 20}</span><small>life</small>${cmdFmt ? '<span class="cdb" hidden></span>' : ''}</span>
         <span class="who"><span class="nm">${esc(pl.name)}</span><span class="sub"></span></span>
         <span class="mana" title="Untapped mana"><b class="mn">0</b> mana</span>
         ${mine ? '<span class="grow"></span><div class="row-zone hand myhand" aria-label="Your hand"></div>' : '<div class="row-zone hand" aria-label="Hand"></div>'}
         <span class="zones">
           ${cmdFmt && !mine ? '<span class="pile cmdz" title="Command zone"><span class="stack cz"></span><span class="lbl">Commander</span><b class="taxn"></b></span>' : ''}
-          <span class="pile" title="Library"><span class="stack lib"></span><span class="lbl">Library</span><b class="libn">0</b></span>
+          <span class="pile libp" title="Library"><span class="stack lib"></span><span class="lbl">Library</span><b class="libn">0</b></span>
           <span class="pile" title="Graveyard"><span class="stack gy"></span><span class="lbl">Graveyard</span><b class="gyn">0</b></span>
         </span>
       </div>
@@ -1449,7 +1541,18 @@ function buildSides() {
     back.disabled = true;
     lib.appendChild(back);
   }
+  const gb = T.sides[1].querySelector('.gback');
+  if (gb) gb.addEventListener('click', () => $('#toLobby').click());
+  const hz = T.sides[0].querySelector('.myhand');
+  if (hz) hz.addEventListener('scroll', () => moreHints(hz), { passive: true });
 }
+// A hand wider than the screen scrolls; the edges fade where there's more to see
+function moreHints(hz) {
+  const l = hz.scrollLeft > 2, r = hz.scrollLeft + hz.clientWidth < hz.scrollWidth - 2;
+  const v = [l ? 'l' : '', r ? 'r' : ''].filter(Boolean).join(' ');
+  if (v) hz.dataset.more = v; else delete hz.dataset.more;
+}
+const syncChrome = () => document.body.classList.toggle('in-game', S.view === 'watch' && W.mode === 'play');
 function buildLog() {
   const fr = W.replay.frames;
   const html = [];
@@ -1493,24 +1596,38 @@ function measure() {
   for (const [id, el] of W.els) if (el.isConnected) m.set(id, el.getBoundingClientRect());
   return m;
 }
-function sizeZones(pi, ps, ctx) {
+// Phones, in a game you play: the header and the turn line step aside, both battlefields get the same room, and your hand gets a row of its own
+function phonePlay() {
+  const H = T.board.clientHeight - 10;
+  const handRow = clamp(Math.round(H * 0.21), 96, 138);
+  const landH = clamp(Math.round(H * 0.075), 30, 46);
+  const pbOpp = 44, pbMine = 40;
+  const fixOpp = pbOpp + landH + 20, fixMine = pbMine + 4 + handRow + landH + 20;
+  const cre = Math.max(40, Math.floor((H - fixOpp - fixMine) / 2));
+  return { opp: fixOpp + cre, mine: fixMine + cre, handRow, landH, cre, pbOpp, pbMine };
+}
+function sizeZones(pi, ps) {
   const side = T.sides[pi];
   const boardW = T.board.clientWidth - 32;
   const boardH = T.board.clientHeight;
   const phone = boardW < 600;
+  const pp = phone && W.mode === 'play' ? phonePlay() : null;
+  side.style.flex = pp ? `0 0 ${pi === 0 ? pp.mine : pp.opp}px` : '';
   const cres = ps.bf.filter((b) => isCre(defOf(b.d)));
   const lands = ps.bf.filter((b) => !isCre(defOf(b.d)));
   const groups = new Set(lands.map((b) => `${b.d}|${b.tap ? 1 : 0}`)).size;
   // Height budget per side: creatures get most of it; in a game you play, your hand gets a row of its own
   const myHand = W.mode === 'play' && pi === 0;
-  const sideH = W.mode === 'play' ? side.clientHeight - 12 : (boardH - (phone ? 24 : 30)) / 2 - 12;
-  let pbarH = phone ? 50 : 72, handH = phone ? 46 : 66, handRow = 0;
-  if (myHand && phone) { handRow = clamp(sideH * 0.3, 70, 104); pbarH = 46 + handRow; handH = handRow - 6; }
-  else if (myHand) { pbarH = clamp(sideH * 0.38, 76, 156); handH = pbarH - 8; }
+  const sideH = pp ? 0 : W.mode === 'play' ? side.clientHeight - 12 : (boardH - (phone ? 24 : 30)) / 2 - 12;
+  const short = !phone && boardH < 420; // a phone held sideways
+  let pbarH = phone ? 50 : short ? 46 : 72, handH = phone ? 46 : short ? 42 : 66, handRow = 0;
+  if (pp) { pbarH = myHand ? pp.pbMine : pp.pbOpp; handRow = myHand ? pp.handRow : 0; handH = myHand ? pp.handRow - 14 : pp.pbOpp - 8; }
+  else if (myHand && phone) { handRow = clamp(sideH * 0.3, 70, 104); pbarH = 46 + handRow; handH = handRow - 6; }
+  else if (myHand) { pbarH = clamp(sideH * 0.38, short ? 58 : 76, 156); handH = pbarH - 8; }
   side.classList.toggle('stack', myHand && phone);
   side.style.setProperty('--hand-row', `${handRow}px`);
-  const landH = sideH * (myHand ? (phone ? 0.17 : 0.19) : phone ? 0.22 : 0.24);
-  const creH = sideH - pbarH - landH - 16;
+  const landH = pp ? pp.landH : sideH * (short ? 0.16 : myHand ? (phone ? 0.17 : 0.19) : phone ? 0.22 : 0.24);
+  const creH = pp ? pp.cre - 4 : sideH - pbarH - landH - 16;
   // Creatures: one row while they fit comfortably, then two rows (phones have the height for it)
   const cz = side.querySelector('.creatures');
   const avail = Math.max(120, cz.clientWidth - 4);
@@ -1518,27 +1635,32 @@ function sizeZones(pi, ps, ctx) {
   const tappedN = cres.filter((b) => b.tap).length;
   let rows = 1;
   let cw = Math.min(creH / 1.42, (avail - gap * Math.max(0, cres.length - 1)) / Math.max(1, cres.length + tappedN * 0.3968));
-  if (cw < (phone ? 44 : 60) && cres.length > 3) {
+  if (cw < (pp ? 56 : phone ? 44 : 60) && cres.length > 3) {
     const per = Math.ceil(cres.length / 2);
     const cw2 = Math.min((creH - gap) / 2 / 1.42, (avail - gap * (per - 1)) / (per + Math.min(per, tappedN) * 0.3968));
     if (cw2 > cw) { cw = cw2; rows = 2; }
   }
-  cw = clamp(cw, phone ? 22 : 30, phone ? 76 : 118);
+  cw = clamp(cw, phone || short ? 20 : 30, pp ? 136 : phone ? 76 : 118);
   cz.classList.toggle('wrap', rows === 2);
   cz.style.setProperty('--gap', `${gap}px`);
   const lavail = Math.max(100, side.querySelector('.lands').clientWidth - 4);
   const lw = clamp(Math.min(landH / 1.42, (lavail - 6 * groups) / Math.max(1, groups * 1.25 + 0.3)), phone ? 18 : 26, phone ? 44 : 64);
-  // Hand: as big as the bar allows, overlapping more (then shrinking) when it gets crowded
+  // Hand: as big as the bar allows, overlapping more (then shrinking) when it gets crowded.
+  // On a phone your own hand is a row of readable cards that scrolls sideways instead.
   const hn = ps.hand.length + (myHand && ps.cmd ? ps.cmd.length : 0);
   const hz = side.querySelector('.hand');
   const room = Math.max(40, hz.clientWidth - 8);
-  let hw = myHand ? clamp(handH / 1.4, phone ? 40 : 52, phone ? 72 : 112) : clamp(handH / 1.4, phone ? 16 : 24, phone ? 33 : 47);
-  let ov = myHand ? -0.03 : (W.mode === 'play' ? false : W.hands) ? 0.16 : 0.4;
-  if (hn) {
-    // The row spans hw * (hn - 2·ov·(hn - 1)): every card but the last is tucked under the next one
-    ov = clamp(hn > 1 ? (hn * hw - room) / (2 * hw * (hn - 1)) : 0, ov, myHand ? 0.3 : 0.44);
-    const span = hn - 2 * ov * (hn - 1);
-    if (hw * span > room) hw = Math.max(12, room / span);
+  let hw, ov;
+  if (pp && myHand) { hw = clamp(handH / 1.3968, 52, 98); ov = 0; }
+  else {
+    hw = myHand ? clamp(handH / 1.4, phone ? 40 : 52, phone ? 72 : 112) : clamp(handH / 1.4, phone ? 16 : 24, phone ? 33 : 47);
+    ov = myHand ? -0.03 : (W.mode === 'play' ? false : W.hands) ? 0.16 : 0.4;
+    if (hn) {
+      // The row spans hw * (hn - 2·ov·(hn - 1)): every card but the last is tucked under the next one
+      ov = clamp(hn > 1 ? (hn * hw - room) / (2 * hw * (hn - 1)) : 0, ov, myHand ? 0.3 : 0.44);
+      const span = hn - 2 * ov * (hn - 1);
+      if (hw * span > room) hw = Math.max(12, room / span);
+    }
   }
   hz.style.setProperty('--ov', ov.toFixed(3));
   side.style.setProperty('--cw', `${cw}px`);
@@ -1546,8 +1668,8 @@ function sizeZones(pi, ps, ctx) {
   side.querySelector('.lands').style.setProperty('--cardw', `${lw}px`);
   side.querySelector('.hand').style.setProperty('--cardw', `${hw}px`);
   side.style.setProperty('--pbar-h', `${pbarH}px`);
-  T.board.style.setProperty('--sw', `${clamp(cw * 1.75, phone ? 96 : 130, phone ? 132 : 200)}px`);
-  return { cres, lands, cw, lw, hw };
+  T.board.style.setProperty('--sw', `${pp ? clamp(cw * 1.9, 120, 176) : clamp(cw * 1.75, phone ? 96 : 130, phone ? 132 : 200)}px`);
+  return { cres, lands, cw, lw, hw, tiles: phone || boardH < 420, pp };
 }
 function renderSide(pi, ps, f, used) {
   const side = T.sides[pi];
@@ -1575,9 +1697,11 @@ function renderSide(pi, ps, f, used) {
   side.querySelector('.mn').textContent = ps.mana != null ? ps.mana : '';
   const pl = W.replay.players[pi];
   const mull = pl.mulligans ? (pl.kept === 7 ? ', free mulligan' : `, mulliganed to ${pl.kept != null ? pl.kept : 7 - pl.mulligans}`) : '';
-  side.querySelector('.who .sub').textContent = `${W.mode === 'play' ? (pi === 0 ? 'You' : `AI, ${ARCH_LABEL[pl.persona].toLowerCase()}`) : ARCH_LABEL[pl.persona]}${mull}`;
+  const compact = W.mode === 'play' && pi === 1 && document.body.classList.contains('in-game') && matchMedia('(max-width: 640px)').matches;
+  side.querySelector('.who .sub').textContent = compact ? `AI · ${ps.mana != null ? ps.mana : 0} mana` : `${W.mode === 'play' ? (pi === 0 ? 'You' : `AI, ${ARCH_LABEL[pl.persona].toLowerCase()}`) : ARCH_LABEL[pl.persona]}${mull}`;
   side.querySelector('.gyn').textContent = ps.gyN;
-  const { cres, lands } = sizeZones(pi, ps);
+  const { cres, lands, tiles, pp } = sizeZones(pi, ps);
+  const tile = (el, on) => { if (on) el.dataset.tile = '1'; else delete el.dataset.tile; };
   const spotIds = new Set((f.s.stack || []).map((x) => x.id).concat(f.res ? [f.res] : []));
   // Creatures
   const cz = side.querySelector('.creatures');
@@ -1591,6 +1715,7 @@ function renderSide(pi, ps, f, used) {
     el.classList.toggle('blk', !!b.blk);
     el.dataset.small = cz.style.getPropertyValue('--cardw') && parseFloat(cz.style.getPropertyValue('--cardw')) < 70 ? '1' : '';
     if (!el.dataset.small) delete el.dataset.small;
+    tile(el, tiles);
     const up = b.p > def.power || b.t > def.toughness, down = b.p < def.power || b.t < def.toughness;
     let badges = `<span class="badge pt${up && !down ? ' up' : down ? ' down' : ''}">${b.p}/${b.t}</span>`;
     if (b.dmg) badges += `<span class="badge dmg" title="Damage">${b.dmg}</span>`;
@@ -1619,7 +1744,7 @@ function renderSide(pi, ps, f, used) {
     if (!g) { g = document.createElement('span'); g.className = 'lgroup'; g.dataset.k = key; }
     g.classList.toggle('tapped', key.endsWith('|1'));
     const shown = list.slice(0, 3);
-    const els = shown.map((b) => { const el = cardFor(b.id, b.d); used.add(b.id); el.classList.toggle('tapped', !!b.tap); el.dataset.small = '1'; setBadges(el, ''); el.setAttribute('aria-label', `${defOf(b.d).name}${b.tap ? ', tapped' : ''}`); return el; });
+    const els = shown.map((b) => { const el = cardFor(b.id, b.d); used.add(b.id); el.classList.toggle('tapped', !!b.tap); el.dataset.small = '1'; tile(el, tiles); setBadges(el, ''); el.setAttribute('aria-label', `${defOf(b.d).name}${b.tap ? ', tapped' : ''}`); return el; });
     list.slice(3).forEach((b) => used.add(b.id));
     if (list.length > 1) setBadges(els[els.length - 1], `<span class="badge xn">${list.length}</span>`);
     placeChildren(g, els);
@@ -1631,7 +1756,8 @@ function renderSide(pi, ps, f, used) {
   const faceUp = W.mode === 'play' ? pi === 0 : W.hands;
   hz.classList.toggle('backs', !faceUp);
   const bigHand = W.mode === 'play' && pi === 0 && parseFloat(hz.style.getPropertyValue('--cardw')) >= 70;
-  const hnodes = ps.hand.filter(([id]) => !spotIds.has(id)).map(([id, d]) => { const el = cardFor(id, d, !faceUp); used.add(id); el.classList.remove('tapped', 'att', 'blk', 'sick', 'incmd'); if (bigHand) delete el.dataset.small; else el.dataset.small = '1'; setBadges(el, ''); return el; });
+  const handTiles = !!pp && pi === 0;
+  const hnodes = ps.hand.filter(([id]) => !spotIds.has(id)).map(([id, d]) => { const el = cardFor(id, d, !faceUp); used.add(id); el.classList.remove('tapped', 'att', 'blk', 'sick', 'incmd'); if (bigHand) delete el.dataset.small; else el.dataset.small = '1'; tile(el, handTiles && faceUp); setBadges(el, ''); return el; });
   // The command zone: your commander waits at the left of your hand; anyone else's sits in its own pile
   const cmdCards = (ps.cmd || []).filter(([id]) => !spotIds.has(id)).map(([id, d]) => {
     const el = cardFor(id, d);
@@ -1641,19 +1767,20 @@ function renderSide(pi, ps, f, used) {
     return el;
   });
   const myCmd = W.mode === 'play' && pi === 0;
-  if (myCmd) cmdCards.forEach((el) => { if (bigHand) delete el.dataset.small; else el.dataset.small = '1'; setBadges(el, `<span class="badge cmdb" title="Commander">★</span>${ps.tax ? `<span class="badge taxb" title="Commander tax">+${ps.tax}</span>` : ''}`); });
+  if (myCmd) cmdCards.forEach((el) => { if (bigHand) delete el.dataset.small; else el.dataset.small = '1'; tile(el, handTiles); setBadges(el, `<span class="badge cmdb" title="Commander">★</span>${ps.tax ? `<span class="badge taxb" title="Commander tax">+${ps.tax}</span>` : ''}`); });
   placeChildren(hz, myCmd ? cmdCards.concat(hnodes) : hnodes);
+  if (handTiles) moreHints(hz); else delete hz.dataset.more;
   const czone = side.querySelector('.stack.cz');
   if (czone) {
     side.querySelector('.taxn').textContent = ps.tax ? `+${ps.tax}` : '';
     side.querySelector('.taxn').title = ps.tax ? `Commander tax: ${ps.tax} more mana` : '';
-    if (cmdCards.length) { cmdCards.forEach((el) => { el.dataset.small = '1'; setBadges(el, ''); }); placeChildren(czone, cmdCards); }
+    if (cmdCards.length) { cmdCards.forEach((el) => { el.dataset.small = '1'; tile(el, false); setBadges(el, ''); }); placeChildren(czone, cmdCards); }
     else czone.innerHTML = '<span class="ph star" title="Commander is out of the command zone">★</span>';
   }
   // Graveyard top
   const gz = side.querySelector('.stack.gy');
   const top = ps.gy.filter(([id]) => !spotIds.has(id)).slice(-1)[0];
-  if (top) { const el = cardFor(top[0], top[1]); used.add(top[0]); el.classList.remove('tapped', 'att', 'blk', 'sick'); el.dataset.small = '1'; setBadges(el, ''); placeChildren(gz, [el]); }
+  if (top) { const el = cardFor(top[0], top[1]); used.add(top[0]); el.classList.remove('tapped', 'att', 'blk', 'sick'); el.dataset.small = '1'; tile(el, false); setBadges(el, ''); placeChildren(gz, [el]); }
   else gz.innerHTML = '<span class="ph"></span>';
 }
 const shortKw = (k) => ({ flying: 'Fly', trample: 'Trm', 'first strike': 'FS', 'double strike': 'DS', lifelink: 'Life', deathtouch: 'DT', vigilance: 'Vig', haste: 'Hst', menace: 'Men', indestructible: 'Ind', hexproof: 'Hex', reach: 'Rch' }[k] || k);
@@ -1676,14 +1803,14 @@ function renderSpot(f, used) {
     const d = findDefOfId(f, f.res);
     if (d) ids.push([f.res, d]);
   }
-  const nodes = ids.map(([id, d]) => { const el = cardFor(id, d); used.add(id); el.classList.remove('tapped', 'att', 'blk', 'sick'); delete el.dataset.small; setBadges(el, ''); return el; });
+  const nodes = ids.map(([id, d]) => { const el = cardFor(id, d); used.add(id); el.classList.remove('tapped', 'att', 'blk', 'sick'); delete el.dataset.small; delete el.dataset.tile; setBadges(el, ''); return el; });
   placeChildren(T.spot, nodes);
   if (f.k === 'countered' && nodes.length === 0) {
     // the countered spell already went to the graveyard: show it with a stamp for a moment
     const id = f.cards && f.cards[0];
     const d = id && findDefOfId(f, id);
     if (d) {
-      const el = cardFor(id, d); used.add(id); setBadges(el, ''); placeChildren(T.spot, [el]);
+      const el = cardFor(id, d); used.add(id); delete el.dataset.tile; setBadges(el, ''); placeChildren(T.spot, [el]);
       el.insertAdjacentHTML('beforeend', '<span class="badge stamp">Countered</span>');
       el._badges = null;
     }
@@ -1704,6 +1831,7 @@ function render(i, animate = true) {
   const f = fr[i];
   const motion = animate && !reduceMotion.matches;
   W.animating = motion;
+  syncChrome();
   const first = motion ? measure() : null;
   const used = new Set();
   W.i = i;
@@ -1987,7 +2115,7 @@ function closeInspector() {
    ============================================================ */
 const PL = { on: false, keys: null, decks: null, seed: 0, answers: [], req: null, done: false, shown: -1, ui: 'idle', anim: 0, skip: null, pend: null, picks: new Set(), blocks: new Map(), sel: null, choice: null, imgs: false, toastTurn: 0 };
 const PB = { title: $('#pbTitle'), hint: $('#pbHint'), acts: $('#pbActs') };
-const PLAY_PACE = 1.8;
+const PLAY_PACE = 1.8, AI_PACE = 1.35;
 const savedPlay = () => store.get('arena.play.v1', null);
 function playStart(seed, answers, opts = {}) {
   const d0 = opts.decks ? opts.decks[0] : deckByKey(S.seats[0]), d1 = opts.decks ? opts.decks[1] : deckByKey(S.seats[1]);
@@ -1995,6 +2123,7 @@ function playStart(seed, answers, opts = {}) {
   if (!opts.lesson) endLesson();
   stop();
   clearTimeout(PL.anim);
+  closeSpotlight(false);
   closeChoice();
   closeInspector();
   Object.assign(PL, { held: null, on: true, keys: opts.decks ? null : S.seats.slice(), decks: opts.decks || mirrorSafe(d0, d1), setup: opts.setup || null, seed, answers: (answers || []).slice(), req: null, done: false, shown: -1, pend: null, skip: null, imgs: false, toastTurn: 0 });
@@ -2008,13 +2137,19 @@ function playStart(seed, answers, opts = {}) {
   T.banner.hidden = true;
   setView('watch', !opts.replace);
   advance(false, true);
+  hintUpright();
 }
+// A phone held sideways leaves little room for cards: say so once, when it happens
+const SIDEWAYS = matchMedia('(max-height: 500px) and (orientation: landscape) and (pointer: coarse)');
+function hintUpright() { if (SIDEWAYS.matches && S.view === 'watch' && W.mode === 'play' && T.spotlight.hidden) setTimeout(() => nudge('Turn your phone upright for bigger cards.'), 600); }
+if (SIDEWAYS.addEventListener) SIDEWAYS.addEventListener('change', hintUpright);
 function endPlay() {
   endLesson();
   if (!PL.on) return;
   PL.on = false;
   clearTimeout(PL.anim);
   PL.skip = null;
+  closeSpotlight(false);
   closeChoice();
   W.mode = 'watch';
   T.table.classList.remove('playing');
@@ -2049,14 +2184,80 @@ function advance(animate, first) {
 }
 function runFrames(i, end, done) {
   clearTimeout(PL.anim);
-  PL.skip = () => { clearTimeout(PL.anim); PL.skip = null; render(end, false); done(); };
+  PL.skip = () => { closeSpotlight(false); clearTimeout(PL.anim); PL.skip = null; render(end, false); done(); };
   render(i, true);
   const f = W.replay.frames[i];
   if (f.k !== 'ask' && f.text) { const k = PB.title.querySelector('.pb-kicker'); PB.title.innerHTML = `${k ? k.outerHTML : ''}${esc(f.text).replace(/\{([^}]+)\}/g, (m, c) => sym(c))}`; }
+  const next = () => { if (i >= end) { PL.skip = null; done(); } else runFrames(i + 1, end, done); };
+  if (wantSpotlight(f, i, end)) { openSpotlight(f, next); return; }
   if (i >= end) { PL.skip = null; done(); return; }
   const mine = f.who === 0 && f.k !== 'turn';
-  const pace = TU.on && TU.strict ? 1.15 : PLAY_PACE;
-  PL.anim = setTimeout(() => runFrames(i + 1, end, done), (frameDur(f) / pace) * (mine ? 0.6 : 1));
+  const pace = TU.on && TU.strict ? 1.15 : mine ? PLAY_PACE : AI_PACE;
+  PL.anim = setTimeout(next, (frameDur(f) / pace) * (mine ? 0.6 : 1));
+}
+/* The opponent's spells: shown big, with what they target, until you tap OK (or briefly, if you'd rather not stop) */
+const SPOT = { wait: store.get('arena.spotwait.v1', true) !== false, go: null, timer: 0 };
+function wantSpotlight(f, i, end) {
+  if (W.mode !== 'play' || f.k !== 'cast' || f.who !== 1) return false;
+  // A spell you could counter comes with its own question instead
+  const nx = W.replay.frames[i + 1];
+  return !(i + 1 === end && nx && nx.k === 'ask' && PL.req && PL.req.type === 'counter' && PL.req.spell === f.card);
+}
+function spotTargets(f) {
+  const me = f.s.p[0];
+  const words = [...new Set((f.targets || []).map((t) => {
+    if (typeof t === 'string') return t === 'p0' ? 'you' : 'themselves';
+    const st = (f.s.stack || []).find((x) => x.id === t);
+    const d = st ? st.d : findDefOfId(f, t);
+    const name = d != null ? esc(defOf(d).name) : 'a card';
+    const yours = st ? st.who === 0 : me.bf.some((b) => b.id === t) || me.hand.some(([h]) => h === t);
+    return yours ? `your ${st ? 'spell ' : ''}<b>${name}</b>` : `<b>${name}</b>`;
+  }))];
+  return words.length ? `Targeting ${words.length > 1 ? `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}` : words[0]}.` : '';
+}
+function openSpotlight(f, go) {
+  const st = (f.s.stack || []).find((x) => x.id === f.card);
+  const dId = st ? st.d : findDefOfId(f, f.card);
+  if (dId == null) { go(); return; }
+  const def = defOf(dId);
+  const fromCmd = / from the command zone/.test(f.text);
+  const what = isCre(def) ? `A ${def.power}/${def.toughness} creature${def.kw.length ? ` with ${def.kw.length > 1 ? `${def.kw.slice(0, -1).join(', ')} and ${def.kw[def.kw.length - 1]}` : def.kw[0]}` : ''}.` : '';
+  const box = T.spotlight;
+  SPOT.go = go;
+  box.innerHTML = `<div class="sl-scrim" data-sl="ok"></div><div class="sl-box" role="dialog" aria-label="${esc(W.decks[1].name)} casts ${esc(def.name)}">
+    <p class="sl-kick">${esc(W.decks[1].name)} casts${fromCmd ? ' its commander' : ''}</p>
+    <div class="sl-card"></div>
+    <p class="sl-name">${esc(def.name)}</p>
+    ${what || f.targets && f.targets.length ? `<p class="sl-what">${esc(what)}${what ? ' ' : ''}${spotTargets(f)}</p>` : ''}
+    <div class="sl-acts"><button type="button" class="pill pill-solid" data-sl="ok">OK</button></div>
+    <div class="sl-foot"><span>Tap the card to read it</span><button type="button" class="link-btn" data-sl="mode"></button></div>
+  </div>`;
+  const card = makeCard(def, `sl${f.card}`);
+  box.querySelector('.sl-card').appendChild(card);
+  // As big as the board allows, leaving room for the words and the button
+  const bw = T.board.clientWidth, bh = T.board.clientHeight;
+  box.style.setProperty('--slw', `${Math.round(clamp(Math.min(bw < 640 ? 250 : 280, bw * 0.62, (bh - 215) / 1.3968), 110, 280))}px`);
+  box.hidden = false;
+  spotMode();
+}
+function spotMode() {
+  const box = T.spotlight;
+  clearTimeout(SPOT.timer);
+  box.querySelectorAll('.sl-bar').forEach((b) => b.remove());
+  const m = box.querySelector('[data-sl="mode"]');
+  if (m) m.textContent = SPOT.wait ? "Don't stop for spells" : 'Stop for each spell';
+  if (SPOT.wait) return;
+  const ms = Math.round(2600 / W.speed);
+  box.style.setProperty('--sl-ms', `${ms}ms`);
+  box.querySelector('.sl-box').insertAdjacentHTML('beforeend', '<i class="sl-bar"></i>');
+  SPOT.timer = setTimeout(() => closeSpotlight(true), ms);
+}
+function closeSpotlight(run) {
+  clearTimeout(SPOT.timer);
+  const go = SPOT.go;
+  SPOT.go = null;
+  if (!T.spotlight.hidden) { T.spotlight.hidden = true; T.spotlight.innerHTML = ''; }
+  if (run && go) go();
 }
 function settle(r) {
   // A finished game stays saved (so a reload shows how it ended) but no longer waits in the lobby. Lessons aren't saved.
@@ -2102,6 +2303,7 @@ function undo() {
   if (!PL.on || !PL.answers.length || (TU.on && TU.strict)) return;
   clearTimeout(PL.anim);
   PL.skip = null;
+  closeSpotlight(false);
   PL.answers.pop();
   closeChoice();
   closeInspector();
@@ -2234,6 +2436,9 @@ function decorate() {
     }
     for (const [aid, bs] of PL.blocks) bs.forEach((b) => arrow(b, aid, 'blk pick-line'));
   }
+  const hz = T.sides[0].querySelector('.myhand');
+  const want = hz && hz.scrollWidth > hz.clientWidth + 2 && hz.querySelector('.coach-next');
+  if (want && (want.offsetLeft < hz.scrollLeft || want.offsetLeft + want.offsetWidth > hz.scrollLeft + hz.clientWidth)) hz.scrollTo({ left: want.offsetLeft - 8, behavior: 'smooth' });
 }
 function onPlayClick(target) {
   const life = target.closest('.life');
@@ -2374,7 +2579,7 @@ function openChoice(req) {
   PL.choice = { req, sel: [], title };
   box.innerHTML = `<div class="sheet-box" role="dialog" aria-modal="true" aria-labelledby="shTitle">
     <div class="sheet-head"><div><h2 id="shTitle">${esc(title)}</h2><p class="sub">${esc(sub)}</p>${TU.on && TU.tip ? `<p class="tu-tip"><b>Tip.</b> ${coachHTML(TU.tip.say)}</p>` : ''}</div><button type="button" class="link-btn" data-sh="hide">See the board</button></div>
-    <div class="pick-grid${selectable ? ' selectable' : ''}" id="shGrid"></div>
+    <div class="pick-grid${selectable ? ' selectable' : ''}${ids.length === 1 ? ' one' : ''}" id="shGrid"></div>
     <div class="sheet-acts">${acts}</div></div>`;
   const grid = box.querySelector('#shGrid');
   ids.forEach((id) => {
@@ -2599,6 +2804,12 @@ function wire() {
     if (b.dataset.res === 'go') resumeSaved();
     else { store.set('arena.play.v1', null); renderResume(); }
   });
+  T.spotlight.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-sl]');
+    if (!b) { if (e.target.closest('.card')) { clearTimeout(SPOT.timer); T.spotlight.querySelectorAll('.sl-bar').forEach((x) => x.remove()); } return; }
+    if (b.dataset.sl === 'mode') { SPOT.wait = !SPOT.wait; store.set('arena.spotwait.v1', SPOT.wait); spotMode(); return; }
+    closeSpotlight(true);
+  });
   PB.acts.addEventListener('click', (e) => {
     const b = e.target.closest('[data-pb]');
     if (!b) return;
@@ -2737,6 +2948,7 @@ function wire() {
   });
   document.addEventListener('keydown', (e) => {
     if (!$('#insp').hidden) { if (e.key === 'Escape') { e.preventDefault(); closeInspector(); } return; }
+    if (!T.spotlight.hidden && (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') && !(e.target.closest && e.target.closest('.sl-foot button, .sl-card .card'))) { e.preventDefault(); closeSpotlight(true); return; }
     if (S.view === 'watch' && W.mode === 'play') {
       const life = e.target.closest && e.target.closest('.life.can-target');
       if (life && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onPlayClick(life); return; }
