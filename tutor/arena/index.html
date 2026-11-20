@@ -337,7 +337,8 @@ svg.i .fill { fill: currentColor; }
 .card .zoneb { left: 50%; bottom: -6px; transform: translateX(-50%); background: rgba(21, 19, 26, .94); color: #e9dfc9; border: 1px solid var(--line-strong); font-size: max(9px, 10cqw); }
 .ringc { flex: none; display: inline-flex; align-items: center; gap: 5px; font: 700 12.5px/1 var(--sans); color: #ecd27a; padding: 5px 9px; border-radius: 999px; border: 1px solid rgba(236, 210, 122, .45); background: rgba(236, 210, 122, .08); white-space: nowrap; cursor: help; }
 .ringc i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid currentColor; }
-.sets-row { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 10px; margin: 18px 0 6px; scrollbar-width: thin; }
+.pool { margin-top: 20px; }
+.sets-row { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 10px; margin: 0 0 4px; scrollbar-width: thin; }
 .setchip { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding: 10px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font: 700 14.5px/1.1 var(--sans); text-align: left; }
 .setchip span { font: 500 12.5px/1.2 var(--sans); color: var(--muted); white-space: nowrap; }
 .setchip .full { color: var(--good); font-style: normal; }
@@ -782,9 +783,13 @@ svg.i .fill { fill: currentColor; }
       <div class="seg seg-lg" role="group" aria-label="Format" id="fmtSeg">
         <button type="button" data-fmt="standard" aria-pressed="true">Standard</button>
         <button type="button" data-fmt="commander" aria-pressed="false">Commander</button>
-        <button type="button" data-fmt="sets" aria-pressed="false">Sets</button>
       </div>
       <button type="button" class="learn" id="learnBtn"></button>
+    </div>
+    <div class="pool">
+      <p class="gen-label" id="poolLbl">Cards</p>
+      <div class="sets-row" role="group" aria-labelledby="poolLbl" id="poolChips"></div>
+      <p class="set-note" id="poolNote"></p>
     </div>
     <div class="resume" id="resume" hidden></div>
     <div class="seats" id="seats"></div>
@@ -865,11 +870,11 @@ svg.i .fill { fill: currentColor; }
 <div class="insp" id="insp" role="dialog" aria-modal="true" aria-labelledby="inspName" hidden></div>
 <div class="sheet" id="sheet" hidden></div>
 
-<script src="engine.js?v=5"></script>
+<script src="engine.js?v=6"></script>
 <script src="ltr.js?v=1"></script>
 <script src="decks.js?v=3"></script>
 <script src="commanders.js?v=3"></script>
-<script src="sets.js?v=1"></script>
+<script src="sets.js?v=2"></script>
 <script src="tutorial.js?v=4"></script>
 <script>
 'use strict';
@@ -1016,7 +1021,6 @@ function genDeck(colors, archetype, seed) {
 }
 /* Commander decks: Claude's (k.id) and built around any legend (kg.slug.plan.seed) */
 const CMDR = { specs: window.ARENA_COMMANDERS || [], legends: [] };
-const isCmdKey = (key) => /^kg?\./.test(key || '');
 function cmdDeck(spec) {
   const key = `k.${spec.id}`;
   if (DECKS.has(key)) return DECKS.get(key);
@@ -1031,28 +1035,52 @@ function describeCmdDeck(d) {
   const removal = countOf(d, (x) => ['removal', 'burn', 'sweeper'].includes(x.role));
   const lands = countOf(d, (x) => x.types.includes('Land'));
   const plan = { aggro: 'to attack early and often', midrange: 'to trade early and win with bigger threats', control: 'to answer everything and win late' }[d.archetype];
-  return `Built just now around ${d.commander.name}, ${plan}: ${creatures} creatures${ramp ? ` (${ramp} of them make mana)` : ''}, ${removal} ways to deal with a creature and ${lands} lands.`;
+  const set = d.set && setByCode(d.set);
+  return `Built just now around ${d.commander.name}${set ? ` from ${set.name} alone` : ''}, ${plan}: ${creatures} creatures${ramp ? ` (${ramp} of them make mana)` : ''}, ${removal} ways to deal with a creature and ${lands} lands.`;
 }
-function genCmdDeck(slug, archetype, seed) {
-  const key = `kg.${slug}.${archetype}.${seed}`;
+// set: build only from that set's cards (key s.ltr.kg...), or from every card when it's left out
+function genCmdDeck(slug, archetype, seed, set) {
+  const key = `${set ? `s.${set.code.toLowerCase()}.` : ''}kg.${slug}.${archetype}.${seed}`;
   if (DECKS.has(key)) return DECKS.get(key);
-  const commander = CMDR.legends.find((x) => x.id === slug);
+  const commander = (set ? setLegends(set) : CMDR.legends).find((x) => x.id === slug);
   if (!commander) return null;
-  const d = Arena.buildCommanderDeck(DATA.pool, { commander, archetype, seed });
-  finishDeck(d, { key, by: 'gen', seed, face: commander.name });
+  const d = Arena.buildCommanderDeck(set ? setPool(set) : DATA.pool, { commander, archetype, seed });
+  finishDeck(d, set ? { key, by: 'gen', seed, face: commander.name, set: set.code } : { key, by: 'gen', seed, face: commander.name });
   d.blurb = describeCmdDeck(d);
   return d;
 }
-/* Set play: both decks come only from one set's cards, plus basic lands */
-const SETS = { list: (window.ARENA_SETS && window.ARENA_SETS.sets) || [], decks: (window.ARENA_SETS && window.ARENA_SETS.decks) || {}, pools: new Map() };
+/* Cards from one set: in either format, decks come only from that set's cards, plus basic lands */
+const SETS = { list: (window.ARENA_SETS && window.ARENA_SETS.sets) || [], decks: (window.ARENA_SETS && window.ARENA_SETS.decks) || {},
+  commanders: (window.ARENA_SETS && window.ARENA_SETS.commanders) || {}, pools: new Map(), legends: new Map() };
 const BASIC_NAMES = ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'];
 const setByCode = (code) => SETS.list.find((x) => x.code.toLowerCase() === String(code || '').toLowerCase()) || null;
-const curSet = () => setByCode(S.set) || SETS.list[0];
+const curSet = () => setByCode(S.pool); // null when playing with all cards
 const isFullSet = (set) => set.cards.length >= set.total;
-const fmtOfKey = (key) => (/^kg?\./.test(key || '') ? 'commander' : /^s\./.test(key || '') ? 'sets' : 'standard');
+// A deck's key says both choices: s.<set>. in front means one set's cards, k or kg means Commander
+const poolOfKey = (key) => { const m = /^s\.([a-z0-9]{2,4})\./.exec(key || ''); const set = m && setByCode(m[1]); return set ? set.code : 'all'; };
+const fmtOfKey = (key) => (/^(s\.[a-z0-9]{2,4}\.)?kg?\./.test(key || '') ? 'commander' : 'standard');
 function setPool(set) {
   if (!SETS.pools.has(set.code)) { const names = new Set(set.cards.concat(BASIC_NAMES)); SETS.pools.set(set.code, DATA.pool.filter((d) => names.has(d.name))); }
   return SETS.pools.get(set.code);
+}
+function setLegends(set) {
+  if (!SETS.legends.has(set.code)) SETS.legends.set(set.code, setPool(set).filter(Arena.canCommand).sort((a, b) => a.name.localeCompare(b.name)));
+  return SETS.legends.get(set.code);
+}
+// Commander from one set needs legends to lead the decks; the older core sets have almost none
+const poolOk = (fmt, pool) => pool === 'all' || (!!setByCode(pool) && (fmt !== 'commander' || setLegends(setByCode(pool)).length >= 4));
+function setCmdDeck(set, spec) {
+  const key = `s.${set.code.toLowerCase()}.k.${spec.id}`;
+  if (DECKS.has(key)) return DECKS.get(key);
+  const commander = setLegends(set).find((x) => x.name === spec.commander);
+  if (!commander) return null;
+  const d = Arena.buildCommanderDeck(setPool(set), { commander, archetype: spec.archetype, seed: spec.seed, name: spec.name, include: spec.include });
+  return finishDeck(d, { key, by: 'claude', blurb: spec.blurb, face: commander.name, set: set.code });
+}
+function setCmdDecks(set) {
+  const specs = SETS.commanders[set.code] || [];
+  if (specs.length) return specs.map((sp) => setCmdDeck(set, sp)).filter(Boolean);
+  return setLegends(set).slice().sort((a, b) => b.value - a.value).slice(0, 10).map((c, k) => genCmdDeck(c.id, Arena.commanderArchetype(c), 2001 + k, set));
 }
 function setDeck(set, spec) {
   const key = `s.${set.code.toLowerCase()}.c.${spec.id}`;
@@ -1093,6 +1121,10 @@ function deckByKey(key) {
   if (m) { const set = setByCode(m[1]); const spec = set && (SETS.decks[set.code] || []).find((x) => x.id === m[2]); return spec ? setDeck(set, spec) : null; }
   m = /^s\.([a-z0-9]{2,4})\.g\.([WUBRG]{1,2})\.(aggro|midrange|control)\.(\d{1,10})$/.exec(key);
   if (m) { const set = setByCode(m[1]); return set ? genSetDeck(set, m[2].split(''), m[3], +m[4]) : null; }
+  m = /^s\.([a-z0-9]{2,4})\.k\.([a-z0-9-]+)$/.exec(key);
+  if (m) { const set = setByCode(m[1]); const spec = set && (SETS.commanders[set.code] || []).find((x) => x.id === m[2]); return spec ? setCmdDeck(set, spec) : null; }
+  m = /^s\.([a-z0-9]{2,4})\.kg\.([a-z0-9-]+)\.(aggro|midrange|control)\.(\d{1,10})$/.exec(key);
+  if (m) { const set = setByCode(m[1]); return set ? genCmdDeck(m[2], m[3], +m[4], set) : null; }
   return null;
 }
 const newSeed = () => (Math.random() * 2 ** 31) >>> 0;
@@ -1200,35 +1232,107 @@ function makeCard(def, id, opts = {}) {
 /* ============================================================
    App state, routing
    ============================================================ */
-const S = { view: 'lobby', format: 'standard', seats: [null, null], active: 0, src: 'claude', gen: { colors: ['R', 'G'], arch: 'aggro' }, cgen: { colors: [], arch: 'auto', pick: null }, recent: [], sim: null, set: store.get('arena.set.v1', 'LTR') };
+const S = { view: 'lobby', format: 'standard', seats: [null, null], active: 0, src: 'claude', gen: { colors: ['R', 'G'], arch: 'aggro' }, cgen: { colors: [], arch: 'auto', pick: null }, recent: [], sim: null, pool: 'all', poolPick: 'all' };
 const FMT = {
   standard: { seatsKey: 'arena.seats.v1', recentKey: 'arena.recent.v1', defaults: () => [`c.${window.ARENA_DECKS[0].id}`, `c.${window.ARENA_DECKS[2].id}`],
     hero: 'Pick two decks, then play against the AI yourself or watch two AI players fight it out with real Magic cards. Every attack, block and counterspell is played by the rules.' },
   commander: { seatsKey: 'arena.cseats.v1', recentKey: 'arena.crecent.v1', defaults: () => ['k.rorix', 'k.akroma'],
     hero: 'Commander, one on one: 100-card decks with a single copy of each card, 40 life each, and a legendary commander you can cast again and again from the command zone.' },
-  sets: { seatsKey: 'arena.sseats.v1', recentKey: 'arena.srecent.v1', defaults: () => { const ds = setDecks(curSet()); return [ds[0].key, ds[Math.min(2, ds.length - 1)].key]; },
-    hero: "One set at a time: both decks come only from that set's cards, like a night of sealed or draft. The Lord of the Rings: Tales of Middle-earth is complete. Older core sets are partly playable, and each says how much." },
 };
-const saveSeats = () => store.set(FMT[S.format].seatsKey, S.seats);
-function setFormat(fmt, seats) {
-  if (!FMT[fmt]) return;
-  const changed = S.format !== fmt;
+// Seats and recent builds are kept for each format and each set of cards
+const seatsKeyOf = (fmt, pool) => (pool === 'all' ? FMT[fmt].seatsKey : `arena.seats.${fmt}.${pool}.v1`);
+const recentKeyOf = (fmt, pool) => (pool === 'all' ? FMT[fmt].recentKey : `arena.recent.${fmt}.${pool}.v1`);
+function defaultsFor(fmt, pool) {
+  const set = setByCode(pool);
+  if (!set) return FMT[fmt].defaults();
+  const ds = fmt === 'commander' ? setCmdDecks(set) : setDecks(set);
+  return [ds[0].key, ds[Math.min(2, ds.length - 1)].key];
+}
+const saveSeats = () => store.set(seatsKeyOf(S.format, S.pool), S.seats);
+// seats: the decks to keep (from a link or a saved game). Their keys decide the format and the cards.
+function setMode(fmt, pool, seats) {
+  if (!FMT[fmt]) fmt = 'standard';
+  if (!poolOk(fmt, pool)) pool = 'all';
+  const changed = S.format !== fmt || S.pool !== pool;
   S.format = fmt;
+  S.pool = pool;
   store.set('arena.format.v1', fmt);
-  if (fmt === 'sets' && !seats) { const m = /^s\.([a-z0-9]+)\./.exec((store.get(FMT.sets.seatsKey, null) || [])[0] || ''); if (m && setByCode(m[1])) S.set = setByCode(m[1]).code; }
-  const saved = seats || store.get(FMT[fmt].seatsKey, null);
-  const def = FMT[fmt].defaults();
-  S.seats = [0, 1].map((i) => (saved && deckByKey(saved[i]) ? saved[i] : def[i]));
-  if (fmt === 'sets' && seats) { const m = /^s\.([a-z0-9]+)\./.exec(seats[0] || ''); if (m && setByCode(m[1])) S.set = setByCode(m[1]).code; }
-  S.recent = store.get(FMT[fmt].recentKey, []).filter((k) => fmtOfKey(k) === fmt);
+  const fits = (k) => !!k && fmtOfKey(k) === fmt && poolOfKey(k) === pool && !!deckByKey(k);
+  const saved = seats || store.get(seatsKeyOf(fmt, pool), null);
+  const def = defaultsFor(fmt, pool);
+  S.seats = [0, 1].map((i) => (saved && fits(saved[i]) ? saved[i] : def[i]));
+  S.recent = store.get(recentKeyOf(fmt, pool), []).filter(fits);
   if (changed) { S.active = 0; S.sim = null; L.sim.hidden = true; openLists.clear(); }
   renderFormat();
+}
+// A new format keeps the cards you picked when it can: Commander needs a set with legends
+function setFormat(fmt, seats) {
+  if (seats) { S.poolPick = poolOfKey(seats[0]); store.set('arena.pool.v1', S.poolPick); }
+  setMode(fmt, seats ? S.poolPick : poolOk(fmt, S.poolPick) ? S.poolPick : 'all', seats);
+}
+function choosePool(pool) {
+  if (pool === S.pool || !poolOk(S.format, pool)) return;
+  S.poolPick = pool;
+  store.set('arena.pool.v1', pool);
+  setMode(S.format, pool);
+  S.src = 'claude';
+  renderSeats();
+  renderPick();
+  renderButtons();
+  syncHash(false);
+}
+function poolChipHTML(code, on) {
+  if (code === 'all') return `<button type="button" class="setchip" data-pool="all" aria-pressed="${on}"><b>All cards</b><span>${nf.format(DATA.count)} cards</span></button>`;
+  const x = setByCode(code);
+  const n = isFullSet(x) ? `<i class="full">All ${x.total} cards</i>` : `${x.cards.length} of ${x.total} cards`;
+  return `<button type="button" class="setchip" data-pool="${esc(x.code)}" aria-pressed="${on}"><b>${esc(x.short)}</b><span>${n} · ${x.year}</span></button>`;
+}
+function renderPool() {
+  const codes = ['all'].concat(SETS.list.filter((x) => poolOk(S.format, x.code)).map((x) => x.code));
+  const row = $('#poolChips');
+  row.innerHTML = codes.map((c) => poolChipHTML(c, c === S.pool)).join('');
+  const set = curSet();
+  const cmd = S.format === 'commander';
+  let note;
+  if (!set) note = `${cmd ? 'Commanders and their 99 cards come' : 'Decks come'} from all ${nf.format(DATA.count)} cards the engine can play.`;
+  else if (cmd) note = `Any of the ${setLegends(set).length} legendary creatures in ${esc(set.name)} can lead a deck, and the 99 come only from the set, plus basic lands.`;
+  else if (isFullSet(set)) note = `Both decks use only cards from ${esc(set.name)}, plus basic lands. Every card in the set is playable.`;
+  else note = `Both decks use only the ${set.cards.length} cards of ${esc(set.name)} the engine can play, plus basic lands.`;
+  if (cmd && codes.length < SETS.list.length + 1) note += ' The older core sets have too few legends for Commander.';
+  $('#poolNote').innerHTML = note;
+  const on = row.querySelector('[aria-pressed="true"]');
+  if (on && (on.offsetLeft + on.offsetWidth > row.scrollLeft + row.clientWidth || on.offsetLeft < row.scrollLeft)) row.scrollLeft = on.offsetLeft - row.offsetLeft - 12;
 }
 function renderFormat() {
   $$('#fmtSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.fmt === S.format)));
   $('#heroText').textContent = FMT[S.format].hero;
   document.body.dataset.fmt = S.format;
+  renderPool();
   renderLearnBtn();
+}
+// The Sets format (November 2026) became Standard with one set's cards: carry its choices over once
+function migrateSets() {
+  if (store.get('arena.format.v1', 'standard') === 'sets') {
+    const set = setByCode(store.get('arena.set.v1', 'LTR')) || SETS.list[0];
+    store.set('arena.format.v1', 'standard');
+    if (set) store.set('arena.pool.v1', set.code);
+  }
+  const seats = store.get('arena.sseats.v1', null);
+  if (seats) {
+    const pool = poolOfKey(seats[0]);
+    if (pool !== 'all' && !store.get(seatsKeyOf('standard', pool), null)) store.set(seatsKeyOf('standard', pool), seats);
+    store.set('arena.sseats.v1', null);
+  }
+  const recent = store.get('arena.srecent.v1', null);
+  if (recent) {
+    for (const k of recent.slice().reverse()) {
+      const pool = poolOfKey(k);
+      if (pool === 'all') continue;
+      const rk = recentKeyOf('standard', pool);
+      store.set(rk, [k].concat(store.get(rk, []).filter((x) => x !== k)).slice(0, 5));
+    }
+    store.set('arena.srecent.v1', null);
+  }
 }
 function hashFor() {
   if (S.view === 'learn') return '#learn';
@@ -1310,21 +1414,24 @@ function legendHTML(d) {
   return `<button type="button" class="legend" data-cmd="${esc(d.id)}" aria-pressed="${S.cgen.pick === d.id}"><span class="lg-art" data-art="${esc(d.name)}" style="${artOf(d.name) ? `background-image:url(&quot;${esc(artOf(d.name))}&quot;)` : ''}"></span>`
     + `<span class="lg-body"><b>${esc(d.name)}</b><span class="lg-meta">${colorsHTML(id)}<span>${d.power}/${d.toughness}${d.kw.length ? `, ${esc(d.kw.slice(0, 2).join(', '))}` : ''}</span></span></span></button>`;
 }
+const cmdLegends = () => (curSet() ? setLegends(curSet()) : CMDR.legends);
 function renderCmdPick() {
+  const set = curSet();
   if (S.src === 'claude') {
-    const ds = CMDR.specs.map(cmdDeck).filter(Boolean);
+    const ds = set ? setCmdDecks(set) : CMDR.specs.map(cmdDeck).filter(Boolean);
     L.pickBody.innerHTML = `<div class="deck-grid">${ds.map(tileHTML).join('')}</div>`;
     ensureImages(ds.map((d) => d.face));
     return;
   }
   const g = S.cgen;
-  const shown = CMDR.legends.filter((d) => g.colors.every((c) => Arena.colorIdentity(d).includes(c)));
-  const pick = CMDR.legends.find((d) => d.id === g.pick);
+  const legends = cmdLegends();
+  const shown = legends.filter((d) => g.colors.every((c) => Arena.colorIdentity(d).includes(c)));
+  const pick = legends.find((d) => d.id === g.pick);
   const recent = S.recent.map(deckByKey).filter(Boolean);
   L.pickBody.innerHTML = `<div class="gen">
     <div class="gen-box">
       <h3>Build around a commander</h3>
-      <p>Pick any of the ${CMDR.legends.length} legendary creatures the engine can play. The generator fills 99 cards in its colors: a curve of creatures, removal, card draw, mana creatures and lands.</p>
+      <p>${set ? `Pick any of the ${legends.length} legendary creatures in ${esc(set.short)}. The generator fills 99 cards in its colors from the set alone` : `Pick any of the ${legends.length} legendary creatures the engine can play. The generator fills 99 cards in its colors`}: a curve of creatures, removal, card draw, mana creatures and lands.</p>
       <p class="gen-label" id="cgColorsLbl">Show commanders with</p>
       <div class="pips" role="group" aria-labelledby="cgColorsLbl">${['W', 'U', 'B', 'R', 'G'].map((c) => `<button type="button" class="pip" data-cc="${c}" aria-pressed="${g.colors.includes(c)}" aria-label="${COLOR_NAME[c]}">${sym(c)}</button>`).join('')}</div>
       <div class="legends" role="group" aria-label="Commanders">${shown.length ? shown.map(legendHTML).join('') : '<p class="empty-note">No commander has all of those colors.</p>'}</div>
@@ -1345,40 +1452,32 @@ function renderCmdPick() {
   ensureImages(shown.map((d) => d.name).concat(recent.map((d) => d.face)));
 }
 function buildCmdFromPanel(random) {
-  let pick = CMDR.legends.find((d) => d.id === S.cgen.pick);
+  const legends = cmdLegends();
+  let pick = legends.find((d) => d.id === S.cgen.pick);
   if (random || !pick) {
-    const pool = CMDR.legends.filter((d) => S.cgen.colors.every((c) => Arena.colorIdentity(d).includes(c)));
-    pick = (pool.length ? pool : CMDR.legends)[Math.floor(Math.random() * (pool.length || CMDR.legends.length))];
+    const pool = legends.filter((d) => S.cgen.colors.every((c) => Arena.colorIdentity(d).includes(c)));
+    pick = (pool.length ? pool : legends)[Math.floor(Math.random() * (pool.length || legends.length))];
     S.cgen.pick = pick.id;
   }
   const arch = random || S.cgen.arch === 'auto' ? Arena.commanderArchetype(pick) : S.cgen.arch;
-  const d = genCmdDeck(pick.id, arch, newSeed());
+  const d = genCmdDeck(pick.id, arch, newSeed(), curSet());
   S.recent = [d.key].concat(S.recent.filter((k) => k !== d.key)).slice(0, 5);
-  store.set(FMT.commander.recentKey, S.recent);
+  store.set(recentKeyOf(S.format, S.pool), S.recent);
   setSeat(d.key);
   renderPick();
-}
-function setChipHTML(x, on) {
-  const n = isFullSet(x) ? `<i class="full">All ${x.total} cards</i>` : `${x.cards.length} of ${x.total} cards`;
-  return `<button type="button" class="setchip" data-set="${esc(x.code)}" aria-pressed="${on}"><b>${esc(x.short)}</b><span>${n} · ${x.year}</span></button>`;
 }
 function renderSetPick() {
   const set = curSet();
   const full = isFullSet(set);
   const designed = (SETS.decks[set.code] || []).length;
-  const note = full ? `Every card in ${esc(set.name)} is playable. Decks here use only this set, plus basic lands.`
-    : `The engine can play ${set.cards.length} of the ${set.total} cards in ${esc(set.name)}. Decks here use only those, plus basic lands.`;
-  const head = `<div class="sets-row" role="group" aria-label="Set">${SETS.list.map((x) => setChipHTML(x, x.code === set.code)).join('')}</div><p class="set-note">${note}${S.src === 'claude' && !designed ? ' These ten were built by the generator, one for each pair of colors.' : ''}</p>`;
-  const showChip = () => { const row = L.pickBody.querySelector('.sets-row'), on = row && row.querySelector('[aria-pressed="true"]'); if (on && (on.offsetLeft + on.offsetWidth > row.scrollLeft + row.clientWidth || on.offsetLeft < row.scrollLeft)) row.scrollLeft = on.offsetLeft - row.offsetLeft - 12; };
   if (S.src === 'claude') {
     const ds = setDecks(set);
-    L.pickBody.innerHTML = `${head}<div class="deck-grid">${ds.map(tileHTML).join('')}</div>`;
-    showChip();
+    L.pickBody.innerHTML = `${designed ? '' : '<p class="set-note" style="margin:0 0 14px">The generator built these ten from the set, one for each pair of colors.</p>'}<div class="deck-grid">${ds.map(tileHTML).join('')}</div>`;
     ensureImages(ds.map((d) => d.face));
     return;
   }
   const recent = S.recent.map(deckByKey).filter(Boolean);
-  L.pickBody.innerHTML = `${head}<div class="gen">
+  L.pickBody.innerHTML = `<div class="gen">
     <div class="gen-box">
       <h3>Build a ${esc(set.short)} deck</h3>
       <p>The generator drafts only from ${full ? `the ${set.total} cards of the set` : `the ${set.cards.length} playable cards of the set`}: it rates each one for the plan you pick, fills a mana curve and adds basic lands.</p>
@@ -1393,36 +1492,21 @@ function renderSetPick() {
     </div>
     <div class="gen-box">
       <h3>Recent builds</h3>
-      <p>Your last few set decks, so a good one isn't lost.</p>
+      <p>Your last few ${esc(set.short)} decks, so a good one isn't lost.</p>
       <div class="recent">${recent.length ? recent.map(tileHTML).join('') : '<p class="empty-note">Nothing yet. Build a deck and it will show up here.</p>'}</div>
     </div>
   </div>`;
-  showChip();
   ensureImages(recent.map((d) => d.face));
 }
-function chooseSet(code) {
-  const set = setByCode(code);
-  if (!set) return;
-  S.set = set.code;
-  store.set('arena.set.v1', S.set);
-  // Both seats move to the new set, so a game never mixes two sets
-  const ds = setDecks(set);
-  S.seats = [ds[0].key, ds[Math.min(2, ds.length - 1)].key];
-  S.active = 0;
-  S.sim = null;
-  L.sim.hidden = true;
-  openLists.clear();
-  saveSeats();
-  renderSeats();
-  renderPick();
-  syncHash(false);
-}
 function renderPick() {
+  const set = curSet();
+  const cmd = S.format === 'commander';
+  const designed = !set || ((cmd ? SETS.commanders[set.code] : SETS.decks[set.code]) || []).length;
   $$('#srcSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.src === S.src)));
-  $$('#srcSeg button')[0].textContent = S.format === 'sets' && !(SETS.decks[curSet().code] || []).length ? 'Ready decks' : "Claude's decks";
-  $$('#srcSeg button')[1].textContent = S.format === 'commander' ? 'Pick a commander' : 'Build one';
-  if (S.format === 'commander') { renderCmdPick(); $$('.tile', L.pickBody).forEach(markTile); return; }
-  if (S.format === 'sets') { renderSetPick(); $$('.tile', L.pickBody).forEach(markTile); return; }
+  $$('#srcSeg button')[0].textContent = designed ? "Claude's decks" : 'Ready decks';
+  $$('#srcSeg button')[1].textContent = cmd ? 'Pick a commander' : 'Build one';
+  if (cmd) { renderCmdPick(); $$('.tile', L.pickBody).forEach(markTile); return; }
+  if (set) { renderSetPick(); $$('.tile', L.pickBody).forEach(markTile); return; }
   if (S.src === 'claude') {
     const ds = window.ARENA_DECKS.map((x) => DECKS.get(`c.${x.id}`)).filter(Boolean);
     L.pickBody.innerHTML = `<div class="deck-grid">${ds.map(tileHTML).join('')}</div>`;
@@ -1483,19 +1567,18 @@ function buildFromPanel(random) {
     arch = ['aggro', 'midrange', 'control'][Math.floor(Math.random() * 3)];
     S.gen = { colors, arch };
   }
-  const d = S.format === 'sets' ? genSetDeck(curSet(), colors, arch, newSeed()) : genDeck(colors, arch, newSeed());
+  const d = curSet() ? genSetDeck(curSet(), colors, arch, newSeed()) : genDeck(colors, arch, newSeed());
   S.recent = [d.key].concat(S.recent.filter((k) => k !== d.key)).slice(0, 5);
-  store.set(FMT[S.format].recentKey, S.recent);
+  store.set(recentKeyOf(S.format, S.pool), S.recent);
   setSeat(d.key);
   renderPick();
 }
 function randomMatchup() {
-  if (S.format === 'commander') {
-    const ids = CMDR.specs.map((x) => `k.${x.id}`);
-    const a = ids[Math.floor(Math.random() * ids.length)];
+  if (curSet()) {
+    const ks = (S.format === 'commander' ? setCmdDecks(curSet()) : setDecks(curSet())).map((d) => d.key);
+    const a = ks[Math.floor(Math.random() * ks.length)];
     let b = a;
-    if (Math.random() < 0.3) { const c = CMDR.legends[Math.floor(Math.random() * CMDR.legends.length)]; b = genCmdDeck(c.id, Arena.commanderArchetype(c), newSeed()).key; }
-    else while (b === a) b = ids[Math.floor(Math.random() * ids.length)];
+    while (b === a && ks.length > 1) b = ks[Math.floor(Math.random() * ks.length)];
     S.seats = [a, b];
     S.sim = null;
     L.sim.hidden = true;
@@ -1504,11 +1587,12 @@ function randomMatchup() {
     syncHash(false);
     return;
   }
-  if (S.format === 'sets') {
-    const ks = setDecks(curSet()).map((d) => d.key);
-    const a = ks[Math.floor(Math.random() * ks.length)];
+  if (S.format === 'commander') {
+    const ids = CMDR.specs.map((x) => `k.${x.id}`);
+    const a = ids[Math.floor(Math.random() * ids.length)];
     let b = a;
-    while (b === a && ks.length > 1) b = ks[Math.floor(Math.random() * ks.length)];
+    if (Math.random() < 0.3) { const c = CMDR.legends[Math.floor(Math.random() * CMDR.legends.length)]; b = genCmdDeck(c.id, Arena.commanderArchetype(c), newSeed()).key; }
+    else while (b === a) b = ids[Math.floor(Math.random() * ids.length)];
     S.seats = [a, b];
     S.sim = null;
     L.sim.hidden = true;
@@ -3241,9 +3325,8 @@ function wire() {
     }
   });
   $('#srcSeg').addEventListener('click', (e) => { const b = e.target.closest('button[data-src]'); if (!b) return; S.src = b.dataset.src; renderPick(); });
+  $('#poolChips').addEventListener('click', (e) => { const b = e.target.closest('[data-pool]'); if (b) choosePool(b.dataset.pool); });
   L.pickBody.addEventListener('click', (e) => {
-    const sc = e.target.closest('.setchip[data-set]');
-    if (sc) { if (sc.dataset.set !== curSet().code) chooseSet(sc.dataset.set); return; }
     const t = e.target.closest('.tile');
     if (t) { setSeat(t.dataset.key); if (S.format === 'commander' && S.src === 'gen') renderPick(); return; }
     const pip = e.target.closest('.pip[data-c]');
@@ -3392,9 +3475,9 @@ function wire() {
     const h = readHash();
     if (h.lesson && lessonById(h.lesson)) { if (!(TU.on && TU.lesson.id === h.lesson && S.view === 'watch')) lessonStart(h.lesson, true); return; }
     if (h.learn) { if (S.view !== 'learn') { setView('learn', false); renderLessons(); } return; }
-    if (h.a && h.b && fmtOfKey(h.a.key) === fmtOfKey(h.b.key)) {
+    if (h.a && h.b && fmtOfKey(h.a.key) === fmtOfKey(h.b.key) && poolOfKey(h.a.key) === poolOfKey(h.b.key)) {
       const f = fmtOfKey(h.a.key);
-      if (f !== S.format) { setFormat(f, [h.a.key, h.b.key]); renderPick(); } else S.seats = [h.a.key, h.b.key];
+      if (f !== S.format || poolOfKey(h.a.key) !== S.pool) { setFormat(f, [h.a.key, h.b.key]); renderPick(); } else S.seats = [h.a.key, h.b.key];
     }
     if (h.play != null && h.a && h.b) { if (!(PL.on && PL.seed === h.play)) { const sv = savedPlay(); const same = sv && sv.seed === h.play && sv.a === h.a.key && sv.b === h.b.key; playStart(h.play, same ? sv.answers : [], { legacy: same && sv.v !== 2 }); } }
     else if (h.seed != null && h.a && h.b) { if (!(S.view === 'watch' && W.mode === 'watch' && W.seed === h.seed)) watch(h.seed, { replace: true }); }
@@ -3418,9 +3501,10 @@ async function boot() {
   for (const spec of window.ARENA_DECKS) claudeDeck(spec);
   CMDR.legends = DATA.pool.filter(Arena.canCommand).sort((a, b) => a.name.localeCompare(b.name));
   const h = readHash();
-  if (!setByCode(S.set) && SETS.list.length) S.set = SETS.list[0].code;
   $('#poolCount').textContent = nf.format(DATA.count);
-  const hashSeats = h.a && h.b && fmtOfKey(h.a.key) === fmtOfKey(h.b.key) ? [h.a.key, h.b.key] : null;
+  migrateSets();
+  S.poolPick = setByCode(store.get('arena.pool.v1', 'all')) ? setByCode(store.get('arena.pool.v1', 'all')).code : 'all';
+  const hashSeats = h.a && h.b && fmtOfKey(h.a.key) === fmtOfKey(h.b.key) && poolOfKey(h.a.key) === poolOfKey(h.b.key) ? [h.a.key, h.b.key] : null;
   const savedFmt = store.get('arena.format.v1', 'standard');
   setFormat(hashSeats ? fmtOfKey(hashSeats[0]) : FMT[savedFmt] ? savedFmt : 'standard', hashSeats);
   L.boot.hidden = true;

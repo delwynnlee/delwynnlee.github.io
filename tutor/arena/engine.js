@@ -4369,7 +4369,8 @@ function buildCommanderDeck(pool, { commander, archetype, seed, name, include = 
   const pips = Object.fromEntries(ident.map((c) => [c, 0]));
   for (const d of picks) for (const c of ident) pips[c] += d.cost[c];
   for (const c of ident) pips[c] += commander.cost[c] * 3;
-  const basicsLeft = cfg.lands - lands.size;
+  // One set can run out of cards in the commander's colors: the rest of the 99 is basic lands
+  const basicsLeft = cfg.lands - lands.size + Math.max(0, spellsTotal - picks.size);
   const pipTotal = Object.values(pips).reduce((x, n) => x + n, 0) || 1;
   const BASIC = { W: 'Plains', U: 'Island', B: 'Swamp', R: 'Mountain', G: 'Forest' };
   let assigned = 0;

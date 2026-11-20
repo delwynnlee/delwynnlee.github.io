@@ -1,4 +1,4 @@
-/* Sets you can play on their own: both decks come only from one set's cards (plus basic lands).
+/* Sets you can play on their own, in Standard or Commander: decks come only from one set's cards (plus basic lands).
    The Lord of the Rings: Tales of Middle-earth is complete; the older core sets list the cards the engine can play. */
 (function (root, factory) {
   const data = factory();
@@ -64,5 +64,46 @@
         cards: [[17,"Forest"],[7,"Island"],[4,"Chance-Met Elves"],[4,"Galadhrim Guide"],[3,"Grey Havens Navigator"],[3,"Willow-Wind"],[2,"Arwen Undómiel"],[2,"Celeborn the Wise"],[2,"Elrond, Master of Healing"],[2,"Fall of Gil-galad"],[2,"Galadriel of Lothlórien"],[2,"Generous Ent"],[2,"Legolas, Counter of Kills"],[2,"Legolas, Master Archer"],[2,"Mirkwood Spider"],[2,"Pippin's Bravery"],[1,"Glorfindel, Dauntless Rescuer"],[1,"Lothlórien Lookout"]] },
     ],
   };
-  return { sets, decks };
+  // Claude's Commander decks from one set: a legend of the set leads, and the builder fills the 99 from the set alone
+  const commanders = {
+    LTR: [
+      { id: "fellowship", name: "The Fellowship", commander: "Aragorn, Company Leader", archetype: "midrange", seed: 11,
+        blurb: "Aragorn leads the Fellowship: Frodo and Sam, Merry and Pippin, an Elf archer and the sword that was broken.",
+        include: ["Frodo Baggins","Samwise Gamgee","Peregrin Took","Meriadoc Brandybuck","Legolas, Master Archer","Andúril, Flame of the West"] },
+      { id: "eagles", name: "The Great Eagles", commander: "Gwaihir the Windlord", archetype: "control", seed: 12,
+        blurb: "Gwaihir and the Eagles above, Gondor's captains below: fliers, and a reward for drawing two cards a turn.",
+        include: ["Landroval, Horizon Witness","Meneldor, Swift Savior","Faramir, Prince of Ithilien","Prince Imrahil the Fair","Knights of Dol Amroth"] },
+      { id: "mouth", name: "The Voice of Barad-dûr", commander: "The Mouth of Sauron", archetype: "control", seed: 13,
+        blurb: "The Mouth of Sauron speaks for the Dark Lord: mill, counterspells, and the Ring tempting you until the Nazgûl ride.",
+        include: ["Sharkey, Tyrant of the Shire","Gollum, Patient Plotter","Ringsight","Sauron's Ransom","Nazgûl","Saruman the White"] },
+      { id: "uruks", name: "The Uruk-hai", commander: "Shagrat, Loot Bearer", archetype: "midrange", seed: 14,
+        blurb: "Shagrat hauls the loot while the Orc armies grow: amass, sacrifice and keep swinging.",
+        include: ["Mauhúr, Uruk-hai Captain","Uglúk of the White Hand","Grishnákh, Brash Instigator","Gothmog, Morgul Lieutenant","Orcish Bowmasters"] },
+      { id: "hunters", name: "The Three Hunters", commander: "Strider, Ranger of the North", archetype: "midrange", seed: 15,
+        blurb: "Strider, Gimli and Legolas run down the Uruk-hai across Rohan: fights, big creatures and landfall.",
+        include: ["Gimli, Mournful Avenger","Legolas, Master Archer","Gimli, Counter of Kills","Friendly Rivalry","Éomer of the Riddermark"] },
+      { id: "steward", name: "The Last Steward", commander: "Denethor, Ruling Steward", archetype: "midrange", seed: 31,
+        blurb: "Denethor holds Minas Tirith and the Dead of Dunharrow answer: Spirit tokens that phase out of harm, and life drained a little at a time.",
+        include: ["King of the Oathbreakers","Oath of the Grey Host","Shadow Summoning","Lotho, Corrupt Shirriff"] },
+      { id: "greywizard", name: "The Grey Wizard", commander: "Gandalf the Grey", archetype: "midrange", seed: 17,
+        blurb: "Gandalf and his fireworks: cheap spells, copies of them, and Bilbo with a little treasure.",
+        include: ["Bilbo, Retired Burglar","Fiery Inscription","Flame of Anor","Gandalf's Sanction","Glamdring"] },
+      { id: "shelob", name: "Shelob's Lair", commander: "Shelob, Child of Ungoliant", archetype: "midrange", seed: 18,
+        blurb: "Shelob and the old dark things of the forest: deathtouch, Food from what dies, and creatures that come back.",
+        include: ["Mirkwood Spider","Old Man Willow","Sméagol, Helpful Guide","Rise of the Witch-king","Revive the Shire"] },
+      { id: "rohan", name: "The Riders of Rohan", commander: "Éowyn, Fearless Knight", archetype: "aggro", seed: 19,
+        blurb: "Éowyn rides with Théoden and Merry: haste, Humans, and the charge at the Pelennor Fields.",
+        include: ["Théoden, King of Rohan","Merry, Esquire of Rohan","Éomer, Marshal of Rohan","Erkenbrand, Lord of Westfold","Rohirrim Lancer","Rally at the Hornburg"] },
+      { id: "elves", name: "Rivendell and Lórien", commander: "Elrond, Master of Healing", archetype: "midrange", seed: 20,
+        blurb: "Elrond and Galadriel keep the Elves: scry every turn, +1/+1 counters, and card after card.",
+        include: ["Galadriel of Lothlórien","Arwen Undómiel","Legolas, Counter of Kills","Celeborn the Wise","Chance-Met Elves"] },
+      { id: "nine", name: "The Nine Riders", commander: "Witch-king of Angmar", archetype: "midrange", seed: 21,
+        blurb: "The Lord of the Nazgûl and his wraiths: the Ring tempts you, creatures die, and your opponent sacrifices.",
+        include: ["Nazgûl","Gothmog, Morgul Lieutenant","Call of the Ring","Gorbag of Minas Morgul","Claim the Precious"] },
+      { id: "darklord", name: "The Dark Lord", commander: "Sauron, the Dark Lord", archetype: "midrange", seed: 22,
+        blurb: "Sauron rebuilds his armies: amass Orcs, let the Ring tempt you, and break the free peoples one by one.",
+        include: ["The Mouth of Sauron","Mauhúr, Uruk-hai Captain","Orcish Bowmasters","Saruman the White","Grond, the Gatebreaker"] },
+    ],
+  };
+  return { sets, decks, commanders };
 });
