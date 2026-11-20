@@ -1,0 +1,95 @@
+/* Decks designed by Claude for Holo Arena. Each list is 60 cards from the playable pool (Scarlet & Violet and Mega Evolution). */
+(function (root) {
+  const DECKS = [
+    {
+      id: 'charizard', name: 'Charizard ex', types: ['R'], archetype: 'midrange', face: 'sv3-125',
+      blurb: 'Rare Candy straight into Charizard ex, whose Infernal Reign loads three Fire Energy at once. Pidgeot ex fetches whatever piece is missing.',
+      cards: [[3, 'me2-11'], [1, 'me2pt5-20'], [2, 'me2-12'], [3, 'sv3-125'], [2, 'sv3pt5-16'], [1, 'sv3-163'], [2, 'sv3-164'], [1, 'sv6pt5-38'],
+        [4, 'sv1-191'], [4, 'me1-131'], [2, 'sv1-181'], [2, 'me2pt5-184'], [4, 'sv8pt5-122'], [3, 'sv2-185'], [2, 'me1-114'], [1, 'sv1-166'], [1, 'sv1-180'], [1, 'sv1-176'],
+        [1, 'sv2-188'], [1, 'me2pt5-196'], [1, 'sv1-194'], [1, 'sv5-157'], [2, 'sv1-186'], [1, 'sv4-160'], [1, 'sv5-159'], [1, 'sv4-163'], [1, 'sv1-171'],
+        [11, 'sve-2']],
+    },
+    {
+      id: 'gardevoir', name: 'Gardevoir ex', types: ['P'], archetype: 'control', face: 'sv1-86',
+      blurb: 'Psychic Embrace pulls Energy back from the discard pile, and every damage counter it costs makes Drifloon hit harder.',
+      cards: [[2, 'sv1-84'], [2, 'me1-58'], [2, 'me1-59'], [1, 'sv1-85'], [2, 'sv1-86'], [2, 'sv1-89'], [1, 'sv1-90'], [1, 'sv2-97'], [1, 'sv8-76'], [1, 'sv6pt5-38'],
+        [3, 'sv1-191'], [4, 'me1-131'], [2, 'sv1-181'], [2, 'me2pt5-184'], [4, 'sv8pt5-122'], [3, 'sv2-185'], [2, 'me1-114'], [1, 'sv1-166'], [1, 'sv1-176'],
+        [1, 'me2pt5-196'], [1, 'sv2-188'], [2, 'sv4-163'], [1, 'sv1-194'], [1, 'sv5-152'], [2, 'sv1-186'], [1, 'sv4-160'], [1, 'sv5-159'],
+        [13, 'sve-5']],
+    },
+    {
+      id: 'dragapult', name: 'Dragapult ex', types: ['N'], archetype: 'midrange', face: 'sv6-130',
+      blurb: 'Phantom Dive hits the Active for 200 and scatters six damage counters across the Bench. Dusknoir finishes whatever is left.',
+      cards: [[4, 'sv6-128'], [3, 'sv6-129'], [3, 'sv6-130'], [2, 'sv6pt5-18'], [1, 'sv6pt5-19'], [1, 'sv6pt5-20'], [1, 'sv6pt5-38'],
+        [4, 'sv1-191'], [4, 'me1-131'], [2, 'sv1-181'], [2, 'me2pt5-184'], [4, 'sv8pt5-122'], [3, 'sv2-185'], [2, 'me1-114'], [1, 'sv1-166'], [1, 'sv1-176'],
+        [1, 'me2pt5-196'], [1, 'sv2-188'], [1, 'sv1-194'], [1, 'sv5-157'], [2, 'sv1-186'], [1, 'sv4-160'], [1, 'sv5-159'], [1, 'sv4-163'],
+        [6, 'sve-2'], [7, 'sve-5']],
+    },
+    {
+      id: 'lucario', name: 'Mega Lucario ex', types: ['F'], archetype: 'aggro', face: 'me1-77',
+      blurb: 'Aura Jab hits for 130 and loads the Bench from the discard pile, so the next Mega Lucario ex arrives ready to swing.',
+      cards: [[4, 'me1-76'], [3, 'me1-77'], [2, 'me55-83'], [1, 'me2pt5-121'], [1, 'sv3-93'],
+        [4, 'me1-116'], [3, 'me1-131'], [3, 'sv1-181'], [4, 'sv8pt5-122'], [2, 'sv2-185'], [2, 'me1-114'], [1, 'sv1-166'], [1, 'sv1-176'],
+        [2, 'sv1-194'], [2, 'sv1-171'], [1, 'me2pt5-196'], [1, 'sv2-188'], [1, 'sv5-152'], [2, 'sv2-173'], [2, 'sv4-163'], [1, 'sv5-159'], [2, 'sv1-186'], [1, 'sv4-160'],
+        [14, 'sve-6']],
+    },
+    {
+      id: 'raging-bolt', name: 'Raging Bolt ex', types: ['N', 'G'], archetype: 'aggro', face: 'svp-145',
+      blurb: 'Teal Mask Ogerpon ex piles Energy onto the board, then Raging Bolt ex throws all of it away for 70 damage apiece.',
+      cards: [[4, 'svp-145'], [4, 'sv6-25'], [1, 'svp-160'],
+        [4, 'sv4-163'], [2, 'sv1-171'], [1, 'sv2-189'], [4, 'sv1-181'], [2, 'me1-131'], [4, 'sv8pt5-122'], [2, 'sv2-185'], [3, 'me1-114'],
+        [2, 'sv1-194'], [1, 'sv5-157'], [2, 'sv1-186'], [1, 'me2pt5-196'], [2, 'sv1-173'], [1, 'sv2-188'], [1, 'sv6-154'], [2, 'zsv10pt5-79'],
+        [7, 'sve-1'], [5, 'sve-4'], [5, 'sve-6']],
+    },
+    {
+      id: 'gholdengo', name: 'Gholdengo ex', types: ['M'], archetype: 'midrange', face: 'sv4-139',
+      blurb: 'Make It Rain spends Metal Energy straight from the hand, 50 damage a card, while Coin Bonus keeps the hand full.',
+      cards: [[4, 'sv4-87'], [4, 'sv4-139'], [1, 'svp-160'], [1, 'sv2-97'], [2, 'sv8-144'],
+        [4, 'sv2-189'], [2, 'sv1-171'], [4, 'sv4-163'], [3, 'sv1-181'], [3, 'me1-131'], [2, 'me2pt5-184'], [4, 'sv8pt5-122'], [2, 'sv2-185'],
+        [2, 'me1-114'], [1, 'sv1-194'], [1, 'sv2-188'], [1, 'sv5-157'], [1, 'sv1-186'], [1, 'me2pt5-196'], [2, 'sv1-172'], [1, 'sv1-180'],
+        [14, 'sve-8']],
+    },
+    {
+      id: 'absol-control', name: 'Absol Control', types: ['D'], archetype: 'control', face: 'me1-86',
+      blurb: 'Hammers, Judge and Claw of Darkness strip the opponent bare while Mega Absol ex soaks up the hits.',
+      cards: [[3, 'me1-86'], [2, 'me2-63'], [2, 'me1-88'], [1, 'svp-110'], [2, 'sv6pt5-18'], [1, 'sv6pt5-19'], [1, 'sv6pt5-20'], [1, 'sv6pt5-38'],
+        [3, 'sv1-168'], [1, 'sv6pt5-64'], [2, 'sv1-176'], [1, 'sv6-165'], [3, 'sv2-185'], [2, 'me1-114'], [4, 'sv8pt5-122'], [4, 'me1-131'], [3, 'sv1-181'],
+        [2, 'sv1-191'], [2, 'sv1-194'], [1, 'me2pt5-196'], [1, 'sv2-188'], [2, 'sv1-186'], [1, 'sv6-158'], [1, 'sv4-163'],
+        [14, 'sve-7']],
+    },
+    {
+      id: 'chien-pao', name: 'Chien-Pao Baxcalibur', types: ['W'], archetype: 'midrange', face: 'sv2-61',
+      blurb: 'Baxcalibur attaches Water Energy from the hand as often as it likes, and Chien-Pao ex melts it all into Hail Blade.',
+      cards: [[2, 'sv2-61'], [2, 'sv4pt5-17'], [2, 'sv2-58'], [1, 'sv2-59'], [3, 'sv2-60'], [2, 'me3-20'], [2, 'me3-21'],
+        [4, 'sv1-191'], [4, 'me1-131'], [2, 'sv1-181'], [2, 'me2pt5-184'], [4, 'sv8pt5-122'], [3, 'sv2-185'], [2, 'me1-114'], [1, 'sv1-166'],
+        [1, 'me2pt5-196'], [1, 'sv2-188'], [2, 'sv1-194'], [1, 'sv5-157'], [2, 'sv1-186'], [2, 'sv2-189'], [1, 'sv4-163'],
+        [14, 'sve-3']],
+    },
+    {
+      id: 'lightning-box', name: 'Lightning Box', types: ['L'], archetype: 'aggro', face: 'sv1-81',
+      blurb: 'Miraidon ex fills the Bench with Lightning attackers in one go, and Iron Hands ex takes an extra Prize card when it knocks one out.',
+      cards: [[3, 'sv1-81'], [2, 'sv4-70'], [2, 'sv8pt5-28'], [2, 'sv6-65'], [1, 'svp-160'],
+        [4, 'sv1-181'], [3, 'me1-131'], [4, 'sv8pt5-122'], [3, 'sv2-185'], [3, 'me1-114'], [2, 'sv1-194'], [2, 'sv1-171'], [1, 'sv2-189'], [2, 'sv4-163'],
+        [1, 'sv5-154'], [2, 'sv2-173'], [1, 'me2pt5-196'], [1, 'sv2-188'], [2, 'sv1-186'], [2, 'sv9-150'], [1, 'sv5-159'], [1, 'sv4-160'], [2, 'zsv10pt5-79'],
+        [13, 'sve-4']],
+    },
+    {
+      id: 'venusaur', name: 'Mega Venusaur ex', types: ['G'], archetype: 'control', face: 'me1-3',
+      blurb: 'Solar Transfer moves Grass Energy wherever it is needed, and Jungle Dump hits for 240 while healing the damage back.',
+      cards: [[4, 'me1-1'], [2, 'me1-2'], [3, 'me1-3'], [2, 'sv6-25'], [1, 'sv6pt5-38'],
+        [4, 'sv1-191'], [4, 'me1-131'], [2, 'sv1-181'], [2, 'me2pt5-184'], [4, 'sv8pt5-122'], [3, 'sv2-185'], [2, 'me1-114'], [1, 'sv1-166'], [1, 'sv1-176'],
+        [1, 'me2pt5-196'], [1, 'sv2-188'], [2, 'sv1-194'], [1, 'sv5-152'], [2, 'sv1-186'], [2, 'sv4-163'], [1, 'sv1-171'],
+        [15, 'sve-1']],
+    },
+    {
+      id: 'charizard-x', name: 'Mega Charizard X ex', types: ['R'], archetype: 'aggro', face: 'me2-13',
+      blurb: 'Emboar stokes the fire, attaching Energy from hand as often as it likes, and Inferno X turns every Fire Energy on the board into 90 damage.',
+      cards: [[3, 'me2-11'], [2, 'me2-12'], [3, 'me2-13'], [3, 'rsv10pt5-11'], [1, 'rsv10pt5-12'], [2, 'rsv10pt5-13'], [1, 'sv4-29'],
+        [4, 'sv1-191'], [4, 'me1-131'], [2, 'sv1-181'], [2, 'me2pt5-184'], [4, 'sv8pt5-122'], [3, 'sv2-185'], [2, 'me1-114'], [1, 'sv1-166'],
+        [2, 'sv2-189'], [2, 'sv4-163'], [1, 'sv1-194'], [1, 'sv2-188'], [1, 'me2pt5-196'], [1, 'sv1-186'],
+        [15, 'sve-2']],
+    },
+  ];
+  if (typeof module === 'object' && module.exports) module.exports = DECKS;
+  else root.ARENA_DECKS = DECKS;
+})(typeof self !== 'undefined' ? self : this);

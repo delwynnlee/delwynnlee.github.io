@@ -139,7 +139,7 @@ img { display: block; max-width: 100%; }
   .tabs { gap: 0; }
   .help-btn { width: 32px; }
 }
-@media (max-width: 374px) { .tab[data-tab="search"] { display: none; } }
+@media (max-width: 439px) { .tab[data-tab="search"] { display: none; } }
 @media (min-width: 900px) {
   .top { grid-template-columns: var(--rail) minmax(0, 720px) 1fr auto; grid-template-areas: "mark search tabs help"; padding-top: calc(12px + var(--safe-t)); padding-bottom: 12px; column-gap: 24px; }
   .mark { font-size: 34px; }
@@ -534,6 +534,7 @@ main { padding: 12px calc(14px + var(--safe-r)) calc(40px + var(--safe-b)) calc(
     <a class="tab" href="#" data-tab="search" aria-current="page">Search</a>
     <a class="tab" href="#tab=sets" data-tab="sets">Sets</a>
     <a class="tab" href="#tab=saved" data-tab="saved">Saved <span class="n" id="saved-n" hidden></span></a>
+    <a class="tab" href="arena/">Arena</a>
   </nav>
   <button class="iconbtn help-btn" id="help-open" aria-label="Search tips" title="Search tips">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.4-2.7 4"/><circle cx="12" cy="17.6" r=".6" fill="currentColor"/></svg>
@@ -1775,7 +1776,7 @@ function renderHelp() {
    Views, events, start
    ============================================================ */
 function renderTabs() {
-  $$('.tab').forEach(t => { if (t.dataset.tab === state.tab) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); });
+  $$('.tab[data-tab]').forEach(t => { if (t.dataset.tab === state.tab) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); });
   $('#view-search').hidden = state.tab !== 'search';
   $('#view-sets').hidden = state.tab !== 'sets';
   $('#view-saved').hidden = state.tab !== 'saved';
@@ -1898,7 +1899,7 @@ document.addEventListener('click', e => {
     return;
   }
   if (t.closest('#home')) { e.preventDefault(); runQuery(''); return; }
-  const tab = t.closest('.tab');
+  const tab = t.closest('.tab[data-tab]');
   if (tab) {
     e.preventDefault();
     if (tab.dataset.tab === 'search') { state.tab = 'search'; state.card = ''; update({ push: true }); return; }

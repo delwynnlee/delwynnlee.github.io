@@ -11,6 +11,8 @@ Search every English Pokémon TCG card: names, types, attacks, rarities, sets an
 | `fonts/` | Anybody (headings, numbers) and Cabin (text), self-hosted. Both under the SIL Open Font License. |
 | `icon.svg`, `icon.png` | Browser and home-screen icons. |
 | `tools/build_data.py` | Rebuilds `cards.json`. |
+| `arena/` | Holo Arena: battles with real cards (see below). |
+| `tools/build_arena.js` | Rebuilds `arena/cards.json` from `cards.json`. |
 
 ## Where things come from
 
@@ -20,6 +22,27 @@ Search every English Pokémon TCG card: names, types, attacks, rarities, sets an
 - **Legality:** worked out at build time. Standard is regulation marks H and later (the 2026–27 format); Expanded is Black & White onwards minus the ban list. Reprints count, so an older print of a card that's been reprinted with a legal mark is legal too.
 
 The Pokémon TCG API is scheduled to shut down on 1 March 2027 and its dataset is no longer updated for new apps. Holo keeps working after that because the card data is bundled here and pictures fall back to TCGdex. To add sets released later, the build script would need to read TCGdex's database instead.
+
+## Arena
+
+`/holo/arena/` plays the Pokémon TCG with today's rules: watch two AI players, play against the AI yourself (with undo, and a game in progress is saved), simulate 100 games, or take seven short lessons.
+
+| File | What it is |
+| --- | --- |
+| `arena/index.html` | Markup and styles. |
+| `arena/app.js` | The page: lobby, replays, playing, lessons. Draws what the engine records. |
+| `arena/engine.js` | The rules and the AI. Seeded and synchronous; runs the same in the browser and in Node. |
+| `arena/compile.js` | Reads each card's text into effects the engine can run. Cards it can't read are left out of the pool. |
+| `arena/decks.js` | Eleven 60-card decks designed by Claude. |
+| `arena/tutorial.js` | The lessons: fixed boards and the moves the coach asks for. |
+| `arena/cards.json` | The playable pool (Scarlet & Violet and Mega Evolution), one representative print per card. |
+
+A human's choices are stored as a list of answers; the page replays the game from its seed with those answers whenever one is added, which keeps the AI's decisions identical and makes undo free.
+
+```sh
+node holo/tools/build_arena.js            # rebuild arena/cards.json
+node holo/tools/build_arena.js --report   # also list the card text the compiler can't read yet
+```
 
 ## Refreshing the data
 
