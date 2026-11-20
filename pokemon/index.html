@@ -141,6 +141,9 @@ footer p { max-width: 72ch; margin: 0; }
 .cls { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border: 1px solid var(--line); border-radius: 999px; font-size: 12.5px; font-weight: 700; }
 .ext { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; color: var(--ink); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 .dsec h3 { margin: 0 0 12px; font-size: 17px; }
+.story { padding: 16px 18px 18px; border-radius: 16px; background: var(--track); background: color-mix(in srgb, var(--bar) 12%, var(--surface)); }
+.story p { max-width: 62ch; margin: 0 0 12px; font-size: 17px; line-height: 1.6; text-wrap: pretty; }
+.story p:last-child { margin-bottom: 0; }
 .bars { display: grid; gap: 9px; }
 .bar { display: grid; grid-template-columns: 66px 34px 1fr; align-items: center; gap: 10px; font-size: 14px; }
 .bar span:first-child { color: var(--ink-2); }
@@ -233,7 +236,7 @@ footer p { max-width: 72ch; margin: 0; }
 <script>
 'use strict';
 /* ---------- build-time settings ---------- */
-const CONFIG = {"art":true,"data":null,"sw":true};   // { art: show PokéAPI artwork inline?, data: inline records or null to fetch pokemon.json, sw: register sw.js for offline use? }
+const CONFIG = {"art":true,"data":null,"sw":true};   // { art: show PokéAPI artwork inline?, data: inline records or null to fetch pokemon.json, stories: inline stories or null to fetch stories.json, sw: register sw.js for offline use? }
 const CHART = {"Normal":"000000100000030000","Fire":"021022001002100022","Water":"022112000000000020","Electric":"000200001200000020","Grass":"012221012101000000","Ice":"010002100000100010","Fighting":"000000000112200201","Poison":"000020221012000002","Ground":"001311020000200000","Flying":"000121203002100000","Psychic":"000000200021010100","Bug":"010020202100100000","Rock":"221010121200000010","Ghost":"300000320002010100","Dragon":"022221000000001001","Dark":"000000100031020201","Steel":"210022131222202022","Fairy":"000000210002003210"};     // defending type -> 18 digits by attacking type: 0 normal, 1 weak, 2 resists, 3 immune
 const ART = n => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${n}.png`;
 
@@ -489,6 +492,22 @@ function family(m) {
       + `<span><b>${esc(x.name)}</b><span class="how">${d ? esc(x.method || 'Evolves') : 'First stage'}</span></span></button>`;
   }).join('')}</div>`;
 }
+let STORIES = null;                        // id -> story text, loaded in the background
+function loadStories() {
+  const src = CONFIG.stories ? Promise.resolve(CONFIG.stories)
+    : fetch('stories.json').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+  src.then(list => { STORIES = {}; for (const s of list) STORIES[s.id] = s.story; if (current) fillStory(current); })
+    .catch(() => { STORIES = {}; });
+}
+const storyHtml = m => ((STORIES && STORIES[m.id]) || '').split(/\n\s*\n/).filter(p => p.trim()).map(p => `<p>${esc(p.trim())}</p>`).join('');
+function storySection(m) {
+  const html = storyHtml(m);
+  return `<section class="dsec story" id="story"${html ? '' : ' hidden'}>${html ? `<h3>Story</h3>${html}` : ''}</section>`;
+}
+function fillStory(m) {
+  const el = document.getElementById('story');
+  if (el) el.outerHTML = storySection(m);
+}
 function navSeq(m) { return list.includes(m) ? list : ALL; }
 function detail(m) {
   const L = look(m), seq = navSeq(m), i = seq.indexOf(m), prev = seq[i - 1], next = seq[i + 1];
@@ -507,6 +526,7 @@ function detail(m) {
     + `<div class="types">${m.types.map(t => chip(t)).join('')}${m.class ? `<span class="cls">${m.class}</span>` : ''}</div>`
     + (CONFIG.art ? '' : `<a class="ext" href="${ART(m.num)}" target="_blank" rel="noopener">See official artwork ${glyph('ext')}</a>`)
     + `</header>`
+    + storySection(m)
     + `<section class="dsec"><h3>Base stats</h3>${CONFIG.art ? `<div class="statwrap">${sigil(m, true)}${bars(m)}</div>` : bars(m)}`
     + `<p class="total"><b>Total ${m.total}</b><span>${total}</span></p><p class="note">Bars run from 0 to 255. The notch marks 100.</p></section>`
     + `<section class="dsec"><h3>Type matchups</h3>${matchups(m)}<p class="note">Based on type alone. Some abilities change these.</p></section>`
@@ -576,7 +596,7 @@ addEventListener('resize', setBarHeight);
 setBarHeight();
 buildFilters();
 (CONFIG.data ? Promise.resolve(CONFIG.data) : fetch('pokemon.json').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }))
-  .then(data => { prepare(data); apply(false); route(); })
+  .then(data => { prepare(data); apply(false); route(); loadStories(); })
   .catch(() => { grid.innerHTML = '<p class="status">The Pokémon data didn’t load. Reload the page to try again.</p>'; });
 </script>
 </body>

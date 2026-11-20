@@ -13,10 +13,12 @@ const species = Dex.species.all()
   .sort((a, b) => a.num - b.num);
 if (species.length !== LAST) throw new Error(`expected ${LAST} species, got ${species.length}`);
 
-const classOf = tags => tags.includes('Mythical') ? 'Mythical'
-  : tags.some(t => /Legendary/.test(t)) ? 'Legendary'
-  : tags.includes('Ultra Beast') ? 'Ultra Beast'
-  : tags.includes('Paradox') ? 'Paradox' : null;
+// This pokemon-showdown release leaves the Paradox tag off the four Indigo Disk Paradox Pokémon.
+const LATE_PARADOX = new Set(['gougingfire', 'ragingbolt', 'ironboulder', 'ironcrown']);
+const classOf = s => s.tags.includes('Mythical') ? 'Mythical'
+  : s.tags.some(t => /Legendary/.test(t)) ? 'Legendary'
+  : s.tags.includes('Ultra Beast') ? 'Ultra Beast'
+  : s.tags.includes('Paradox') || LATE_PARADOX.has(s.id) ? 'Paradox' : null;
 
 const female = s => s.gender === 'N' ? null : s.gender === 'M' ? 0 : s.gender === 'F' ? 100
   : Math.round(s.genderRatio.F * 1000) / 10;
@@ -25,7 +27,7 @@ const recs = species.map(s => ({
   id: s.id, num: s.num, name: RENAME[s.name] || s.name, types: s.types,
   stats: ['hp', 'atk', 'def', 'spa', 'spd', 'spe'].map(k => s.baseStats[k]),
   abilities: [s.abilities[0], s.abilities[1]].filter(Boolean), hidden: s.abilities.H || null,
-  height: s.heightm, weight: s.weightkg, gen: s.gen, class: classOf(s.tags),
+  height: s.heightm, weight: s.weightkg, gen: s.gen, class: classOf(s),
   eggGroups: s.eggGroups, female: female(s), from: null, method: null,
 }));
 const byId = Object.fromEntries(recs.map(r => [r.id, r]));
@@ -35,7 +37,7 @@ const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
 function method(s, p) {
   const parts = [];
   switch (s.evoType) {
-    case 'useItem': parts.push(`Use ${s.evoItem}`); break;
+    case 'useItem': parts.push(`Use ${s.evoItem || s.evoCondition}`); break;
     case 'trade': parts.push(s.evoItem ? `Trade holding ${s.evoItem}` : 'Trade'); break;
     case 'levelFriendship': parts.push('Level up with high friendship'); break;
     case 'levelHold': parts.push(`Level up holding ${s.evoItem}`); break;
@@ -43,7 +45,7 @@ function method(s, p) {
     case 'other': break;
     default: parts.push(s.evoLevel ? `Level ${s.evoLevel}` : 'Level up');
   }
-  if (s.evoCondition) parts.push(s.evoCondition);
+  if (s.evoCondition && !(s.evoType === 'useItem' && !s.evoItem)) parts.push(s.evoCondition);
   let out = cap(parts.join(', '));
   if (p.forme) out += ` (from ${REGIONAL[p.forme] || p.forme} ${p.baseSpecies})`;
   return out;
