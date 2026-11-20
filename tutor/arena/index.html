@@ -190,7 +190,57 @@ svg.i .fill { fill: currentColor; }
 .tile .deck-meta { margin-top: 5px; font-size: 13.5px; }
 .tile .deck-meta .cols { font-size: 16px; }
 .tile .blurb { font-size: 14px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin-top: 7px; }
-.tile .in-seat { position: absolute; z-index: 2; top: 10px; right: 10px; font: 700 12px/1 var(--sans); padding: 6px 9px; border-radius: 999px; background: var(--text); color: var(--bg); }
+.tile .in-seat { position: absolute; z-index: 2; top: 10px; left: 10px; font: 700 12px/1 var(--sans); padding: 6px 9px; border-radius: 999px; background: var(--text); color: var(--bg); }
+.tile-wrap { position: relative; display: flex; min-width: 0; }
+.tile-wrap > .tile { flex: 1 1 auto; min-width: 0; }
+.tile.holding { transform: scale(.985); }
+.tile-view { position: absolute; z-index: 3; top: 9px; right: 9px; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px 0 10px; border-radius: 999px; border: 0; font: 700 13px/1 var(--sans); color: var(--text); background: rgba(32, 29, 39, .8); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.tile-view:hover { background: rgba(52, 48, 62, .92); }
+.tile-view svg.i { width: 17px; height: 17px; }
+.recent .tile .deck-name { padding-right: 78px; }
+.dview { position: fixed; inset: 0; z-index: 58; display: grid; place-items: center; padding: 20px; }
+.dv-scrim { position: absolute; inset: 0; background: rgba(14, 12, 18, .72); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); animation: fadein .2s; }
+.dv-box { position: relative; width: min(1000px, 100%); max-height: calc(100dvh - 40px); overflow: auto; overscroll-behavior: contain; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 20px; box-shadow: 0 30px 90px rgba(0, 0, 0, .6); animation: rise .3s var(--ease); }
+.dv-hero { position: relative; height: 200px; background: var(--raised) center 28% / cover no-repeat; }
+.dv-hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(41, 37, 47, 0) 30%, rgba(41, 37, 47, .7) 72%, var(--surface)); }
+.dv-x { position: absolute; z-index: 2; top: 12px; right: 12px; border: 0; color: var(--text); background: rgba(32, 29, 39, .8); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.dv-head { position: relative; z-index: 1; margin-top: -58px; padding: 0 26px; }
+.dv-head .deck-name { margin: 0; font-size: 34px; }
+.dv-head .blurb { max-width: 70ch; }
+.dv-stats { display: flex; flex-wrap: wrap; gap: 8px; padding: 18px 26px 0; }
+.dv-stat { min-width: 88px; padding: 10px 14px; border-radius: 12px; background: var(--raised); }
+.dv-stat b { display: block; font: 800 22px/1.1 var(--sans); font-variant-numeric: tabular-nums; }
+.dv-stat span { font-size: 13px; color: var(--muted); }
+.dv-charts { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 22px; padding: 20px 26px 0; }
+.dv-chart h4, .dv-group h3 { margin: 0 0 10px; font: 700 13.5px var(--sans); color: var(--muted); }
+.dv-chart .curve { height: 96px; margin-top: 0; }
+.curve em { font: 700 11.5px/1 var(--sans); font-style: normal; color: var(--muted); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.dv-pips { display: grid; gap: 7px; }
+.dv-pip { display: grid; grid-template-columns: 20px 1fr 32px; align-items: center; gap: 9px; }
+.dv-pip .sym { width: 18px; height: 18px; }
+.dv-pip i { display: block; height: 10px; min-width: 3px; border-radius: 5px; background: var(--pc); }
+.dv-pip b { font: 700 13px var(--sans); text-align: right; font-variant-numeric: tabular-nums; }
+.dv-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 24px 26px 0; }
+.dv-cards { padding: 2px 26px 10px; }
+.dv-cards .decklist { margin-top: 16px; columns: 3 220px; }
+.dv-group { margin-top: 20px; }
+.dv-group h3 span { margin-left: 6px; color: var(--faint); }
+.dv-grid { --dvw: 132px; display: grid; grid-template-columns: repeat(auto-fill, var(--dvw)); gap: 12px; }
+.dv-cell { position: relative; }
+.dv-cell .card { --cardw: var(--dvw); }
+.dv-n { position: absolute; z-index: 2; top: -6px; right: -5px; padding: 5px 8px; border-radius: 999px; font: 800 13px/1 var(--sans); background: var(--text); color: var(--bg); box-shadow: 0 2px 8px rgba(0, 0, 0, .45); pointer-events: none; }
+.dv-foot { position: sticky; bottom: 0; z-index: 3; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 18px 26px calc(16px + var(--safe-b)); background: linear-gradient(180deg, rgba(41, 37, 47, 0), var(--surface) 34%); }
+@media (max-width: 640px) {
+  .dview { padding: 0; place-items: stretch; }
+  .dv-box { width: 100%; height: 100dvh; max-height: none; border: 0; border-radius: 0; }
+  .dv-hero { height: 150px; }
+  .dv-head .deck-name { font-size: 28px; }
+  .dv-head, .dv-stats, .dv-charts, .dv-bar, .dv-cards, .dv-foot { padding-left: 16px; padding-right: 16px; }
+  .dv-stat { min-width: 0; flex: 1 1 28%; padding: 9px 11px; }
+  .dv-charts { grid-template-columns: 1fr; }
+  .dv-grid { --dvw: calc((100vw - 52px) / 3); gap: 10px; }
+  .dv-foot .pill { flex: 1 1 0; justify-content: center; }
+}
 
 .gen { margin-top: 18px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
 .gen-box { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); padding: 18px; }
@@ -867,6 +917,7 @@ svg.i .fill { fill: currentColor; }
   <div class="sr-only" aria-live="polite" id="live"></div>
 </section>
 
+<div class="dview" id="deckView" role="dialog" aria-modal="true" aria-labelledby="dvName" hidden></div>
 <div class="insp" id="insp" role="dialog" aria-modal="true" aria-labelledby="inspName" hidden></div>
 <div class="sheet" id="sheet" hidden></div>
 
@@ -1262,7 +1313,7 @@ function setMode(fmt, pool, seats) {
   const def = defaultsFor(fmt, pool);
   S.seats = [0, 1].map((i) => (saved && fits(saved[i]) ? saved[i] : def[i]));
   S.recent = store.get(recentKeyOf(fmt, pool), []).filter(fits);
-  if (changed) { S.active = 0; S.sim = null; L.sim.hidden = true; openLists.clear(); }
+  if (changed) { S.active = 0; S.sim = null; L.sim.hidden = true; }
   renderFormat();
 }
 // A new format keeps the cards you picked when it can: Commander needs a set with legends
@@ -1361,10 +1412,10 @@ function readHash() {
    ============================================================ */
 const L = { boot: $('#boot'), body: $('#lobbyBody'), seats: $('#seats'), sim: $('#sim'), pickBody: $('#pickBody'), pickTitle: $('#pickTitle'), pickHint: $('#pickHint') };
 const seatName = (i) => `Player ${i + 1}`;
-function curveHTML(d) {
+function curveHTML(d, counts) {
   const buckets = [1, 2, 3, 4, 5, 6].map((mv) => d.list.filter(({ def }) => !def.types.includes('Land') && (mv === 6 ? def.mv >= 6 : mv === 1 ? def.mv <= 1 : def.mv === mv)).reduce((s, x) => s + x.n, 0));
   const max = Math.max(1, ...buckets);
-  return `<div class="curve" aria-label="Mana curve: ${buckets.map((n, k) => `${n} at ${k === 5 ? '6 or more' : k + 1}`).join(', ')}" style="--accent:${d.accent}">${buckets.map((n, k) => `<div><i style="height:${Math.round((n / max) * 100)}%"></i><b>${k === 5 ? '6+' : k + 1}</b></div>`).join('')}</div>`;
+  return `<div class="curve" aria-label="Mana curve: ${buckets.map((n, k) => `${n} at ${k === 5 ? '6 or more' : k + 1}`).join(', ')}" style="--accent:${d.accent}">${buckets.map((n, k) => `<div>${counts ? `<em>${n}</em>` : ''}<i style="height:${Math.round((n / max) * (counts ? 82 : 100))}%"></i><b>${k === 5 ? '6+' : k + 1}</b></div>`).join('')}</div>`;
 }
 function listHTML(d) {
   const head = d.commander ? `<h4>Commander</h4><div class="row cmdrow"><span class="n">${icon('star')}</span><span class="nm">${esc(d.commander.name)}</span><span class="mc">${manaHTML(d.commander.manaCost)}</span></div>` : '';
@@ -1378,17 +1429,15 @@ function listHTML(d) {
 function metaHTML(d) {
   return `<div class="deck-meta"><span class="cols" aria-label="${d.colors.map((c) => COLOR_NAME[c]).join(' and ')}">${colorsHTML(d.colors)}</span><span class="arch">${ARCH_LABEL[d.archetype]}</span>${d.commander ? `<span class="cmd-name">${icon('star')}${esc(d.commander.name)}</span>` : ''}<span class="by">${d.by === 'claude' ? 'Designed by Claude' : 'Built by the generator'}${d.set ? ` · ${esc((setByCode(d.set) || { short: d.set }).short)}` : ''}</span></div>`;
 }
-const openLists = new Set();
 function renderSeats() {
   const parts = [0, 1].map((i) => {
     const d = deckByKey(S.seats[i]);
     if (!d) return `<div class="seat"></div>`;
-    const open = openLists.has(i);
     return `<div class="seat" data-seat="${i}" data-on="${S.active === i}">`
       + `<div class="seat-art" data-art="${esc(d.face)}" style="${artOf(d.face) ? `background-image:url(&quot;${esc(artOf(d.face))}&quot;)` : ''}"><button type="button" class="seat-tag" data-pick="${i}" aria-pressed="${S.active === i}" aria-label="Choose a deck for ${seatName(i)}">${seatName(i)}${S.active === i ? ', choosing' : ''}</button></div>`
       + `<div class="seat-body"><h3 class="deck-name">${esc(d.name)}</h3>${metaHTML(d)}<p class="blurb">${esc(d.blurb)}</p>${curveHTML(d)}`
-      + `<div class="seat-foot"><button type="button" class="link-btn" data-list="${i}" aria-expanded="${open}">${open ? 'Hide the list' : `See all ${d.size} cards`}</button><span class="faint">${countOf(d, (x) => x.types.includes('Creature'))} creatures, ${countOf(d, (x) => x.types.includes('Land'))} lands</span></div>`
-      + `${open ? listHTML(d) : ''}</div></div>`;
+      + `<div class="seat-foot"><button type="button" class="link-btn" data-view="${esc(d.key)}">See all ${d.size} cards</button><span class="faint">${countOf(d, (x) => x.types.includes('Creature'))} creatures, ${countOf(d, (x) => x.types.includes('Land'))} lands</span></div>`
+      + `</div></div>`;
   });
   L.seats.innerHTML = `${parts[0]}<span class="vs-big" aria-hidden="true">vs</span>${parts[1]}`;
   const a = deckByKey(S.seats[0]), b = deckByKey(S.seats[1]);
@@ -1398,8 +1447,102 @@ function renderSeats() {
   $$('.tile').forEach((t) => markTile(t));
 }
 function tileHTML(d) {
-  return `<button type="button" class="tile" data-key="${esc(d.key)}"><div class="tile-art" data-art="${esc(d.face)}" style="${artOf(d.face) ? `background-image:url(&quot;${esc(artOf(d.face))}&quot;)` : ''}"></div>`
-    + `<div class="tile-body"><h3 class="deck-name">${esc(d.name)}</h3>${metaHTML(d).replace(/<span class="by">[^<]*<\/span>/, '')}<p class="blurb">${esc(d.blurb)}</p></div></button>`;
+  return `<div class="tile-wrap"><button type="button" class="tile" data-key="${esc(d.key)}"><div class="tile-art" data-art="${esc(d.face)}" style="${artOf(d.face) ? `background-image:url(&quot;${esc(artOf(d.face))}&quot;)` : ''}"></div>`
+    + `<div class="tile-body"><h3 class="deck-name">${esc(d.name)}</h3>${metaHTML(d).replace(/<span class="by">[^<]*<\/span>/, '')}<p class="blurb">${esc(d.blurb)}</p></div></button>`
+    + `<button type="button" class="tile-view" data-view="${esc(d.key)}" aria-label="View ${esc(d.name)}">${icon('eye')}View</button></div>`;
+}
+/* The deck view: every card in a deck, how it's built, and which seat to give it */
+const DV = { key: null, from: null, mode: store.get('arena.dvmode.v1', 'pics') === 'list' ? 'list' : 'pics' };
+const TYPE_GROUPS = [
+  ['Creatures', (x) => x.types.includes('Creature')],
+  ['Instants and sorceries', (x) => !x.types.includes('Creature') && (x.types.includes('Instant') || x.types.includes('Sorcery'))],
+  ['Artifacts and enchantments', (x) => !x.types.some((t) => ['Creature', 'Land', 'Instant', 'Sorcery'].includes(t))],
+  ['Lands', (x) => x.types.includes('Land')],
+];
+function deckStats(d) {
+  const all = d.commander ? d.list.concat({ def: d.commander, n: 1 }) : d.list;
+  const count = (f) => all.filter(({ def }) => f(def)).reduce((t, x) => t + x.n, 0);
+  const spells = all.filter(({ def }) => !def.types.includes('Land'));
+  const n = spells.reduce((t, x) => t + x.n, 0);
+  const pips = { W: 0, U: 0, B: 0, R: 0, G: 0 };
+  for (const { def, n: k } of all) for (const c of 'WUBRG') pips[c] += ((def.cost && def.cost[c]) || 0) * k;
+  return { creatures: count((x) => x.types.includes('Creature')), lands: count((x) => x.types.includes('Land')), spells: n - count((x) => x.types.includes('Creature')),
+    mv: n ? spells.reduce((t, x) => t + x.def.mv * x.n, 0) / n : 0, pips };
+}
+function deckText(d) {
+  const line = ({ def, n }) => `${n} ${def.name}`;
+  const rows = d.list.slice().sort((a, b) => a.def.types.includes('Land') - b.def.types.includes('Land') || a.def.mv - b.def.mv || a.def.name.localeCompare(b.def.name));
+  return `${d.commander ? `Commander\n1 ${d.commander.name}\n\n` : ''}Deck\n${rows.map(line).join('\n')}\n`;
+}
+function openDeckView(key, from) {
+  const d = deckByKey(key);
+  if (!d) return;
+  DV.key = key;
+  DV.from = from || document.activeElement;
+  const st = deckStats(d);
+  const maxPip = Math.max(1, ...Object.values(st.pips));
+  const pips = 'WUBRG'.split('').filter((c) => st.pips[c]).map((c) => `<div class="dv-pip">${sym(c)}<i style="--pc:${COLOR_VAR[c]};width:${Math.round((st.pips[c] / maxPip) * 100)}%"></i><b>${st.pips[c]}</b></div>`).join('');
+  const box = $('#deckView');
+  box.innerHTML = `<div class="dv-scrim" data-dvclose></div><div class="dv-box">
+    <div class="dv-hero" data-art="${esc(d.face)}" style="${artOf(d.face) ? `background-image:url(&quot;${esc(artOf(d.face))}&quot;)` : ''}"><button type="button" class="icon-btn dv-x" data-dvclose aria-label="Close">${icon('x')}</button></div>
+    <div class="dv-head"><h2 class="deck-name" id="dvName">${esc(d.name)}</h2>${metaHTML(d)}<p class="blurb">${esc(d.blurb)}</p></div>
+    <div class="dv-stats">
+      <div class="dv-stat"><b>${d.size}</b><span>cards</span></div>
+      <div class="dv-stat"><b>${st.creatures}</b><span>creatures</span></div>
+      <div class="dv-stat"><b>${st.spells}</b><span>other spells</span></div>
+      <div class="dv-stat"><b>${st.lands}</b><span>lands</span></div>
+      <div class="dv-stat"><b>${st.mv.toFixed(1)}</b><span>average cost</span></div>
+    </div>
+    <div class="dv-charts">
+      <div class="dv-chart"><h4>Mana curve, spells by cost</h4>${curveHTML(d, true)}</div>
+      <div class="dv-chart"><h4>Colored mana symbols in costs</h4><div class="dv-pips">${pips || '<p class="empty-note">No colored costs.</p>'}</div></div>
+    </div>
+    <div class="dv-bar">
+      <div class="seg" role="group" aria-label="Show the cards as" id="dvMode"><button type="button" data-dvmode="pics" aria-pressed="${DV.mode === 'pics'}">Pictures</button><button type="button" data-dvmode="list" aria-pressed="${DV.mode === 'list'}">List</button></div>
+      <button type="button" class="btn-ghost" data-dvcopy>Copy the list</button>
+    </div>
+    <div class="dv-cards" id="dvCards"></div>
+    <div class="dv-foot">${[0, 1].map((i) => (S.seats[i] === key
+      ? `<button type="button" class="pill" disabled>${icon('check')}${seatName(i)}'s deck</button>`
+      : `<button type="button" class="pill${i === S.active ? ' pill-solid' : ''}" data-dvseat="${i}">Use for ${seatName(i)}</button>`)).join('')}</div>
+  </div>`;
+  renderDeckCards(d);
+  box.hidden = false;
+  box.querySelector('.dv-box').scrollTop = 0;
+  ensureImages([d.face].concat(d.commander ? [d.commander.name] : [], d.list.map((x) => x.def.name)));
+  box.querySelector('.dv-x').focus();
+}
+function renderDeckCards(d) {
+  const host = $('#dvCards');
+  if (!host) return;
+  $$('#dvMode button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.dvmode === DV.mode)));
+  if (DV.mode === 'list') { host.innerHTML = listHTML(d); return; }
+  host.innerHTML = '';
+  const byCost = (a, b) => a.def.mv - b.def.mv || a.def.name.localeCompare(b.def.name);
+  const groups = (d.commander ? [['Commander', [{ def: d.commander, n: 1 }]]] : []).concat(TYPE_GROUPS.map(([label, f]) => [label, d.list.filter(({ def }) => f(def)).sort(byCost)]));
+  groups.filter(([, rows]) => rows.length).forEach(([label, rows], g) => {
+    const sec = document.createElement('section');
+    sec.className = 'dv-group';
+    sec.innerHTML = `<h3>${label}<span>${rows.reduce((t, x) => t + x.n, 0)}</span></h3><div class="dv-grid"></div>`;
+    const grid = sec.querySelector('.dv-grid');
+    rows.forEach(({ def, n }, k) => {
+      const cell = document.createElement('div');
+      cell.className = 'dv-cell';
+      const el = makeCard(def, `dv${g}-${k}`);
+      el.setAttribute('aria-label', `${n > 1 ? `${n} copies of ` : ''}${def.name}. Open it to read it.`);
+      cell.appendChild(el);
+      if (n > 1) cell.insertAdjacentHTML('beforeend', `<span class="dv-n" aria-hidden="true">×${n}</span>`);
+      grid.appendChild(cell);
+    });
+    host.appendChild(sec);
+  });
+}
+function closeDeckView() {
+  const box = $('#deckView');
+  if (box.hidden) return;
+  box.hidden = true;
+  box.innerHTML = '';
+  if (DV.from && DV.from.isConnected) DV.from.focus();
 }
 function markTile(t) {
   const key = t.dataset.key;
@@ -1538,7 +1681,7 @@ function renderPick() {
 }
 function setSeat(key) {
   S.seats[S.active] = key;
-  if (S.active === 0 && S.seats[1] && !openLists.size) S.active = 1;
+  if (S.active === 0 && S.seats[1]) S.active = 1;
   S.sim = null;
   L.sim.hidden = true;
   saveSeats();
@@ -3312,9 +3455,27 @@ function wire() {
   $('#toLobby').addEventListener('click', () => { if (S.view === 'watch' && TU.on) { goLessons(); return; } setView('lobby', true); renderSeats(); });
   $('#learnBtn').addEventListener('click', () => goLessons());
   $('#lessons').addEventListener('click', (e) => { const b = e.target.closest('[data-lesson]'); if (b) lessonStart(b.dataset.lesson); });
+  document.addEventListener('click', (e) => {
+    const v = e.target.closest && e.target.closest('[data-view]');
+    if (v && S.view === 'lobby') openDeckView(v.dataset.view, v);
+  });
+  $('#deckView').addEventListener('click', (e) => {
+    if (e.target.closest('[data-dvclose]')) { closeDeckView(); return; }
+    const m = e.target.closest('[data-dvmode]');
+    if (m) { DV.mode = m.dataset.dvmode; store.set('arena.dvmode.v1', DV.mode); renderDeckCards(deckByKey(DV.key)); return; }
+    const seat = e.target.closest('[data-dvseat]');
+    if (seat) { const key = DV.key; S.active = +seat.dataset.dvseat; closeDeckView(); setSeat(key); if (S.src === 'gen') renderPick(); return; }
+    const cp = e.target.closest('[data-dvcopy]');
+    if (cp) {
+      const d = deckByKey(DV.key);
+      const done = (ok) => { cp.textContent = ok ? 'Copied' : "Couldn't copy"; setTimeout(() => { if (cp.isConnected) cp.textContent = 'Copy the list'; }, 1600); };
+      try { navigator.clipboard.writeText(deckText(d)).then(() => done(true), () => done(false)); } catch { done(false); }
+      return;
+    }
+    const card = e.target.closest('.dv-cell .card');
+    if (card) openInspector(card);
+  });
   L.seats.addEventListener('click', (e) => {
-    const lb = e.target.closest('[data-list]');
-    if (lb) { const i = +lb.dataset.list; openLists.has(i) ? openLists.delete(i) : openLists.add(i); renderSeats(); return; }
     const seat = e.target.closest('.seat[data-seat]');
     if (seat && (e.target.closest('[data-pick]') || !e.target.closest('button, a'))) {
       const fromKeys = !!e.target.closest('[data-pick]') && e.detail === 0;
@@ -3391,19 +3552,20 @@ function wire() {
   });
   // Press and hold any card to read it, even where a tap picks it (attacking, blocking, targets, choices).
   // On a computer, a right-click does the same. The click that ends a hold is swallowed so it picks nothing.
-  const holdable = (card) => card && !card.disabled && !card.classList.contains('is-back') && card.closest('#board, #sheet, #spotlight');
+  const holdable = (card) => card && (card.classList.contains('tile') ? S.view === 'lobby' : !card.disabled && !card.classList.contains('is-back') && card.closest('#board, #sheet, #spotlight'));
+  const holdOpen = (c, held) => { if (c.classList.contains('tile')) { if (held) HOLD.swallow = Date.now(); openDeckView(c.dataset.key, c); } else zoomCard(c, held); };
   const endHold = () => { clearTimeout(HOLD.timer); if (HOLD.card) HOLD.card.classList.remove('holding'); HOLD.card = null; };
   document.addEventListener('pointerdown', (e) => {
     HOLD.swallow = 0;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    const card = e.target.closest && e.target.closest('.card');
+    const card = e.target.closest && e.target.closest('.card, .tile');
     endHold();
     if (!holdable(card)) return;
     HOLD.card = card; HOLD.x = e.clientX; HOLD.y = e.clientY;
     HOLD.timer = setTimeout(() => {
       const c = HOLD.card;
       endHold();
-      if (c && c.isConnected && $('#insp').hidden) zoomCard(c, true);
+      if (c && c.isConnected && $('#insp').hidden && $('#deckView').hidden) holdOpen(c, true);
     }, HOLD.ms);
     setTimeout(() => { if (HOLD.card === card) card.classList.add('holding'); }, 140);
   }, { passive: true });
@@ -3411,10 +3573,10 @@ function wire() {
   document.addEventListener('pointerup', endHold, { passive: true });
   document.addEventListener('pointercancel', endHold, { passive: true });
   document.addEventListener('contextmenu', (e) => {
-    const card = e.target.closest && e.target.closest('.card');
+    const card = e.target.closest && e.target.closest('.card, .tile');
     if (!holdable(card)) return;
     e.preventDefault();
-    if (!HOLD.swallow && $('#insp').hidden) { const held = !!HOLD.card; endHold(); zoomCard(card, held); }
+    if (!HOLD.swallow && $('#insp').hidden && $('#deckView').hidden) { const held = !!HOLD.card; endHold(); holdOpen(card, held); }
   });
   document.addEventListener('click', (e) => {
     if (HOLD.swallow && Date.now() - HOLD.swallow < 1500) { HOLD.swallow = 0; e.stopPropagation(); e.preventDefault(); }
@@ -3431,6 +3593,7 @@ function wire() {
   });
   document.addEventListener('keydown', (e) => {
     if (!$('#insp').hidden) { if (e.key === 'Escape') { e.preventDefault(); closeInspector(); } return; }
+    if (!$('#deckView').hidden) { if (e.key === 'Escape') { e.preventDefault(); closeDeckView(); } return; }
     if (!T.spotlight.hidden && (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') && !(e.target.closest && e.target.closest('.sl-foot button, .sl-card .card'))) { e.preventDefault(); closeSpotlight(true); return; }
     if (S.view === 'watch' && W.mode === 'play') {
       const life = e.target.closest && e.target.closest('.life.can-target');
