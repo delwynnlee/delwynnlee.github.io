@@ -290,6 +290,7 @@ svg.i .fill { fill: currentColor; }
 
 /* Cards */
 .card {
+  -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
   position: relative; flex: none; display: block; padding: 0; border: 0; background: none; color: var(--text);
   width: var(--cardw); height: calc(var(--cardw) * 1.3968); border-radius: 6px; container-type: inline-size;
   translate: 0 0; transition: translate .35s var(--ease), opacity .3s;
@@ -482,6 +483,7 @@ svg.i .fill { fill: currentColor; }
 .card.pick .face { box-shadow: 0 0 0 2px var(--r), 0 0 22px rgba(232, 105, 63, .6); }
 .card.sel .face { box-shadow: 0 0 0 3px var(--text), 0 0 20px rgba(236, 229, 216, .7); }
 .card.pick-multi { translate: 0 -8%; }
+.card.holding .face { scale: 1.06; transition: scale .35s var(--ease); }
 .card.pick-multi .face { box-shadow: 0 0 0 3px var(--text), 0 0 20px rgba(236, 229, 216, .7); animation: none; }
 .card.pblk .face { box-shadow: 0 0 0 2px var(--u), 0 0 18px rgba(95, 163, 217, .6); }
 .card.can-take { cursor: pointer; }
@@ -2336,6 +2338,7 @@ function closeInspector() {
    ============================================================ */
 const PL = { on: false, keys: null, decks: null, seed: 0, answers: [], req: null, done: false, shown: -1, ui: 'idle', anim: 0, skip: null, pend: null, picks: new Set(), blocks: new Map(), sel: null, choice: null, imgs: false, toastTurn: 0 };
 const PB = { title: $('#pbTitle'), hint: $('#pbHint'), acts: $('#pbActs') };
+const HOLD = { ms: 450, timer: 0, card: null, x: 0, y: 0, swallow: 0 };
 const PLAY_PACE = 1.8, AI_PACE = 1.35;
 const savedPlay = () => store.get('arena.play.v1', null);
 function playStart(seed, answers, opts = {}) {
@@ -2578,7 +2581,7 @@ function renderPlaybar() {
   } else if (ui === 'attack') {
     const n = PL.picks.size;
     title = 'Attack';
-    hint = n ? `${plural(n, 'creature')} attacking. Tap one to change your mind.` : 'Tap your creatures to attack with them.';
+    hint = `${n ? `${plural(n, 'creature')} attacking. Tap one to change your mind.` : 'Tap your creatures to attack with them.'} Press and hold a card to read it.`;
     btns = (r.cands.length > 1 ? ghost('all', n === r.cands.length ? 'None' : 'All') : '') + solid('attack', n ? `Attack with ${n}` : 'No attack');
   } else if (ui === 'block') {
     const inc = incoming();
@@ -2587,7 +2590,7 @@ function renderPlaybar() {
     title = 'Block';
     hint = short ? (short[0].need ? `${nameOfCard(short[0].id)} can only be blocked by ${short[0].need} or more creatures.` : 'A creature with menace needs two blockers.')
       : PL.sel != null ? 'Now tap the attacker it should block.'
-      : `${lure ? `${nameOfCard(lure.id)} must be blocked if you can. ` : ''}Tap your creature, then an attacker. You'd take ${inc.n}${inc.lethal ? ', which is lethal' : inc.cmdLethal ? ', and 21 commander damage loses the game' : ''}.`;
+      : `${lure ? `${nameOfCard(lure.id)} must be blocked if you can. ` : ''}Tap your creature, then an attacker. You'd take ${inc.n}${inc.lethal ? ', which is lethal' : inc.cmdLethal ? ', and 21 commander damage loses the game' : ''}. Hold a card to read it.`;
     btns = solid('blocks', PL.blocks.size ? 'Confirm blocks' : 'No blocks');
   }
   // The coach takes over the bar: the step's words, and only the button the step asks for
@@ -2745,8 +2748,31 @@ function assignBlock(aid, bid) {
   PL.sel = null;
   renderPlaybar(); decorate();
 }
+// Holding a card opens it; the inspector then offers what a tap would have done in this step
+function zoomActs(id) {
+  const r = PL.req;
+  if (!PL.on || !r || W.mode !== 'play' || coachOn()) return [];
+  if (PL.ui === 'attack' && r.cands.includes(id) && !r.must.includes(id)) return [{ kind: 'zoom', label: PL.picks.has(id) ? "Don't attack with it" : 'Attack with it', run: () => { if (PL.picks.has(id)) PL.picks.delete(id); else PL.picks.add(id); renderPlaybar(); decorate(); } }];
+  if (PL.ui === 'target' && currentCands().includes(id) && allowedTarget(id)) return [{ kind: 'zoom', label: PL.pend.multi && PL.pend.multi.includes(id) ? 'Remove this target' : 'Choose this target', run: () => chooseTarget(id) }];
+  if (PL.ui === 'block') {
+    if (r.attackers.some((o) => o.by.includes(id))) return [{ kind: 'zoom', label: [...PL.blocks.values()].some((bs) => bs.includes(id)) ? 'Stop blocking' : 'Block with it', run: () => handleBlockTap(id) }];
+    const o = r.attackers.find((x) => x.id === id);
+    if (o && PL.sel != null && o.by.includes(PL.sel)) return [{ kind: 'zoom', label: `Block it with ${nameOfCard(PL.sel)}`, run: () => handleBlockTap(id) }];
+  }
+  return [];
+}
+function zoomCard(card, held) {
+  if (held) HOLD.swallow = Date.now(); // the click that ends this hold must not also pick the card
+  if (S.view === 'watch' && W.mode === 'play' && card.closest('#board')) {
+    if (PL.ui === 'act') { onPlayClick(card); return; } // the same as a tap: the card and what you can do with it
+    openInspector(card, zoomActs(+card.dataset.id));
+    return;
+  }
+  openInspector(card);
+}
 function startAction(a) {
   closeInspector();
+  if (a.kind === 'zoom') { a.run(); return; }
   if (a.kind === 'go-attack') { PL.prePick = a.card; answer({ type: 'act', pass: 'combat' }); return; }
   const specs = a.specs || [];
   if (!specs.length) { answer({ type: 'act', act: a.act, t: [], etb: [] }); return; }
@@ -3280,6 +3306,36 @@ function wire() {
     else if (a.dataset.act === 'lobby') { setView('lobby', true); renderSeats(); }
     else if (a.dataset.act === 'close') T.banner.hidden = true;
   });
+  // Press and hold any card to read it, even where a tap picks it (attacking, blocking, targets, choices).
+  // On a computer, a right-click does the same. The click that ends a hold is swallowed so it picks nothing.
+  const holdable = (card) => card && !card.disabled && !card.classList.contains('is-back') && card.closest('#board, #sheet, #spotlight');
+  const endHold = () => { clearTimeout(HOLD.timer); if (HOLD.card) HOLD.card.classList.remove('holding'); HOLD.card = null; };
+  document.addEventListener('pointerdown', (e) => {
+    HOLD.swallow = 0;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    const card = e.target.closest && e.target.closest('.card');
+    endHold();
+    if (!holdable(card)) return;
+    HOLD.card = card; HOLD.x = e.clientX; HOLD.y = e.clientY;
+    HOLD.timer = setTimeout(() => {
+      const c = HOLD.card;
+      endHold();
+      if (c && c.isConnected && $('#insp').hidden) zoomCard(c, true);
+    }, HOLD.ms);
+    setTimeout(() => { if (HOLD.card === card) card.classList.add('holding'); }, 140);
+  }, { passive: true });
+  document.addEventListener('pointermove', (e) => { if (HOLD.card && Math.hypot(e.clientX - HOLD.x, e.clientY - HOLD.y) > 10) endHold(); }, { passive: true });
+  document.addEventListener('pointerup', endHold, { passive: true });
+  document.addEventListener('pointercancel', endHold, { passive: true });
+  document.addEventListener('contextmenu', (e) => {
+    const card = e.target.closest && e.target.closest('.card');
+    if (!holdable(card)) return;
+    e.preventDefault();
+    if (!HOLD.swallow && $('#insp').hidden) { const held = !!HOLD.card; endHold(); zoomCard(card, held); }
+  });
+  document.addEventListener('click', (e) => {
+    if (HOLD.swallow && Date.now() - HOLD.swallow < 1500) { HOLD.swallow = 0; e.stopPropagation(); e.preventDefault(); }
+  }, true);
   document.addEventListener('click', (e) => {
     const rc = e.target.closest('.ringc');
     if (rc) { nudge(rc.title); return; }
@@ -3299,11 +3355,13 @@ function wire() {
       if (e.key === 'Escape') {
         if (!$('#sheet').hidden && $('#sheet .coach-sheet')) return;
         if (!$('#sheet').hidden && PL.choice) { $('#sheet').hidden = true; return; }
-        if (PL.ui === 'target') { PL.pend = null; setUi('act'); return; }
+        if (PL.ui === 'target' && PL.pend && !PL.pend.a.req) { PL.pend = null; setUi('act'); return; }
         if (PL.ui === 'block' && PL.sel != null) { PL.sel = null; renderPlaybar(); decorate(); return; }
         if (T.logpane.classList.contains('open')) closeLog();
       }
       if ((e.key === 'z' || e.key === 'u') && !e.metaKey && !e.ctrlKey && !e.altKey) undo();
+      // i reads the focused card, whatever a tap on it would do
+      if (e.key === 'i' && !e.metaKey && !e.ctrlKey && !e.altKey && e.target.closest && e.target.closest('.card')) { e.preventDefault(); zoomCard(e.target.closest('.card')); return; }
       if ((e.key === ' ' || e.key === 'Enter') && !(e.target.closest && e.target.closest('button, a, input, select, textarea, [role="button"]'))) {
         const main = $('#sheet').hidden ? PB.acts.querySelector('.pill-solid') : $('#sheet .sheet-acts .pill-solid:not(:disabled)');
         if (!$('#sheet').hidden && $('#sheet .coach-sheet') && main) { e.preventDefault(); main.click(); return; }
