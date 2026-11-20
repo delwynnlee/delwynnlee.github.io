@@ -1,9 +1,9 @@
 // Service worker for the Pokémon Browser. Its scope is /pokemon/ only, so the rest of the site is untouched.
 // App files: fetched fresh when online, saved copy when offline.
 // Artwork and fonts: saved after the first view, then served from the device.
-const SHELL = 'pokemon-shell-v1';
+const SHELL = 'pokemon-shell-v2';
 const MEDIA = 'pokemon-media-v1';
-const SHELL_FILES = ['./', 'pokemon.json', 'icon.png'];
+const SHELL_FILES = ['./', 'pokemon.json', 'stories.json', 'icon.png'];
 const SAVED_FIRST = [
   'https://raw.githubusercontent.com/PokeAPI/sprites/',
   'https://fonts.googleapis.com/',
