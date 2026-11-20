@@ -9,6 +9,7 @@ Browse all 1,025 Pokémon by type, region and base stats. Live at `/pokemon/` on
 | `index.html` | The whole app: markup, styles and script. Edit this directly. |
 | `pokemon.json` | One Pokémon per line: stats, types, abilities, profile and evolution method. |
 | `icon.png` | Home-screen icon. |
+| `sw.js` | Service worker, scoped to `/pokemon/`. Saves artwork and fonts after their first view, and keeps the app working offline. |
 | `tools/` | Script that regenerates `pokemon.json`. |
 
 ## Where things come from

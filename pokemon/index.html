@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;700&family=Unbounded:wght@600;800&display=swap">
+<link rel="stylesheet" crossorigin="anonymous" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;700&family=Unbounded:wght@600;800&display=swap">
 <style>
 :root {
   /* Layout: intro, then a sticky search bar over a dense grid of type-patterned cards grouped by region
@@ -233,7 +233,7 @@ footer p { max-width: 72ch; margin: 0; }
 <script>
 'use strict';
 /* ---------- build-time settings ---------- */
-const CONFIG = {"art":true,"data":null};   // { art: show PokéAPI artwork inline?, data: inline records or null to fetch pokemon.json }
+const CONFIG = {"art":true,"data":null,"sw":true};   // { art: show PokéAPI artwork inline?, data: inline records or null to fetch pokemon.json, sw: register sw.js for offline use? }
 const CHART = {"Normal":"000000100000030000","Fire":"021022001002100022","Water":"022112000000000020","Electric":"000200001200000020","Grass":"012221012101000000","Ice":"010002100000100010","Fighting":"000000000112200201","Poison":"000020221012000002","Ground":"001311020000200000","Flying":"000121203002100000","Psychic":"000000200021010100","Bug":"010020202100100000","Rock":"221010121200000010","Ghost":"300000320002010100","Dragon":"022221000000001001","Dark":"000000100031020201","Steel":"210022131222202022","Fairy":"000000210002003210"};     // defending type -> 18 digits by attacking type: 0 normal, 1 weak, 2 resists, 3 immune
 const ART = n => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${n}.png`;
 
@@ -353,7 +353,7 @@ function sigil(m, labeled) {               // the six base stats as a hexagon: e
   return s + '</svg>';
 }
 const picture = (m, cls = '') => CONFIG.art
-  ? `<img class="${cls}" src="${ART(m.num)}" alt="" loading="lazy" decoding="async">`
+  ? `<img class="${cls}" src="${ART(m.num)}" alt="" loading="lazy" decoding="async" crossorigin="anonymous">`
   : sigil(m, false);
 
 /* ---------- small renderers ---------- */
@@ -501,7 +501,7 @@ function detail(m) {
     + `<button class="round" type="button" data-dir="1" data-go="${next ? next.id : ''}" ${next ? `aria-label="Next: ${esc(next.name)}"` : 'aria-label="Next" disabled'}>${glyph('right')}</button>`
     + `<span class="sp"></span><button class="round" type="button" data-close aria-label="Close">${glyph('close')}</button></div>`
     + `<span class="no" aria-hidden="true">${m.num}</span>`
-    + (CONFIG.art ? `<img class="hero-img" src="${ART(m.num)}" alt="Official artwork of ${esc(m.name)}">` : sigil(m, true))
+    + (CONFIG.art ? `<img class="hero-img" src="${ART(m.num)}" alt="Official artwork of ${esc(m.name)}" crossorigin="anonymous">` : sigil(m, true))
     + `</div><div class="dbody" style="--bar-l:${bl};--bar-d:${bd}">`
     + `<header class="dhead"><p class="num">#${pad(m.num)}, ${regionOf(m)}</p><h2 id="d-name">${esc(m.name)}</h2>`
     + `<div class="types">${m.types.map(t => chip(t)).join('')}${m.class ? `<span class="cls">${m.class}</span>` : ''}</div>`
@@ -568,7 +568,9 @@ $('lede').textContent = CONFIG.art
   ? 'All 1,025 Pokémon, from Kanto to Paldea, with official artwork loaded from PokéAPI.'
   : "All 1,025 Pokémon, from Kanto to Paldea. Each card's shape traces its six base stats, starting with HP at the top and going clockwise through Attack, Defense, Speed, Sp. Def and Sp. Atk.";
 $('foot').textContent = 'Unofficial fan project. Pokémon and Pokémon character names are trademarks of Nintendo, Creatures and GAME FREAK. Stats, abilities and evolutions come from Pokémon Showdown’s data. '
-  + (CONFIG.art ? 'Artwork is loaded from PokéAPI’s sprite collection.' : 'Card emblems are drawn from each Pokémon’s base stats. Artwork links open PokéAPI’s sprite collection.');
+  + (CONFIG.art ? 'Artwork is loaded from PokéAPI’s sprite collection.' : 'Card emblems are drawn from each Pokémon’s base stats. Artwork links open PokéAPI’s sprite collection.')
+  + (CONFIG.sw ? ' Artwork you’ve viewed is saved on this device, so it opens instantly next time and works offline.' : '');
+if (CONFIG.sw && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 const setBarHeight = () => document.documentElement.style.setProperty('--sbh', $('searchbar').offsetHeight + 'px');
 addEventListener('resize', setBarHeight);
 setBarHeight();
