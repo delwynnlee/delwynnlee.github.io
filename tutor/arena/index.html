@@ -493,7 +493,9 @@ svg.i .fill { fill: currentColor; }
 /* Inspector */
 .insp { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 20px; }
 .insp-scrim { position: absolute; inset: 0; background: rgba(14, 12, 18, .72); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); animation: fadein .2s; }
-.insp-box { position: relative; display: grid; grid-template-columns: auto minmax(0, 340px); gap: 24px; align-items: start; max-height: calc(100dvh - 40px); overflow: auto; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 20px; padding: 20px; box-shadow: 0 30px 90px rgba(0, 0, 0, .6); animation: rise .3s var(--ease); }
+.insp-box { position: relative; display: grid; grid-template-columns: auto minmax(0, 340px); grid-template-rows: auto auto auto 1fr; column-gap: 24px; align-items: start; max-height: calc(100dvh - 40px); overflow: auto; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 20px; padding: 20px; box-shadow: 0 30px 90px rgba(0, 0, 0, .6); animation: rise .3s var(--ease); }
+.insp-pic { grid-row: 1 / span 4; }
+.insp-info, .insp-box > .state, .insp-box > .acts, .insp-box > .links { grid-column: 2; }
 .insp .card { --cardw: min(300px, 62vw); cursor: default; }
 .insp .card .face { box-shadow: 0 18px 40px rgba(0, 0, 0, .5); }
 .insp h2 { margin: 2px 0 2px; font: 800 26px/1.1 var(--serif); padding-right: 36px; }
@@ -769,10 +771,18 @@ svg.i .fill { fill: currentColor; }
   .lesson .lm { display: none; }
   .coach-sheet h2 { font-size: 23px; }
   .coach-sheet .tu-text { font-size: 16.5px; }
-  .insp { padding: 10px; }
-  .insp-box { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 52px 16px 16px; }
-  .insp .x { top: 8px; right: 8px; }
-  .insp .card { --cardw: min(250px, 66vw); justify-self: center; }
+  .insp { padding: 0; place-items: stretch; }
+  .insp-box { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; width: 100%; height: 100dvh; max-height: none; border: 0; border-radius: 0; padding: calc(var(--safe-t) + 62px) 10px calc(var(--safe-b) + 24px); animation: fadein .2s; }
+  .insp-pic, .insp-info, .insp-box > .state, .insp-box > .acts, .insp-box > .links { grid-row: auto; grid-column: auto; }
+  .insp-pic { order: 1; }
+  .insp-box > .state { order: 2; margin: 14px 4px 0; }
+  .insp-info { order: 3; padding: 16px 6px 0; }
+  .insp-box > .acts { order: 4; position: sticky; bottom: calc(-24px - var(--safe-b)); z-index: 2; margin: 16px -10px 0; padding: 18px 16px calc(14px + var(--safe-b)); background: linear-gradient(180deg, rgba(41, 37, 47, 0), var(--surface) 16px); }
+  .insp-box > .links { order: 5; padding: 0 6px; }
+  .insp .x { position: fixed; top: calc(var(--safe-t) + 10px); right: 10px; z-index: 3; background: var(--raised); }
+  .insp h2 { padding-right: 0; }
+  .insp .card { --cardw: calc(100vw - 20px); justify-self: center; }
+  .insp .card .face { border-radius: 4.75% / 3.4%; }
   body.in-game { --header-h: 0px; }
   body.in-game .top { display: none; }
   body.in-game .watch { margin-top: var(--safe-t); height: calc(100dvh - var(--safe-t)); min-height: 0; }
@@ -2538,10 +2548,10 @@ function openInspector(el, actions) {
       <div class="type">${esc(def.typeLine)}</div>
       <div class="otext">${def.token ? `<p>${esc(def.text || 'A token with no abilities.')}</p>` : textHTML(def.text)}</div>
       ${isCre(def) ? `<div class="ipt">${def.power}/${def.toughness}</div>` : ''}
-      ${stateLine ? `<div class="state">${stateLine}</div>` : ''}
-      ${W.inspActs.length ? `<div class="acts">${W.inspActs.map((a, k) => `<button type="button" class="pill${k === 0 ? ' pill-solid' : ''}" data-actk="${k}">${esc(a.label).replace(/\{([^}]+)\}/g, (m, c) => sym(c))}${a.kind === 'cast' ? ` <span style="margin-left:auto">${manaHTML(a.cmd ? a.cost : def.manaCost)}</span>` : ''}</button>`).join('')}${W.inspActs.some((a) => a.specs && a.specs.length) ? '<span class="note">You will choose targets next.</span>' : ''}</div>` : ''}
-      ${def.token ? '' : `<div class="links"><a class="btn-ghost" href="${esc(tutor)}">${icon('ext')}Open in Tutor</a></div>`}
     </div>
+    ${stateLine ? `<div class="state">${stateLine}</div>` : ''}
+    ${W.inspActs.length ? `<div class="acts">${W.inspActs.map((a, k) => `<button type="button" class="pill${k === 0 ? ' pill-solid' : ''}" data-actk="${k}">${esc(a.label).replace(/\{([^}]+)\}/g, (m, c) => sym(c))}${a.kind === 'cast' ? ` <span style="margin-left:auto">${manaHTML(a.cmd ? a.cost : def.manaCost)}</span>` : ''}</button>`).join('')}${W.inspActs.some((a) => a.specs && a.specs.length) ? '<span class="note">You will choose targets next.</span>' : ''}</div>` : ''}
+    ${def.token ? '' : `<div class="links"><a class="btn-ghost" href="${esc(tutor)}">${icon('ext')}Open in Tutor</a></div>`}
     <button type="button" class="icon-btn x" data-close aria-label="Close">${icon('x')}</button></div>`;
   box.querySelector('.insp-pic').appendChild(big);
   box.hidden = false;
