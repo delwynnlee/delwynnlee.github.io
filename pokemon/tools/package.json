@@ -1,0 +1,11 @@
+{
+  "name": "pokemon-browser-data",
+  "private": true,
+  "description": "Regenerates ../pokemon.json for the Pokémon Browser",
+  "scripts": {
+    "build": "node build-data.js"
+  },
+  "dependencies": {
+    "pokemon-showdown": "0.11.11"
+  }
+}
