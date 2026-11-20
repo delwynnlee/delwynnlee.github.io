@@ -27,8 +27,9 @@
       steps: [
         { title: 'Play a land', say: 'Lands make mana, and you may play one land on each of your turns. Tap the glowing Forest in your hand, then choose Play this land.', do: { land: 'Forest' } },
         { title: 'Cast Llanowar Elves', say: 'Llanowar Elves costs {G}: one green mana, which your Forest makes. Tap it and cast it. Arena taps your lands for you.', do: { cast: 'Llanowar Elves' } },
+        { title: 'End your turn', say: 'A new creature can\'t attack, or tap for mana, until your next turn. That\'s called summoning sickness. You\'ve played your land and cast what you can, so end your turn.', do: { pass: 'end' } },
         { title: 'Play another land', say: 'Your opponent played a creature on their turn. Now it\'s your turn again and you drew a card. Play the Forest you drew.', do: { land: 'Forest' } },
-        { title: 'Cast Centaur Courser', say: 'New creatures can\'t attack or tap the turn they arrive. Llanowar Elves arrived last turn, so now it can tap for {G}. With two Forests that makes three mana: enough for Centaur Courser.', do: { cast: 'Centaur Courser' } },
+        { title: 'Cast Centaur Courser', say: 'Llanowar Elves has been here since your last turn, so now it can tap for {G}. With two Forests that makes three mana: enough for Centaur Courser.', do: { cast: 'Centaur Courser' } },
       ],
       outro: { title: 'You cast your first creatures', points: ['You may play one land each turn.', 'Mana pays a card\'s cost. A colored symbol needs mana of that color.', 'A new creature can\'t attack or tap until your next turn.'] },
     },

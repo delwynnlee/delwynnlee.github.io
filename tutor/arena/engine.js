@@ -517,11 +517,11 @@ function newCard(G, def, owner) {
 }
 // `setup` starts a game from a fixed position instead of shuffled opening hands (the tutorial uses it):
 // { turn, active, text, players: [{ life, library (top card first), hand, bf: [{ def, tapped, sick, cnt }], gy, cmdOnBf, cmdCasts, cmdDmg }] }
-function createGame({ decks, seed, first = null, record = true, human = null, answers = [], setup = null }) {
+function createGame({ decks, seed, first = null, record = true, human = null, answers = [], setup = null, stopEmpty = true }) {
   const rng = makeRng(seed == null ? Date.now() : seed);
   const format = decks.every((d) => d.commander) ? 'commander' : 'standard';
   const G = { rng, seed, turn: 0, active: 0, first: 0, players: [], frames: [], record, over: false, winner: null, reason: '',
-    stack: [], defs: {}, nextId: 1, phase: 'setup', human, answers, qi: 0, format, setup };
+    stack: [], defs: {}, nextId: 1, phase: 'setup', human, answers, qi: 0, format, setup, stopEmpty };
   decks.forEach((d, i) => {
     const P = { i, name: d.name, persona: PERSONAS[d.archetype] ? d.archetype : 'midrange', colors: d.colors || [], life: format === 'commander' ? CMD.life : 20,
       library: [], hand: [], bf: [], gy: [], exile: [], landsPlayed: 0, lost: false, decked: false, mulligans: 0, bottomed: 0,
@@ -2093,9 +2093,13 @@ function humanMain(G, P, which) {
   G.phase = ctx;
   for (let guard = 0; guard < 80 && !G.over; guard++) {
     const acts = humanActions(G, P, ctx);
-    const canAttack = ctx === 'main1' && attackCandidates(G, P).length > 0;
-    if (!acts.length) return canAttack ? 'combat' : 'end';
-    const a = ask(G, { type: 'act', when: ctx, actions: acts, canAttack });
+    const ready = ctx === 'main1' ? attackCandidates(G, P).map((c) => c.id) : [];
+    const canAttack = ready.length > 0;
+    if (!acts.length && canAttack) return 'combat';
+    // With nothing to play and nothing able to attack, the first main phase still waits for you to end the turn,
+    // so it never slips past (older saved games ended it for you, and keep doing so)
+    if (!acts.length && (ctx !== 'main1' || !G.stopEmpty)) return 'end';
+    const a = ask(G, { type: 'act', when: ctx, actions: acts, canAttack, ready });
     if (a.pass) return a.pass === 'combat' && canAttack ? 'combat' : 'end';
     if (!acts.some((x) => x.act === a.act)) return 'end';
     applyAction(G, P, a);
@@ -2139,8 +2143,8 @@ function humanBlocks(G, D, A, attackers) {
   }
   return map;
 }
-function runInteractive({ decks, seed, human = 0, answers = [], setup = null }) {
-  const G = createGame({ decks, seed, record: true, human, answers, setup });
+function runInteractive({ decks, seed, human = 0, answers = [], setup = null, stopEmpty = true }) {
+  const G = createGame({ decks, seed, record: true, human, answers, setup, stopEmpty });
   try {
     playGame(G);
     return { G, done: true, req: null };

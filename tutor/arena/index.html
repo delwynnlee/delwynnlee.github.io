@@ -695,7 +695,8 @@ svg.i .fill { fill: currentColor; }
   .coach-sheet h2 { font-size: 23px; }
   .coach-sheet .tu-text { font-size: 16.5px; }
   .insp { padding: 10px; }
-  .insp-box { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 16px; }
+  .insp-box { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 52px 16px 16px; }
+  .insp .x { top: 8px; right: 8px; }
   .insp .card { --cardw: min(250px, 66vw); justify-self: center; }
   body.in-game { --header-h: 0px; }
   body.in-game .top { display: none; }
@@ -839,10 +840,10 @@ svg.i .fill { fill: currentColor; }
 <div class="insp" id="insp" role="dialog" aria-modal="true" aria-labelledby="inspName" hidden></div>
 <div class="sheet" id="sheet" hidden></div>
 
-<script src="engine.js?v=3"></script>
+<script src="engine.js?v=4"></script>
 <script src="decks.js?v=3"></script>
 <script src="commanders.js?v=3"></script>
-<script src="tutorial.js?v=3"></script>
+<script src="tutorial.js?v=4"></script>
 <script>
 'use strict';
 /* ============================================================
@@ -2063,7 +2064,7 @@ function openInspector(el, actions) {
       const whose = W.mode === 'play' && pi === 0 ? 'Yours' : `${esc(W.replay.players[pi].name)}'s`;
       if (b && isCre(def)) {
         const bits = [`<b>${b.p}/${b.t}</b> right now`];
-        if (b.tap) bits.push('tapped'); if (b.sick) bits.push('summoning sick'); if (b.att) bits.push('attacking'); if (b.blk) bits.push('blocking');
+        if (b.tap) bits.push('tapped'); if (b.sick && !(def.kw || []).includes('haste')) bits.push(whose === 'Yours' ? 'new this turn, so it can attack on your next turn' : 'new this turn'); if (b.att) bits.push('attacking'); if (b.blk) bits.push('blocking');
         if (b.dmg) bits.push(`${b.dmg} damage marked`); if (b.cnt) bits.push(`${plural(b.cnt, '+1/+1 counter')}`); if (b.kw && b.kw.length) bits.push(`has ${b.kw.join(' and ')} this turn`);
         stateLine = `${whose}, ${bits.join(', ')}.`;
       } else if (b) stateLine = `${whose === 'Yours' ? 'Your' : whose} land${b.tap ? ', tapped' : ''}.`;
@@ -2126,7 +2127,7 @@ function playStart(seed, answers, opts = {}) {
   closeSpotlight(false);
   closeChoice();
   closeInspector();
-  Object.assign(PL, { held: null, on: true, keys: opts.decks ? null : S.seats.slice(), decks: opts.decks || mirrorSafe(d0, d1), setup: opts.setup || null, seed, answers: (answers || []).slice(), req: null, done: false, shown: -1, pend: null, skip: null, imgs: false, toastTurn: 0 });
+  Object.assign(PL, { legacy: !!opts.legacy, prePick: null, held: null, on: true, keys: opts.decks ? null : S.seats.slice(), decks: opts.decks || mirrorSafe(d0, d1), setup: opts.setup || null, seed, answers: (answers || []).slice(), req: null, done: false, shown: -1, pend: null, skip: null, imgs: false, toastTurn: 0 });
   W.mode = 'play';
   W.seed = seed;
   W.decks = PL.decks;
@@ -2158,7 +2159,7 @@ function endPlay() {
 function advance(animate, first) {
   let r;
   try {
-    r = Arena.runInteractive({ decks: PL.decks, seed: PL.seed, human: 0, answers: PL.answers, setup: PL.setup });
+    r = Arena.runInteractive({ decks: PL.decks, seed: PL.seed, human: 0, answers: PL.answers, setup: PL.setup, stopEmpty: !PL.legacy });
   } catch (err) {
     // A saved game from an older version can fall out of step: keep the answers that still fit.
     const m = /answer (\d+)/.exec((err && err.message) || '');
@@ -2261,7 +2262,7 @@ function closeSpotlight(run) {
 }
 function settle(r) {
   // A finished game stays saved (so a reload shows how it ended) but no longer waits in the lobby. Lessons aren't saved.
-  if (PL.keys) store.set('arena.play.v1', { v: 1, a: PL.keys[0], b: PL.keys[1], seed: PL.seed, answers: PL.answers, turn: r.done ? W.replay.turns : r.req.turn, names: PL.decks.map((d) => d.name), at: Date.now(), done: r.done || undefined });
+  if (PL.keys) store.set('arena.play.v1', { v: PL.legacy ? 1 : 2, a: PL.keys[0], b: PL.keys[1], seed: PL.seed, answers: PL.answers, turn: r.done ? W.replay.turns : r.req.turn, names: PL.decks.map((d) => d.name), at: Date.now(), done: r.done || undefined });
   if (r.done) {
     setUi('over');
     if (TU.on && !TU.completed && (W.replay.winner === 0 || TU.lesson.practice)) lessonComplete();
@@ -2277,7 +2278,9 @@ function openRequest(req) {
   PL.blocks = new Map();
   PL.sel = null;
   coachFor(req);
-  if (req.type === 'attack') { req.must.forEach((id) => PL.picks.add(id)); setUi('attack'); }
+  const pre = PL.prePick;
+  PL.prePick = null;
+  if (req.type === 'attack') { req.must.forEach((id) => PL.picks.add(id)); if (pre != null && req.cands.includes(pre)) PL.picks.add(pre); setUi('attack'); }
   else if (req.type === 'block') setUi('block');
   else if (req.type === 'act') setUi('act');
   else { openChoice(req); setUi('sheet'); }
@@ -2326,7 +2329,10 @@ function renderPlaybar() {
     const w = r.when;
     if (w === 'main1') {
       title = 'Your turn';
-      hint = r.actions.some((a) => a.kind === 'land') ? 'Play a land and cast spells, then attack.' : 'Cast spells or use abilities, then attack.';
+      const fresh = r.s.p[0].bf.filter((b) => b.sick && isCre(defOf(b.d)) && !(r.ready || []).includes(b.id));
+      const later = fresh.length === 1 ? `${defOf(fresh[0].d).name} can attack next turn.` : fresh.length ? 'Your new creatures can attack next turn.' : '';
+      hint = !r.actions.length ? `${later || 'Nothing else to play.'} End your turn when you're ready.`
+        : r.actions.some((a) => a.kind === 'land') ? `Play a land and cast spells${r.canAttack ? ', then attack' : ''}.` : `Cast spells or use abilities${r.canAttack ? ', then attack' : ''}.`;
       btns = r.canAttack ? ghost('pass-end', 'End turn') + solid('pass-combat', 'Attack') : solid('pass-end', 'End turn');
     } else if (w === 'main2') { title = 'After combat'; hint = 'Cast anything else, then end your turn.'; btns = solid('pass-end', 'End turn'); }
     else if (w === 'attackers') {
@@ -2464,6 +2470,7 @@ function onPlayClick(target) {
   if (PL.ui === 'block' && handleBlockTap(id)) return true;
   if (PL.ui === 'act') {
     const acts = r.actions.filter((a) => a.card === id && allowedAct(a));
+    if (r.when === 'main1' && (r.ready || []).includes(id) && !coachOn()) acts.push({ kind: 'go-attack', card: id, label: `Attack with ${nameOfCard(id)}` });
     if (coachOn() && !acts.length && r.actions.some((a) => a.card === id)) nudge(TU.exp.kind === 'pass' ? `Not now. Choose ${PB.acts.querySelector('.coach-next') ? PB.acts.querySelector('.coach-next').textContent : 'the glowing button'}.` : 'Not yet. Tap the glowing card.');
     openInspector(card, acts);
     return true;
@@ -2508,6 +2515,7 @@ function assignBlock(aid, bid) {
 }
 function startAction(a) {
   closeInspector();
+  if (a.kind === 'go-attack') { PL.prePick = a.card; answer({ type: 'act', pass: 'combat' }); return; }
   const specs = a.specs || [];
   if (!specs.length) { answer({ type: 'act', act: a.act, t: [], etb: [] }); return; }
   PL.pend = { a, i: 0, t: [], etb: [], pairMine: null };
@@ -2652,7 +2660,7 @@ function resumeSaved() {
   if (!sv) return;
   setFormat(isCmdKey(sv.a) ? 'commander' : 'standard', [sv.a, sv.b]);
   saveSeats();
-  playStart(sv.seed, sv.answers);
+  playStart(sv.seed, sv.answers, { legacy: sv.v !== 2 });
 }
 const tutDone = () => new Set((store.get('arena.tut.v1', null) || { done: [] }).done);
 function renderLearnBtn() {
@@ -2994,7 +3002,7 @@ function wire() {
       const f = isCmdKey(h.a.key) ? 'commander' : 'standard';
       if (f !== S.format) { setFormat(f, [h.a.key, h.b.key]); renderPick(); } else S.seats = [h.a.key, h.b.key];
     }
-    if (h.play != null && h.a && h.b) { if (!(PL.on && PL.seed === h.play)) { const sv = savedPlay(); playStart(h.play, sv && sv.seed === h.play && sv.a === h.a.key && sv.b === h.b.key ? sv.answers : []); } }
+    if (h.play != null && h.a && h.b) { if (!(PL.on && PL.seed === h.play)) { const sv = savedPlay(); const same = sv && sv.seed === h.play && sv.a === h.a.key && sv.b === h.b.key; playStart(h.play, same ? sv.answers : [], { legacy: same && sv.v !== 2 }); } }
     else if (h.seed != null && h.a && h.b) { if (!(S.view === 'watch' && W.mode === 'watch' && W.seed === h.seed)) watch(h.seed, { replace: true }); }
     else if (S.view !== 'lobby') { setView('lobby', false); renderSeats(); }
   });
@@ -3026,7 +3034,7 @@ async function boot() {
   renderResume();
   if (h.lesson && lessonById(h.lesson)) lessonStart(h.lesson, true);
   else if (h.learn) { setView('learn', false); renderLessons(); }
-  else if (h.play != null && h.a && h.b) { const sv = savedPlay(); playStart(h.play, sv && sv.seed === h.play && sv.a === h.a.key && sv.b === h.b.key ? sv.answers : []); }
+  else if (h.play != null && h.a && h.b) { const sv = savedPlay(); const same = sv && sv.seed === h.play && sv.a === h.a.key && sv.b === h.b.key; playStart(h.play, same ? sv.answers : [], { legacy: same && sv.v !== 2 }); }
   else if (h.seed != null && h.a && h.b) watch(h.seed, { replace: true, paused: false });
   else syncHash(false);
 }
