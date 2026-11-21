@@ -767,7 +767,7 @@ function createGame({ decks, seed, first = null, record = true, human = null, an
     stack: [], defs: {}, nextId: 1, phase: 'setup', human, answers, qi: 0, format, setup, stopEmpty, memo, searchN: 0,
     pending: [], delayed: [], depth: 0, dirty: true, combat: null, died: [], extraTurns: [] };
   decks.forEach((d, i) => {
-    const P = { i, name: d.name, persona: PERSONAS[d.archetype] ? d.archetype : 'midrange', hard: d.ai === 'hard', colors: d.colors || [], life: format === 'commander' ? CMD.life : 20,
+    const P = { i, name: d.name, persona: PERSONAS[d.archetype] ? d.archetype : 'midrange', hard: d.ai === 'hard', colors: d.colors || [], life: d.life || (format === 'commander' ? CMD.life : 20),
       library: [], hand: [], bf: [], gy: [], exile: [], landsPlayed: 0, lost: false, decked: false, mulligans: 0, bottomed: 0,
       command: [], cmd: null, cmdCasts: 0, cmdDmg: {}, g: G, ring: { n: 0, bearer: null }, pool: { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 },
       drawn: 0, cast: 0, died: 0, left: 0, attackedWith: 0, xcast: [],

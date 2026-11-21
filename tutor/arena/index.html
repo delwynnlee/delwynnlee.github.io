@@ -932,6 +932,195 @@ svg.i .fill { fill: currentColor; }
   body.in-game .midline { display: none; }
   body.in-game .gback { display: inline-flex; width: 34px; height: 34px; border-radius: 10px; }
 }
+/* ---------- Hub: the career and the journal, from the lobby ---------- */
+.hub { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.hub-card { position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; gap: 3px; min-height: 112px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--line-strong); background: var(--surface) center 22% / cover no-repeat; color: var(--text); text-align: left; transition: border-color .15s; }
+.hub-card::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(32, 29, 39, .1), rgba(32, 29, 39, .9) 72%); }
+.hub-card:hover { border-color: var(--text); }
+.hub-card .hub-k { font: 700 11px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--m); }
+.hub-card b { font: 800 20px/1.12 var(--serif); }
+.hub-card .hub-s { color: var(--muted); font-size: 13.5px; line-height: 1.3; }
+.hub-journal { background: linear-gradient(145deg, color-mix(in srgb, var(--u) 20%, var(--surface)), var(--surface) 70%); }
+.hub-journal::before { display: none; }
+.hub-journal .jr-spark { position: absolute; right: 14px; top: 14px; }
+
+/* ---------- Career ---------- */
+.cr-hero { position: relative; isolation: isolate; overflow: hidden; display: flex; align-items: flex-end; min-height: 230px; margin-top: 8px; padding: 26px 22px 20px; border-radius: 22px; border: 1px solid var(--line-strong); background: var(--raised) center 20% / cover no-repeat; }
+.cr-hero::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(20, 17, 26, .15), rgba(20, 17, 26, .93) 70%); }
+.cr-hero-in { width: 100%; }
+.cr-kick { margin: 0 0 5px; font: 700 12px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--m); }
+.cr-hero h1 { margin: 0; font: 800 42px/1.02 var(--serif); letter-spacing: -.01em; }
+.cr-intro { margin: 8px 0 0; max-width: 60ch; font-size: 15.5px; line-height: 1.45; opacity: .9; }
+.cr-prog { display: flex; gap: 5px; margin-top: 16px; }
+.cr-prog i { flex: 1; height: 6px; border-radius: 3px; background: rgba(236, 229, 216, .16); }
+.cr-prog i.on { background: var(--m); }
+.cr-prog i.now { background: color-mix(in srgb, var(--m) 40%, transparent); }
+.cr-prog-l { margin: 8px 0 0; font: 600 13px/1.3 var(--sans); color: var(--muted); }
+.cr-note { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-top: 14px; padding: 14px 16px; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--m) 55%, transparent); background: color-mix(in srgb, var(--m) 12%, var(--surface)); }
+.cr-note p { margin: 0; font-size: 15px; line-height: 1.4; }
+.cr-note p b { font-weight: 700; }
+.cr-next { display: grid; grid-template-columns: 240px minmax(0, 1fr); margin-top: 14px; overflow: hidden; border-radius: 20px; border: 1px solid var(--line-strong); background: var(--surface); }
+.cr-next-art { position: relative; min-height: 220px; background: var(--raised) center 22% / cover no-repeat; }
+.cr-next-body { padding: 18px 20px 20px; }
+.cr-stage { margin: 0; font: 700 12px/1.3 var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--m); }
+.cr-next h2 { margin: 6px 0 6px; font: 800 30px/1.08 var(--serif); }
+.cr-foe { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; color: var(--muted); font-size: 14.5px; }
+.cr-foe .cols { display: inline-flex; gap: 2px; }
+.cr-text { margin: 12px 0 0; max-width: 62ch; font: 400 16.5px/1.5 var(--serif); }
+.cr-rules { margin: 10px 0 0; color: var(--muted); font-size: 14px; }
+.cr-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-top: 16px; }
+.cr-next.boss { border-color: color-mix(in srgb, var(--m) 70%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--m) 40%, transparent), 0 18px 60px rgba(214, 179, 90, .12); }
+.cr-deck { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; margin-top: 14px; padding: 14px; border-radius: 18px; border: 1px solid var(--line); background: var(--surface); }
+.cr-deck-art { flex: none; width: 64px; height: 64px; border-radius: 14px; background: var(--raised) center 22% / cover no-repeat; }
+.cr-deck-tx { flex: 1 1 200px; min-width: 0; }
+.cr-deck h3 { margin: 0; font: 800 20px/1.15 var(--serif); }
+.cr-deck-tx p { margin: 3px 0 0; color: var(--muted); font-size: 14px; line-height: 1.35; }
+.cr-new { flex: 0 0 100%; display: flex; flex-wrap: wrap; gap: 6px; }
+.cr-new .chip.got { border-color: color-mix(in srgb, var(--m) 55%, transparent); }
+.cr-new .lbl { flex: 0 0 100%; font: 600 12.5px var(--sans); color: var(--muted); }
+.cr-path { margin-top: 26px; }
+.cr-path h2 { margin: 0 0 10px; font: 800 23px/1.2 var(--serif); }
+.cr-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.cr-st { display: grid; grid-template-columns: 34px 54px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 14px 8px 10px; border-radius: 15px; border: 1px solid var(--line); background: var(--surface); }
+.cr-st .n { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; font: 800 14px var(--sans); color: var(--muted); background: var(--raised); }
+.cr-st .n svg.i { width: 18px; height: 18px; }
+.cr-st .th { width: 54px; height: 54px; border-radius: 11px; background: var(--raised) center 20% / cover no-repeat; }
+.cr-st b { display: block; font: 700 16px/1.2 var(--sans); }
+.cr-st .s { display: block; margin-top: 2px; color: var(--muted); font-size: 13.5px; line-height: 1.3; }
+.cr-st .r { font: 600 13px var(--sans); color: var(--muted); text-align: right; }
+.cr-st.done .n { color: #2a2108; background: var(--m); }
+.cr-st.now { border-color: var(--m); box-shadow: inset 0 0 0 1px var(--m); }
+.cr-st.now .r { color: var(--m); }
+.cr-st.locked { opacity: .62; }
+.cr-st.locked .th { filter: grayscale(.9) brightness(.55); }
+.cr-st.boss .th { box-shadow: 0 0 0 2px var(--m); }
+.cr-foot { margin: 26px 0 0; display: flex; justify-content: center; }
+.cr-done h2 { color: var(--m); }
+
+/* Rewards: three packs after a win */
+.rw { position: fixed; inset: 0; z-index: 55; display: grid; place-items: center; padding: 20px; }
+.rw-scrim { position: absolute; inset: 0; background: rgba(14, 12, 18, .82); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); animation: fadein .2s; }
+.rw-box { position: relative; width: min(1040px, 100%); max-height: calc(100dvh - 40px); overflow: auto; padding: 22px; border-radius: 22px; border: 1px solid var(--line-strong); background: var(--surface); box-shadow: 0 30px 90px rgba(0, 0, 0, .6); animation: rise .3s var(--ease); }
+.rw-box h2 { margin: 0; font: 800 30px/1.1 var(--serif); }
+.rw-sub { margin: 6px 0 0; color: var(--muted); font-size: 15px; line-height: 1.45; max-width: 70ch; }
+.rw-packs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+.rw-pack { display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: 18px; border: 1px solid var(--line); background: var(--raised); }
+.rw-pack h3 { margin: 0; font: 800 19px/1.2 var(--serif); }
+.rw-pack h3 span { margin-left: 6px; font: 600 13px var(--sans); color: var(--muted); }
+.rw-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.rw-pack .pill { justify-content: center; }
+.rw-hint { margin: 12px 0 0; color: var(--faint); font-size: 13.5px; }
+.rw-done { margin-top: 6px; }
+.rw-h { margin: 16px 0 8px; font: 700 13px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.rw-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.rw-done + .cr-acts { margin-top: 22px; }
+
+/* ---------- Journal ---------- */
+.jr { --win: #3987e5; --loss: #d95926; --draw: #8a8494; }
+.jr-filter { margin-top: 18px; }
+.jr-top { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 14px; margin-top: 16px; }
+.jr-hero, .jr-card, .kpi { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
+.jr-hero { padding: 18px 20px; }
+.jr-lbl { margin: 0; font: 600 13px/1.2 var(--sans); color: var(--muted); }
+.jr-big { margin: 6px 0 0; font: 700 64px/1 var(--sans); letter-spacing: -.02em; }
+.jr-sub { margin: 8px 0 14px; color: var(--muted); font-size: 14.5px; line-height: 1.4; }
+.jr-spark { display: block; max-width: 100%; height: auto; overflow: visible; }
+.jr-spark .w { fill: var(--win); } .jr-spark .l { fill: var(--loss); } .jr-spark .d { fill: var(--draw); }
+.jr-spark .mid { stroke: var(--line-strong); stroke-width: 1; }
+.jr-spark [data-tip] { cursor: default; }
+.jr-key { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; color: var(--muted); font-size: 13px; }
+.jr-key i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 3px; vertical-align: -1px; }
+.jr-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.kpi { display: flex; flex-direction: column; min-height: 96px; padding: 14px 16px; }
+.kpi span { font: 600 13px/1.25 var(--sans); color: var(--muted); }
+.kpi b { margin-top: 8px; font: 700 30px/1.05 var(--sans); }
+.kpi small { margin-top: 3px; color: var(--faint); font-size: 12.5px; line-height: 1.3; }
+.jr-card { margin-top: 14px; padding: 16px 18px; }
+.jr-card h2 { margin: 0 0 3px; font: 700 16.5px/1.25 var(--sans); }
+.jr-card .jr-cap { margin: 0 0 14px; color: var(--muted); font-size: 13.5px; }
+.jr-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 14px; }
+.mts { display: grid; gap: 12px; }
+.mt { display: grid; grid-template-columns: minmax(0, 10em) minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+.mt-name { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 14.5px; }
+.mt-name .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mt-name .sym { width: 16px; height: 16px; flex: none; }
+.mt-bar { height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--win) 20%, transparent); }
+.mt-bar i { display: block; height: 100%; border-radius: 4px; background: var(--win); }
+.mt-fig { color: var(--muted); font-size: 13.5px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mt-fig b { margin-right: 6px; color: var(--text); font-weight: 700; }
+.jl { position: relative; }
+.jl svg { display: block; width: 100%; overflow: visible; touch-action: pan-y; }
+.jl:focus-visible { outline: 2px solid var(--text); outline-offset: 4px; border-radius: 8px; }
+.jl .g { stroke: var(--line); stroke-width: 1; }
+.jl .base { stroke: var(--line-strong); stroke-width: 1; }
+.jl .ax { fill: var(--faint); font: 500 11.5px var(--sans); font-variant-numeric: tabular-nums; }
+.jl .area { fill: var(--win); opacity: .1; }
+.jl .ln { fill: none; stroke: var(--win); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.jl .dot { fill: var(--win); stroke: var(--surface); stroke-width: 2; }
+.jl .end { fill: var(--text); font: 700 12.5px var(--sans); }
+.jl .xh { stroke: var(--muted); stroke-width: 1; }
+.jtip { position: fixed; z-index: 70; max-width: 250px; padding: 8px 11px; border-radius: 10px; border: 1px solid var(--line-strong); background: #15131a; box-shadow: 0 10px 30px rgba(0, 0, 0, .5); font-size: 13px; line-height: 1.35; color: var(--muted); pointer-events: none; }
+.jtip b { display: block; color: var(--text); font: 700 15px/1.25 var(--sans); }
+.hb { display: grid; gap: 9px; }
+.hb-h { margin: 0 0 2px; font: 600 13px var(--sans); color: var(--muted); }
+.hb-row { display: grid; grid-template-columns: minmax(0, 9.5em) minmax(0, 1fr); align-items: center; gap: 10px; font-size: 14px; }
+.hb-bar { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.hb-bar i { height: 10px; min-width: 3px; border-radius: 0 4px 4px 0; background: var(--win); }
+.hb-bar.l i { background: var(--loss); }
+.hb-bar b { font: 600 13px var(--sans); font-variant-numeric: tabular-nums; }
+.hb + .hb { margin-top: 16px; }
+.recs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.rec { padding: 12px 14px; border-radius: 14px; background: var(--raised); }
+.rec span { display: block; font: 600 12.5px var(--sans); color: var(--muted); }
+.rec b { display: block; margin-top: 4px; font: 700 24px/1.15 var(--sans); }
+.rec small { display: block; margin-top: 3px; color: var(--faint); font-size: 12.5px; line-height: 1.3; }
+.tots { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 14px 0 0; color: var(--muted); font-size: 14px; }
+.tots b { color: var(--text); font-variant-numeric: tabular-nums; }
+.jr-games { margin-top: 24px; }
+.jr-games > h2 { margin: 0; font: 800 23px/1.2 var(--serif); }
+.jg-day { margin: 16px 0 8px; font: 700 13px var(--sans); color: var(--muted); }
+.jg-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.jg { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 13px; border: 1px solid var(--line); background: var(--surface); }
+.jg-r { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; font: 800 14px var(--sans); color: #fff; }
+.jg-r.win { background: var(--win); } .jg-r.loss { background: var(--loss); } .jg-r.draw { background: var(--draw); color: #15131a; }
+.jg-main { min-width: 0; }
+.jg-main b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 15px/1.3 var(--sans); }
+.jg-main span { display: block; color: var(--muted); font-size: 13px; line-height: 1.35; }
+.jg-side { text-align: right; white-space: nowrap; color: var(--faint); font-size: 12.5px; }
+.jg-side b { display: block; color: var(--text); font: 600 13px var(--sans); }
+.jr-more { margin-top: 12px; display: flex; justify-content: center; }
+.jr-empty { margin-top: 18px; padding: 28px 20px; border-radius: 18px; border: 1px dashed var(--line-strong); text-align: center; color: var(--muted); font-size: 15px; line-height: 1.5; }
+.jr-empty b { display: block; color: var(--text); font: 800 21px/1.25 var(--serif); margin-bottom: 4px; }
+.jr-foot { margin: 22px 0 0; display: flex; justify-content: center; }
+
+@media (max-width: 640px) {
+  .hub { gap: 10px; margin-top: 14px; }
+  .hub-card { min-height: 104px; padding: 12px 13px; }
+  .hub-card b { font-size: 18px; }
+  .hub-journal .jr-spark { right: 10px; top: 12px; }
+  .cr-hero { min-height: 250px; padding: 20px 16px 16px; border-radius: 18px; }
+  .cr-hero h1 { font-size: 34px; }
+  .cr-next { grid-template-columns: minmax(0, 1fr); }
+  .cr-next-art { min-height: 150px; }
+  .cr-next-body { padding: 14px 16px 16px; }
+  .cr-next h2 { font-size: 26px; }
+  .cr-st { grid-template-columns: 30px 46px minmax(0, 1fr); gap: 10px; padding: 8px 10px; }
+  .cr-st .n { width: 30px; height: 30px; }
+  .cr-st .th { width: 46px; height: 46px; }
+  .cr-st .r { grid-column: 3; text-align: left; margin-top: -4px; }
+  .rw { padding: 0; place-items: stretch; }
+  .rw-box { width: 100%; height: 100dvh; max-height: none; border: 0; border-radius: 0; padding: calc(var(--safe-t) + 18px) 14px calc(var(--safe-b) + 24px); }
+  .rw-box h2 { font-size: 26px; }
+  .rw-packs { grid-template-columns: minmax(0, 1fr); }
+  .jr-top { grid-template-columns: minmax(0, 1fr); }
+  .jr-big { font-size: 56px; }
+  .jr-grid { grid-template-columns: minmax(0, 1fr); }
+  .mt { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; }
+  .mt-bar { grid-column: 1 / -1; grid-row: 2; }
+  .recs { grid-template-columns: 1fr 1fr; }
+  .rec b { font-size: 22px; }
+  .hb-row { grid-template-columns: minmax(0, 8em) minmax(0, 1fr); }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
@@ -973,6 +1162,7 @@ svg.i .fill { fill: currentColor; }
       </div>
       <button type="button" class="learn" id="learnBtn"></button>
     </div>
+    <div class="hub" id="hub"></div>
     <div class="pool">
       <p class="gen-label" id="poolLbl">Cards</p>
       <div class="sets-row" role="group" aria-labelledby="poolLbl" id="poolChips"></div>
@@ -1041,6 +1231,11 @@ svg.i .fill { fill: currentColor; }
   <div id="lessons"></div>
 </main>
 
+<main id="career" class="lobby career" hidden><div id="careerBody"></div></main>
+
+<main id="journal" class="lobby jr" hidden><div id="journalBody"></div></main>
+<div class="rw" id="crReward" hidden></div>
+
 <section id="watch" class="watch" hidden>
   <div class="table" id="table">
     <div class="board" id="board">
@@ -1083,7 +1278,7 @@ svg.i .fill { fill: currentColor; }
 <div class="insp" id="insp" role="dialog" aria-modal="true" aria-labelledby="inspName" hidden></div>
 <div class="sheet" id="sheet" hidden></div>
 
-<script src="engine.js?v=10"></script>
+<script src="engine.js?v=11"></script>
 <script src="ltr.js?v=1"></script>
 <script src="fin.js?v=1"></script>
 <script src="msh.js?v=1"></script>
@@ -1093,6 +1288,8 @@ svg.i .fill { fill: currentColor; }
 <script src="sets.js?v=4"></script>
 <script src="tutorial.js?v=4"></script>
 <script src="glossary.js?v=3"></script>
+<script src="career.js?v=1"></script>
+<script src="journal.js?v=1"></script>
 <script>
 'use strict';
 /* ============================================================
@@ -1653,6 +1850,9 @@ function migrateSets() {
 }
 function hashFor() {
   if (S.view === 'learn') return '#learn';
+  if (S.view === 'career') return '#career';
+  if (S.view === 'journal') return '#journal';
+  if (S.view === 'watch' && W.mode === 'play' && PL.career != null) return '#career=fight';
   if (S.view === 'decks') return '#decks';
   if (S.view === 'watch' && TU.on && !TU.lesson.practice) return `#lesson=${TU.lesson.id}`;
   const p = new URLSearchParams();
@@ -1672,7 +1872,7 @@ function readHash() {
   const ok = (d) => (seatable(d) ? d : null);
   const a = ok(deckByKey(p.get('a'))), b = ok(deckByKey(p.get('b')));
   const seed = p.get('seed'), pl = p.get('play');
-  return { a, b, seed: seed != null && /^\d{1,10}$/.test(seed) ? +seed : null, play: pl != null && /^\d{1,10}$/.test(pl) ? +pl : null, learn: p.has('learn'), lesson: p.get('lesson'), decks: p.has('decks') };
+  return { a, b, seed: seed != null && /^\d{1,10}$/.test(seed) ? +seed : null, play: pl != null && /^\d{1,10}$/.test(pl) ? +pl : null, learn: p.has('learn'), lesson: p.get('lesson'), decks: p.has('decks'), career: p.has('career'), journal: p.has('journal') };
 }
 
 /* ============================================================
@@ -1695,7 +1895,7 @@ function listHTML(d) {
   }).join('')}</div>`;
 }
 function metaHTML(d) {
-  return `<div class="deck-meta"><span class="cols" aria-label="${d.colors.map((c) => COLOR_NAME[c]).join(' and ')}">${colorsHTML(d.colors)}</span><span class="arch">${ARCH_LABEL[d.archetype]}</span>${d.commander ? `<span class="cmd-name">${icon('star')}${esc(d.commander.name)}</span>` : ''}<span class="by">${d.by === 'claude' ? 'Designed by Claude' : d.by === 'wotc' ? `Official ${d.off ? esc(d.off.type) : 'Jumpstart pair'}` : 'Built by the generator'}${d.set ? ` · ${esc(shortSet(d.set))}` : ''}${d.off && d.off.year ? ` · ${d.off.year}` : ''}</span></div>`;
+  return `<div class="deck-meta"><span class="cols" aria-label="${d.colors.map((c) => COLOR_NAME[c]).join(' and ')}">${colorsHTML(d.colors)}</span><span class="arch">${ARCH_LABEL[d.archetype]}</span>${d.commander ? `<span class="cmd-name">${icon('star')}${esc(d.commander.name)}</span>` : ''}<span class="by">${d.by === 'career' ? (d.key === 'cr.me' ? 'Your career deck' : 'Career villain') : d.by === 'claude' ? 'Designed by Claude' : d.by === 'wotc' ? `Official ${d.off ? esc(d.off.type) : 'Jumpstart pair'}` : 'Built by the generator'}${d.set ? ` · ${esc(shortSet(d.set))}` : ''}${d.off && d.off.year ? ` · ${d.off.year}` : ''}</span></div>`;
 }
 function renderSeats() {
   const parts = [0, 1].map((i) => {
@@ -1751,6 +1951,7 @@ function keyCards(d) {
 }
 function missingCount(d) { return d.list.filter((x) => x.def.stub).length + (d.commander && d.commander.stub ? 1 : 0); }
 function dvFootHTML(d, key) {
+  if (DV.ctx === 'career') return '';
   if (DV.ctx === 'library') {
     if (d.playable === false) return `<button type="button" class="pill" disabled>Not playable yet</button>`;
     if (d.half) {
@@ -2291,7 +2492,10 @@ function setView(view, push) {
   S.view = view;
   $('#lobby').hidden = view !== 'lobby';
   $('#learn').hidden = view !== 'learn';
+  $('#career').hidden = view !== 'career';
+  $('#journal').hidden = view !== 'journal';
   $('#decks').hidden = view !== 'decks';
+  jTip();
   $('#watch').hidden = view !== 'watch';
   const [on, off] = view === 'decks' ? ['#navDecks', '#navArena'] : ['#navArena', '#navDecks'];
   $(on).setAttribute('aria-current', 'page');
@@ -2302,9 +2506,9 @@ function setView(view, push) {
     mu.innerHTML = TU.on ? `<span>${TU.lesson.practice ? 'Practice game' : `Lesson ${lessonNo(TU.lesson)}: ${esc(TU.lesson.title)}`}</span>`
       : `<span>${esc(W.decks[0].name)}${W.mode === 'play' ? ' <em>(you)</em>' : ''}</span><span class="vs">vs</span><span>${esc(W.decks[1].name)}</span>`;
     back.hidden = false;
-    const to = TU.on ? 'Lessons' : S.backTo === 'decks' ? 'Decks' : 'Arena';
+    const to = TU.on ? 'Lessons' : S.backTo === 'decks' ? 'Decks' : S.backTo === 'career' ? 'Career' : 'Arena';
     back.innerHTML = `${icon('back')}<span>${to}</span>`;
-    back.setAttribute('aria-label', `Back to ${to === 'Arena' ? 'the Arena' : to === 'Decks' ? 'the decks' : 'the lessons'}`);
+    back.setAttribute('aria-label', `Back to ${to === 'Arena' ? 'the Arena' : to === 'Decks' ? 'the decks' : to === 'Career' ? 'the career' : 'the lessons'}`);
     document.title = TU.on ? `${TU.lesson.title}: Learn to play` : `${W.mode === 'play' ? 'Playing ' : ''}${W.decks[0].name} vs ${W.decks[1].name}: Arena`;
   } else if (view === 'decks') {
     stop();
@@ -2312,6 +2516,15 @@ function setView(view, push) {
     mu.hidden = true;
     back.hidden = true;
     document.title = 'Decks: Arena';
+    closeLog();
+  } else if (view === 'career' || view === 'journal') {
+    stop();
+    endPlay();
+    mu.hidden = true;
+    back.hidden = false;
+    back.innerHTML = `${icon('back')}<span>Arena</span>`;
+    back.setAttribute('aria-label', 'Back to the Arena');
+    document.title = view === 'career' ? 'Career: Cloud’s Journey' : 'Journal: Arena';
     closeLog();
   } else if (view === 'learn') {
     stop();
@@ -2327,6 +2540,7 @@ function setView(view, push) {
     endPlay();
     S.backTo = null;
     renderResume();
+    renderHub();
     mu.hidden = true;
     back.hidden = true;
     document.title = 'Arena: watch AI players battle with Magic cards';
@@ -2860,7 +3074,8 @@ function showBanner() {
   const r = W.replay;
   const won = r.winner;
   const playing = W.mode === 'play';
-  const title = won == null ? 'A draw' : playing && won === 0 ? 'You win' : `${r.players[won].name} wins`;
+  const crk = playing && PL.career != null ? PL.career : null;
+  const title = crk != null && won === 0 ? (crk === CAR.STAGES.length - 1 ? 'Sephiroth is defeated' : `Stage ${crk + 1} cleared`) : won == null ? 'A draw' : playing && won === 0 ? 'You win' : `${r.players[won].name} wins`;
   const cmdName = won != null && r.players[won].cmd ? r.defs[r.players[won].cmd.d].name : 'their commander';
   const why = won == null ? (r.reason === 'turns' ? `Nobody broke through in ${r.turns} turns.` : 'Both players fell at once.')
     : r.reason === 'decked' ? `${r.players[1 - won].name} ran out of cards on turn ${r.turns}.`
@@ -2874,11 +3089,13 @@ function showBanner() {
     <table class="stats"><thead><tr><th></th><th>${playing ? 'You' : esc(r.players[0].name)}</th><th>${esc(r.players[1].name)}</th></tr></thead>
     <tbody>${row('Damage dealt', st('damage'))}${row('Creatures killed', st('kills'))}${row('Spells cast', st('cast'))}${row('Life gained', st('gained'))}${row('Life left', r.players.map((p) => p.life))}${r.format === 'commander' ? row('Commander damage taken', r.players.map((p) => p.cmdDmg || 0)) : ''}</tbody></table>
     <div class="acts">
-      ${TU.on ? `<button type="button" class="pill pill-solid" data-act="relesson">${icon('first')}${TU.lesson.practice ? 'Play again' : 'Replay the lesson'}</button>
+      ${crk != null ? (won === 0 ? (crk === CAR.STAGES.length - 1 ? `<button type="button" class="pill pill-solid" data-act="career">${icon('star')}Finish the journey</button>` : `<button type="button" class="pill pill-solid" data-act="crreward">${icon('sparkle')}Choose your reward</button><button type="button" class="pill" data-act="career">Back to the journey</button>`)
+        : `<button type="button" class="pill pill-solid" data-act="crretry">${icon('swords')}Try again</button><button type="button" class="pill" data-act="career">Back to the journey</button>`)
+      : TU.on ? `<button type="button" class="pill pill-solid" data-act="relesson">${icon('first')}${TU.lesson.practice ? 'Play again' : 'Replay the lesson'}</button>
       <button type="button" class="pill" data-act="lessons">All lessons</button>` : playing ? `<button type="button" class="pill pill-solid" data-act="playagain">${icon('swords')}Play again</button>
       <button type="button" class="pill" data-act="replay">${icon('first')}Watch the replay</button>` : `<button type="button" class="pill pill-solid" data-act="rematch">${icon('swords')}Rematch</button>
       <button type="button" class="pill" data-act="again">${icon('first')}Watch again</button>`}
-      ${TU.on ? '' : '<button type="button" class="pill" data-act="lobby">Change decks</button>'}
+      ${TU.on || crk != null ? '' : '<button type="button" class="pill" data-act="lobby">Change decks</button>'}
       <button type="button" class="link-btn" data-act="close">Look at the board</button>
     </div></div>`;
   T.banner.hidden = false;
@@ -3081,7 +3298,7 @@ function playStart(seed, answers, opts = {}) {
   // Lessons are written for the normal AI; a game picks its level when it starts and keeps it when resumed
   const ai = opts.lesson ? 'normal' : opts.ai || S.ai;
   const decks = opts.decks || mirrorSafe(d0, d1);
-  Object.assign(PL, { legacy: !!opts.legacy, prePick: null, held: null, on: true, keys: opts.decks ? null : S.seats.slice(), decks: ai === 'hard' ? [decks[0], Object.assign({}, decks[1], { ai })] : decks, ai, memo: opts.memo || {}, setup: opts.setup || null, seed, answers: (answers || []).slice(), req: null, done: false, shown: -1, pend: null, skip: null, imgs: false, toastTurn: 0 });
+  Object.assign(PL, { legacy: !!opts.legacy, prePick: null, held: null, on: true, keys: opts.decks ? null : S.seats.slice(), decks: ai === 'hard' ? [decks[0], Object.assign({}, decks[1], { ai })] : decks, ai, memo: opts.memo || {}, career: opts.career != null ? opts.career : null, t0: Date.now(), setup: opts.setup || null, seed, answers: (answers || []).slice(), req: null, done: false, shown: -1, pend: null, skip: null, imgs: false, toastTurn: 0 });
   W.mode = 'play';
   W.seed = seed;
   W.decks = PL.decks;
@@ -3129,6 +3346,7 @@ function advance(animate, first) {
   PL.done = r.done;
   PL.req = r.req;
   PL.pend = null;
+  persistGame(r);
   const from = PL.shown;
   PL.shown = last;
   setUi('busy');
@@ -3230,9 +3448,15 @@ function closeSpotlight(run) {
   if (!T.spotlight.hidden) { T.spotlight.hidden = true; T.spotlight.innerHTML = ''; }
   if (run && go) go();
 }
-function settle(r) {
-  // A finished game stays saved (so a reload shows how it ended) but no longer waits in the lobby. Lessons aren't saved.
+// Saved as soon as the engine has the answer, before any animation, so leaving mid-move loses nothing; a finished game
+// goes in the journal (and moves the career on) at the same moment. A finished game stays saved, so a reload shows how
+// it ended, but no longer waits in the lobby. Lessons aren't saved.
+function persistGame(r) {
   if (PL.keys) store.set('arena.play.v1', { v: PL.legacy ? 1 : 2, a: PL.keys[0], b: PL.keys[1], seed: PL.seed, answers: PL.answers, ai: PL.ai, memo: PL.ai === 'hard' ? PL.memo : undefined, turn: r.done ? W.replay.turns : r.req.turn, names: PL.decks.map((d) => d.name), at: Date.now(), done: r.done || undefined });
+  if (PL.career != null) store.set('arena.career.game.v1', { k: PL.career, seed: PL.seed, answers: PL.answers, ai: PL.ai, memo: PL.ai === 'hard' ? PL.memo : undefined, turn: r.done ? W.replay.turns : r.req.turn, done: r.done || undefined });
+  if (r.done) { journalRecord(); if (PL.career != null) careerResult(r); }
+}
+function settle(r) {
   if (r.done) {
     setUi('over');
     if (TU.on && !TU.completed && (W.replay.winner === 0 || TU.lesson.practice)) lessonComplete();
@@ -3294,7 +3518,8 @@ function renderPlaybar() {
   const ghost = (k, label) => `<button type="button" class="pill" data-pb="${k}">${label}</button>`;
   let title = '', hint = '', btns = '';
   if (ui === 'busy') { const k = PB.title.querySelector('.pb-kicker'); title = (k ? PB.title.textContent.slice(k.textContent.length) : PB.title.textContent) || 'The AI is thinking'; btns = ghost('skip', 'Skip ahead'); }
-  else if (ui === 'over') { const won = W.replay.winner; title = won === 0 ? 'You win' : won == null ? 'A draw' : `${opp} wins`; btns = TU.on ? ghost('lessons', 'All lessons') + solid('relesson', TU.lesson.practice ? 'Play again' : 'Replay the lesson') : solid('again', 'Play again'); }
+  else if (ui === 'over') { const won = W.replay.winner; title = won === 0 ? 'You win' : won == null ? 'A draw' : `${opp} wins`; btns = TU.on ? ghost('lessons', 'All lessons') + solid('relesson', TU.lesson.practice ? 'Play again' : 'Replay the lesson')
+      : PL.career != null ? (won === 0 ? solid('crjourney', PL.career === CAR.STAGES.length - 1 ? 'Finish the journey' : 'Choose your reward') : solid('crretry', 'Try again')) : solid('again', 'Play again'); }
   else if (ui === 'sheet') { title = PL.choice ? PL.choice.title : ''; btns = solid('showsheet', 'Choose'); }
   else if (ui === 'act') {
     const w = r.when;
@@ -3913,11 +4138,378 @@ function tuAction(k, b) {
 }
 
 /* ============================================================
+   Journal: every game you play against the AI
+   ============================================================ */
+const JRN = window.ARENA_JOURNAL;
+const JV = { filter: ['all', 'standard', 'commander', 'career'].includes(store.get('arena.jfilter.v1', 'all')) ? store.get('arena.jfilter.v1', 'all') : 'all', shown: 40 };
+const journalList = () => store.get('arena.journal.v1', []) || [];
+const RES = { win: ['W', 'Win'], loss: ['L', 'Loss'], draw: ['D', 'Draw'] };
+const pct = (x) => `${Math.round(x * 100)}%`;
+const wl = (t) => `${t.w}–${t.l}${t.d ? `–${t.d}` : ''}`;
+// A game you played to the end goes in once: a reload of a finished game doesn't add it again. Lessons aren't recorded.
+function journalRecord() {
+  if (TU.on || !JRN || !W.replay || W.mode !== 'play') return;
+  const id = PL.career != null ? `cr${PL.career}.${PL.seed}.${PL.answers.length}` : `${PL.seed}.${PL.answers.length}.${(PL.keys || PL.decks.map((d) => d.name)).join('|')}`;
+  const list = journalList();
+  if (list.some((e) => e.id === id)) return;
+  const secs = PL.t0 ? Math.min(7200, Math.round((Date.now() - PL.t0) / 1000)) : 0;
+  store.set('arena.journal.v1', JRN.add(list, JRN.entryOf(W.replay, { id, ai: PL.ai || 'normal', decks: PL.decks, career: PL.career, secs })));
+}
+const jFilter = (f) => (f === 'all' ? null : f === 'career' ? (e) => e.career != null : (e) => e.fmt === f);
+const colorPips = (c) => (c ? c.split('').map((x) => sym(x)).join('') : sym('C'));
+// A vertical bar from the baseline y0 out to y1, rounded only at its far end
+function vbar(x, y0, y1, w, r) {
+  r = Math.min(r, w / 2, Math.abs(y1 - y0));
+  if (y1 < y0) return `M${x},${y0}V${y1 + r}Q${x},${y1} ${x + r},${y1}H${x + w - r}Q${x + w},${y1} ${x + w},${y1 + r}V${y0}Z`;
+  return `M${x},${y0}V${y1 - r}Q${x},${y1} ${x + r},${y1}H${x + w - r}Q${x + w},${y1} ${x + w},${y1 - r}V${y0}Z`;
+}
+// Wins rise above the line, losses hang below it, draws sit on it: the last games at a glance, oldest first
+function sparkHTML(last, small) {
+  if (!last.length) return '';
+  const bw = small ? 4 : 7, gap = small ? 2 : 3, h = small ? 22 : 36, mid = h / 2;
+  const w = last.length * (bw + gap) - gap;
+  const bars = last.map((e, i) => {
+    const x = i * (bw + gap);
+    const tip = small ? '' : ` data-tip="${esc(`${RES[e.res][1]} vs ${e.op.n}`)}" data-tip2="${esc(`${e.me.n}, turn ${e.turns}`)}"`;
+    if (e.res === 'draw') return `<rect class="d" x="${x}" y="${mid - 1.5}" width="${bw}" height="3" rx="1.5"${tip}/>`;
+    return `<path class="${e.res === 'win' ? 'w' : 'l'}" d="${vbar(x, mid + (e.res === 'win' ? -1 : 1), e.res === 'win' ? 1 : h - 1, bw, 2)}"${tip}/>`;
+  }).join('');
+  const label = `Last ${plural(last.length, 'game')}, oldest first: ${last.map((e) => RES[e.res][1].toLowerCase()).join(', ')}`;
+  return `<svg class="jr-spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="${esc(label)}"><line class="mid" x1="0" x2="${w}" y1="${mid}" y2="${mid}"/>${bars}</svg>`;
+}
+function meterList(rows, name) {
+  return `<div class="mts">${rows.map((t) => `<div class="mt"><span class="mt-name">${name(t)}</span><span class="mt-bar" role="img" aria-label="${pct(t.rate)} won"><i style="width:${(t.rate * 100).toFixed(1)}%"></i></span><span class="mt-fig"><b>${pct(t.rate)}</b>${wl(t)}</span></div>`).join('')}</div>`;
+}
+function howBars(counts, loss) {
+  const rows = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  if (!rows.length) return '';
+  const max = Math.max(...rows.map((r) => r[1]));
+  return `<div class="hb"><p class="hb-h">${loss ? 'Your losses' : 'Your wins'}</p>${rows.map(([why, n]) => `<div class="hb-row"><span>${esc(JRN.HOW[why] || why)}</span><span class="hb-bar${loss ? ' l' : ''}"><i style="width:${Math.max(3, (n / max) * 100).toFixed(1)}%"></i><b>${n}</b></span></div>`).join('')}</div>`;
+}
+const dayOf = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+function dayLabel(t) {
+  const today = dayOf(Date.now()), d = dayOf(t);
+  if (d === today) return 'Today';
+  if (d === today - 864e5) return 'Yesterday';
+  return new Date(t).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: new Date(t).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
+}
+function gameRow(e) {
+  const stage = e.career != null && window.ARENA_CAREER ? ARENA_CAREER.STAGES[e.career] : null;
+  const what = stage ? `Career, stage ${e.career + 1}: ${stage.title}` : `${e.fmt === 'commander' ? 'Commander' : 'Standard'} · ${e.ai === 'hard' ? 'Hard' : 'Normal'} AI`;
+  const how = e.res === 'draw' ? (e.why === 'turns' ? 'Turn limit' : 'Both fell') : JRN.HOW[e.why] || '';
+  return `<li class="jg"><span class="jg-r ${e.res}" aria-label="${RES[e.res][1]}">${RES[e.res][0]}</span>`
+    + `<span class="jg-main"><b>vs ${esc(e.op.n)}</b><span>${esc(e.me.n)} · ${esc(what)}</span></span>`
+    + `<span class="jg-side"><b>Turn ${e.turns}</b>${esc(how)}<br>${new Date(e.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span></li>`;
+}
+function renderJournal() {
+  const all = journalList();
+  const s = JRN.stats(all, jFilter(JV.filter));
+  const seg = `<div class="seg jr-filter" role="group" aria-label="Which games">${[['all', 'All'], ['standard', 'Standard'], ['commander', 'Commander'], ['career', 'Career']].map(([k, l]) => `<button type="button" data-jf="${k}" aria-pressed="${JV.filter === k}">${l}</button>`).join('')}</div>`;
+  const head = `<section class="hero"><h1>Journal</h1><p>Every game you play against the AI, the way it went, and how you’re doing.</p></section>`;
+  if (!s.n) {
+    $('#journalBody').innerHTML = `${head}${all.length ? seg : ''}<div class="jr-empty"><b>${all.length ? 'Nothing here yet' : 'No games yet'}</b>${all.length ? 'No games of this kind so far.' : 'Play a game against the AI and it will show up here, with your win rate, your best decks and your records.'}</div>`;
+    return;
+  }
+  const t = s.all;
+  const streak = s.streak > 0 ? [plural(s.streak, 'win'), 'in a row'] : s.streak < 0 ? [plural(-s.streak, 'loss', 'losses'), 'in a row'] : ['None', 'the last game was a draw'];
+  const parts = [head, seg];
+  parts.push(`<div class="jr-top"><div class="jr-hero"><p class="jr-lbl">Win rate</p><p class="jr-big">${pct(s.rate)}</p>`
+    + `<p class="jr-sub">${plural(t.w, 'win')}, ${plural(t.l, 'loss', 'losses')}${t.d ? ` and ${plural(t.d, 'draw')}` : ''} in ${plural(t.n, 'game')}</p>`
+    + `${sparkHTML(s.last)}<div class="jr-key"><span><i style="background:var(--win)"></i>Win</span><span><i style="background:var(--loss)"></i>Loss</span>${s.last.some((e) => e.res === 'draw') ? '<span><i style="background:var(--draw)"></i>Draw</span>' : ''}<span>Last ${plural(s.last.length, 'game')}</span></div></div>`
+    + `<div class="jr-kpis"><div class="kpi"><span>Games played</span><b>${nf.format(t.n)}</b>${s.totals.secs > 600 ? `<small>About ${Math.round(s.totals.secs / 3600) || '<1'} hour${Math.round(s.totals.secs / 3600) === 1 ? '' : 's'} at the table</small>` : ''}</div>`
+    + `<div class="kpi"><span>Current streak</span><b>${streak[0]}</b><small>${streak[1]}</small></div>`
+    + `<div class="kpi"><span>Best winning streak</span><b>${s.bestStreak ? plural(s.bestStreak, 'win') : 'None yet'}</b></div>`
+    + `<div class="kpi"><span>Turns to win</span><b>${s.avgWinTurns ? s.avgWinTurns.toFixed(1) : '–'}</b><small>on average</small></div></div></div>`);
+  parts.push(`<section class="jr-card"><h2>Win rate over time</h2><p class="jr-cap">Your overall win rate after each game. The line at 50% is an even record.</p><div class="jl" id="jrLine" tabindex="0" aria-label="Win rate after each game: ${pct(s.trend[0].rate)} after the first, ${pct(s.rate)} now. Use the arrow keys to step through the games."></div></section>`);
+  const grid = [];
+  const ais = ['normal', 'hard'].filter((k) => s.byAi[k]).map((k) => Object.assign({ name: k }, s.byAi[k], { rate: JRN.rate(s.byAi[k]) }));
+  if (ais.length) grid.push(`<section class="jr-card"><h2>Against each AI</h2><p class="jr-cap">Wins out of games played.</p>${meterList(ais, (x) => `<span class="nm">${x.name === 'hard' ? 'Hard' : 'Normal'} AI</span>`)}</section>`);
+  const fmts = ['standard', 'commander'].filter((k) => s.byFmt[k]).map((k) => Object.assign({ name: k }, s.byFmt[k], { rate: JRN.rate(s.byFmt[k]) }));
+  if (fmts.length > 1 || JV.filter === 'all') grid.push(`<section class="jr-card"><h2>By format</h2><p class="jr-cap">Career games count as Commander.</p>${meterList(fmts, (x) => `<span class="nm">${x.name === 'commander' ? 'Commander' : 'Standard'}</span>`)}</section>`);
+  if (s.decks.length) grid.push(`<section class="jr-card"><h2>Your decks</h2><p class="jr-cap">The ones you’ve played most.</p>${meterList(s.decks.slice(0, 6), (x) => `${colorPips(x.c)}<span class="nm">${esc(x.name)}</span>`)}</section>`);
+  if (s.opps.length) grid.push(`<section class="jr-card"><h2>Opponents</h2><p class="jr-cap">Decks you’ve met at least twice, the hardest first.</p>${meterList(s.opps.slice(0, 6), (x) => `${colorPips(x.c)}<span class="nm">${esc(x.name)}</span>`)}</section>`);
+  if (s.colors.length) grid.push(`<section class="jr-card"><h2>By colour</h2><p class="jr-cap">A two-colour deck counts for both.</p>${meterList(s.colors, (x) => `${sym(x.name)}<span class="nm">${{ W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green' }[x.name]}</span>`)}</section>`);
+  if (t.w || t.l) grid.push(`<section class="jr-card"><h2>How games end</h2><p class="jr-cap">What finished each game.</p>${howBars(s.winHow, false)}${howBars(s.lossHow, true)}</section>`);
+  parts.push(`<div class="jr-grid">${grid.join('')}</div>`);
+  const r = s.rec, vs = (e) => `${esc(e.me.n)} vs ${esc(e.op.n)}`;
+  const recs = [
+    r.fastest && ['Fastest win', `Turn ${r.fastest.turns}`, vs(r.fastest)],
+    r.closest && ['Closest call', `${plural(r.closest.me.life, 'life', 'life')} left`, `Won with that much, ${vs(r.closest)}`],
+    r.damage && r.damage.me.dmg ? ['Most damage', nf.format(r.damage.me.dmg), `In one game, ${vs(r.damage)}`] : null,
+    r.longest && ['Longest game', `${r.longest.turns} turns`, vs(r.longest)],
+  ].filter(Boolean);
+  const tt = s.totals;
+  parts.push(`<section class="jr-card"><h2>Records</h2><p class="jr-cap">Your bests so far.</p><div class="recs">${recs.map(([a, b, c]) => `<div class="rec"><span>${a}</span><b>${b}</b><small>${c}</small></div>`).join('')}</div>`
+    + `<p class="tots"><span><b>${nf.format(tt.dmg)}</b> damage dealt</span><span><b>${nf.format(tt.cast)}</b> spells cast</span><span><b>${nf.format(tt.kills)}</b> creatures destroyed</span><span><b>${nf.format(tt.gained)}</b> life gained</span><span><b>${nf.format(tt.turns)}</b> turns played</span></p></section>`);
+  // The games themselves, newest first, a day at a time
+  const games = (jFilter(JV.filter) ? all.filter(jFilter(JV.filter)) : all).slice().reverse();
+  const shown = games.slice(0, JV.shown);
+  let html = '', day = null;
+  for (const e of shown) {
+    const d = dayOf(e.at);
+    if (d !== day) { html += `${day == null ? '' : '</ul>'}<h3 class="jg-day">${esc(dayLabel(e.at))}</h3><ul class="jg-list">`; day = d; }
+    html += gameRow(e);
+  }
+  html += '</ul>';
+  parts.push(`<section class="jr-games"><h2>Games</h2>${html}${games.length > shown.length ? `<div class="jr-more"><button type="button" class="pill" data-jr="more">Show more</button></div>` : ''}</section>`);
+  parts.push('<p class="jr-foot"><button type="button" class="link-btn" data-jr="clear">Clear the journal</button></p>');
+  $('#journalBody').innerHTML = parts.join('');
+  drawTrend(s.trend);
+}
+// The win-rate line, drawn at the width it has; a crosshair follows the pointer or the arrow keys
+function drawTrend(trend) {
+  const box = $('#jrLine');
+  if (!box) return;
+  const W0 = Math.max(260, box.clientWidth), H = W0 < 500 ? 170 : 210, L = 38, R = 46, T = 12, B = 26;
+  const n = trend.length;
+  const x = (k) => L + (n === 1 ? (W0 - L - R) / 2 : ((k - 1) / (n - 1)) * (W0 - L - R));
+  const y = (v) => T + (1 - v) * (H - T - B);
+  const pts = trend.map((p) => [x(p.k), y(p.rate)]);
+  const line = pts.map(([a, b], i) => `${i ? 'L' : 'M'}${a.toFixed(1)},${b.toFixed(1)}`).join('');
+  const area = `${line}L${pts[n - 1][0].toFixed(1)},${y(0)}L${pts[0][0].toFixed(1)},${y(0)}Z`;
+  const ticks = [0, 0.5, 1].map((v) => `<line class="${v === 0 ? 'base' : 'g'}" x1="${L}" x2="${W0 - R}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v * 100}%</text>`).join('');
+  const xl = `<text class="ax" x="${L}" y="${H - 6}">Game 1</text>${n > 1 ? `<text class="ax" x="${W0 - R}" y="${H - 6}" text-anchor="end">Game ${n}</text>` : ''}`;
+  const last = pts[n - 1];
+  box.innerHTML = `<svg width="${W0}" height="${H}" viewBox="0 0 ${W0} ${H}" aria-hidden="true">${ticks}${xl}<path class="area" d="${area}"/><path class="ln" d="${line}"/>`
+    + `<circle class="dot" cx="${last[0]}" cy="${last[1]}" r="4.5"/><text class="end" x="${last[0] + 9}" y="${last[1] + 4}">${pct(trend[n - 1].rate)}</text>`
+    + `<line class="xh" x1="0" x2="0" y1="${T}" y2="${y(0)}" visibility="hidden"/><circle class="dot hov" r="4.5" visibility="hidden"/></svg>`;
+  const svg = box.querySelector('svg'), xh = svg.querySelector('.xh'), hov = svg.querySelector('.hov');
+  const show = (i) => {
+    const p = trend[i], [px, py] = pts[i];
+    xh.setAttribute('x1', px); xh.setAttribute('x2', px); xh.setAttribute('visibility', 'visible');
+    hov.setAttribute('cx', px); hov.setAttribute('cy', py); hov.setAttribute('visibility', 'visible');
+    const r = svg.getBoundingClientRect();
+    jTip(`${pct(p.rate)} overall`, `Game ${p.k}: ${RES[p.e.res][1].toLowerCase()} vs ${p.e.op.n}`, r.left + px, r.top + py);
+    box._i = i;
+  };
+  const hide = () => { xh.setAttribute('visibility', 'hidden'); hov.setAttribute('visibility', 'hidden'); jTip(); };
+  const at = (cx) => { const r = svg.getBoundingClientRect(); const k = n === 1 ? 0 : Math.round(((cx - r.left - L) / (W0 - L - R)) * (n - 1)); return clamp(k, 0, n - 1); };
+  svg.addEventListener('pointermove', (e) => show(at(e.clientX)));
+  svg.addEventListener('pointerdown', (e) => show(at(e.clientX)));
+  // A finger lifting off counts as leaving: on touch the readout stays until the next tap elsewhere
+  svg.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') hide(); });
+  box.onkeydown = (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home' && e.key !== 'End') return;
+    e.preventDefault();
+    const i = box._i == null ? n - 1 : box._i;
+    show(e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : clamp(i + (e.key === 'ArrowLeft' ? -1 : 1), 0, n - 1));
+  };
+  box.onblur = hide;
+}
+// One tooltip for the journal: the value first, then what it is
+function jTip(head, sub, x, y) {
+  let t = $('#jtip');
+  if (!head) { if (t) t.hidden = true; return; }
+  if (!t) { t = document.createElement('div'); t.id = 'jtip'; t.className = 'jtip'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+  t.innerHTML = '';
+  const b = document.createElement('b'); b.textContent = head; t.appendChild(b);
+  if (sub) t.appendChild(document.createTextNode(sub));
+  t.hidden = false;
+  const w = t.offsetWidth, h = t.offsetHeight;
+  t.style.left = `${clamp(x - w / 2, 8, innerWidth - w - 8)}px`;
+  t.style.top = `${y - h - 14 < 8 ? y + 16 : y - h - 14}px`;
+}
+function openJournal(push = true) {
+  setView('journal', push);
+  JV.shown = 40;
+  renderJournal();
+}
+
+/* ============================================================
+   Career: Cloud's journey to Sephiroth
+   ============================================================ */
+const CAR = window.ARENA_CAREER;
+const CR = { run: undefined, decks: new Map(), fin: null, pend: null };
+const finNames = () => CR.fin || (CR.fin = new Set(((window.ARENA_SETS && ARENA_SETS.sets.find((s) => s.code === 'FIN')) || { cards: [] }).cards.map((x) => (Array.isArray(x) ? x[0] : x))));
+const careerRun = () => (CR.run === undefined ? (CR.run = store.get('arena.career.v1', null)) : CR.run);
+function careerSave(run) { CR.run = run; store.set('arena.career.v1', run); CR.decks.delete('me'); }
+const careerGame = () => store.get('arena.career.game.v1', null);
+// Cloud's deck and the villains', kept like any other deck so the deck view can open them
+function careerMe() {
+  const run = careerRun();
+  if (!CR.decks.has('me')) CR.decks.set('me', finishDeck(CAR.cloudDeck(Arena, DATA.pool, run), { key: 'cr.me', by: 'career', face: run.cmd,
+    blurb: `Cloud and the cards he has picked up on the way: ${plural(run.got.length, 'card')} earned so far. Every win brings a pack of new ones, which replace his weakest cards.` }));
+  return CR.decks.get('me');
+}
+function careerFoe(k) {
+  if (!CR.decks.has(k)) { const st = CAR.STAGES[k]; CR.decks.set(k, finishDeck(CAR.stageDeck(Arena, DATA.pool, k), { key: `cr.${k}`, by: 'career', blurb: st.text, face: CAR.norm(st.cmd) })); }
+  return CR.decks.get(k);
+}
+function careerStartFight(resume) {
+  const run = careerRun();
+  if (!run || run.done) return;
+  const k = run.stage, st = CAR.STAGES[k];
+  const sv = careerGame();
+  S.backTo = 'career';
+  const decks = [careerMe(), careerFoe(k)];
+  if (resume && sv && !sv.done && sv.k === k) playStart(sv.seed, sv.answers, { decks, career: k, ai: sv.ai, memo: sv.memo || null });
+  else playStart(newSeed(), [], { decks, career: k, ai: st.ai });
+}
+// A career game has ended: the journey moves on after a win, and a pack of cards waits to be chosen
+function careerResult(r) {
+  const run = careerRun();
+  if (!run || PL.career == null) return;
+  const id = `${PL.seed}.${PL.answers.length}`;
+  if (run.fights.some((f) => f.id === id)) return;
+  const won = r.G.winner === 0;
+  const next = CAR.afterFight(run, PL.career, won, { id, turns: r.G.turn });
+  // Only the win that opens the next stage earns a pack
+  if (next.stage === run.stage + 1 && !next.done) next.reward = { k: PL.career, seed: newSeed() };
+  careerSave(next);
+}
+function careerDoneText(run) {
+  const fights = run.fights.length, wins = run.fights.filter((f) => f.won).length;
+  return `${plural(fights, 'fight')}, ${plural(wins, 'win')}, ${plural(run.got.length, 'new card')} along the way.`;
+}
+function renderCareer() {
+  ensureImages([CAR.CLOUD.start, CAR.CLOUD.sword].concat(CAR.STAGES.map((st) => CAR.norm(st.cmd))));
+  const run = careerRun();
+  const bg = (name) => `data-art="${esc(name)}" style="${artOf(name) ? `background-image:url(&quot;${esc(artOf(name))}&quot;)` : ''}"`;
+  const heroName = run ? run.cmd : CAR.CLOUD.start;
+  const k = run ? run.stage : 0;
+  const prog = CAR.STAGES.map((st, i) => `<i class="${i < k ? 'on' : i === k && !(run && run.done) ? 'now' : ''}"></i>`).join('');
+  const parts = [`<section class="cr-hero" ${bg(heroName)}><div class="cr-hero-in"><p class="cr-kick">Career</p><h1>Cloud’s Journey</h1>`
+    + `<p class="cr-intro">Ten Commander fights across the worlds of Final Fantasy, from the Midgar slums to Sephiroth. Cloud starts with a plain deck; every win earns a pack of new cards.</p>`
+    + `<div class="cr-prog" aria-hidden="true">${prog}</div><p class="cr-prog-l">${run ? (run.done ? 'Journey complete' : `${k} of 10 stages cleared`) : 'Not started'}</p></div></section>`];
+  if (!run) {
+    parts.push(`<div class="cr-note"><p>Cloud begins with <b>Cloud, Midgar Mercenary</b> as his commander, the Buster Sword and a deck of plain white cards. Losing costs nothing: you can fight a stage as often as it takes.</p><button type="button" class="pill pill-solid" data-cr="new">${icon('swords')}Begin the journey</button></div>`);
+  } else {
+    if (run.reward) parts.push(`<div class="cr-note"><p><b>Stage ${run.reward.k + 1} cleared.</b> Choose your reward before the next fight.</p><button type="button" class="pill pill-solid" data-cr="reward">${icon('sparkle')}Choose your reward</button></div>`);
+    const sv = careerGame();
+    if (!run.done && sv && !sv.done && sv.k === k && !run.reward) parts.push(`<div class="cr-note"><p><b>Your fight is waiting.</b> ${esc(CAR.STAGES[k].title)}, turn ${sv.turn || 1}.</p><button type="button" class="pill pill-solid" data-cr="resume">${icon('play')}Resume</button></div>`);
+    if (run.done) {
+      parts.push(`<section class="cr-next boss cr-done"><div class="cr-next-art" ${bg(run.cmd)}></div><div class="cr-next-body"><p class="cr-stage">Journey complete</p><h2>The Planet is safe</h2>`
+        + `<p class="cr-text">Sephiroth falls, and the Lifestream runs quiet again. ${esc(careerDoneText(run))}</p><div class="cr-acts"><button type="button" class="pill pill-solid" data-cr="new">${icon('swords')}Start a new journey</button><button type="button" class="link-btn" data-cr="deck">See Cloud’s deck</button></div></div></section>`);
+    } else {
+      const st = CAR.STAGES[k], foe = careerFoe(k);
+      const tries = run.fights.filter((f) => f.k === k).length;
+      const rules = [st.ai === 'hard' ? 'Hard AI' : 'Normal AI', `starts at ${st.life || 40} life`, tries ? `${plural(tries, 'try', 'tries')} so far` : ''].filter(Boolean).join(' · ');
+      parts.push(`<section class="cr-next${st.boss ? ' boss' : ''}"><div class="cr-next-art" ${bg(CAR.norm(st.cmd))}></div><div class="cr-next-body">`
+        + `<p class="cr-stage">${st.boss ? 'Final stage' : `Stage ${k + 1} of 10`} · ${esc(st.where)}</p><h2>${esc(st.title)}</h2>`
+        + `<p class="cr-foe"><span class="cols">${colorsHTML(foe.colors)}</span><span>${esc(CAR.norm(st.cmd))}</span></p>`
+        + `<p class="cr-text">${esc(st.text)}</p><p class="cr-rules">${esc(rules)}</p>`
+        + `<div class="cr-acts"><button type="button" class="pill pill-solid" data-cr="fight"${run.reward ? ' disabled' : ''}>${icon('swords')}${tries ? 'Fight again' : 'Fight'}</button><button type="button" class="link-btn" data-cr="foe">See their deck</button></div></div></section>`);
+    }
+    const me = careerMe();
+    const got = run.got.slice(-8).reverse();
+    parts.push(`<section class="cr-deck"><span class="cr-deck-art" ${bg(run.cmd)}></span><span class="cr-deck-tx"><h3>${esc(me.name)}</h3><p>${esc(run.cmd)} · ${me.size} cards · ${plural(run.got.length, 'card')} earned</p></span>`
+      + `<button type="button" class="pill" data-cr="deck">See the deck</button>`
+      + `${got.length ? `<div class="cr-new"><span class="lbl">Latest cards</span>${got.map((n) => `<button type="button" class="chip got" data-keycard="${esc(n)}">${esc(n)}</button>`).join('')}</div>` : ''}</section>`);
+  }
+  parts.push(`<section class="cr-path"><h2>The road to Sephiroth</h2><ol class="cr-steps">${CAR.STAGES.map((st, i) => {
+    const state = run && (i < k || run.done) ? 'done' : run && i === k ? 'now' : 'locked';
+    const win = run && run.fights.find((f) => f.k === i && f.won);
+    const r = state === 'done' ? (win ? `Won on turn ${win.turns}` : 'Cleared') : state === 'now' ? 'Up next' : st.boss ? 'Final boss' : '';
+    return `<li class="cr-st ${state}${st.boss ? ' boss' : ''}"><span class="n">${state === 'done' ? icon('check') : i + 1}</span><span class="th" ${bg(CAR.norm(st.cmd))}></span>`
+      + `<span><b>${esc(st.title)}</b><span class="s">${esc(CAR.norm(st.cmd))} · ${st.ai === 'hard' ? 'Hard' : 'Normal'} AI</span></span><span class="r">${r}</span></li>`;
+  }).join('')}</ol></section>`);
+  if (run && !run.done) parts.push('<p class="cr-foot"><button type="button" class="link-btn" data-cr="reset">Start the journey over</button></p>');
+  $('#careerBody').innerHTML = parts.join('');
+}
+function openCareer(push = true) {
+  setView('career', push);
+  renderCareer();
+  const run = careerRun();
+  if (run && run.reward && CR.autoReward) { CR.autoReward = false; openReward(); }
+}
+// The reward: three packs; the chosen one's cards replace the weakest in Cloud's deck
+function openReward() {
+  const run = careerRun();
+  if (!run || !run.reward) return;
+  const { k, seed } = run.reward;
+  const packs = CAR.packsFor(Arena, DATA.pool, finNames(), run, k, seed);
+  CR.pend = packs;
+  ensureImages(packs.flatMap((p) => p.cards));
+  const box = $('#crReward');
+  box.innerHTML = `<div class="rw-scrim" data-rw="close"></div><div class="rw-box" role="dialog" aria-labelledby="rwTitle">
+    <h2 id="rwTitle">Stage ${k + 1} cleared</h2><p class="rw-sub">Choose one pack. Its ${CAR.PACK} cards go into Cloud’s deck in place of his weakest. Tap a card to read it.</p>
+    <div class="rw-packs">${packs.map((p, i) => `<section class="rw-pack"><h3>${esc(p.name)}<span>${p.cards.length} cards</span></h3><div class="rw-cards" data-pack="${i}"></div><button type="button" class="pill pill-solid" data-take="${i}">Take ${esc(p.name.toLowerCase())}</button></section>`).join('')}</div>
+    <p class="rw-hint">You can close this and choose later; the next fight waits until you do.</p></div>`;
+  packs.forEach((p, i) => { const row = box.querySelector(`[data-pack="${i}"]`); p.cards.forEach((n, j) => { const d = DATA.byName.get(n); if (d) row.appendChild(makeCard(d, `rw-${i}-${j}`)); }); });
+  box.hidden = false;
+  sizeReward();
+  box.querySelector('[data-take]').focus();
+}
+// Four cards across each pack, as wide as the pack allows
+function sizeReward() { $$('#crReward .rw-cards').forEach((row) => row.style.setProperty('--cardw', `${Math.max(40, Math.floor((row.clientWidth - 18) / 4))}px`)); }
+function closeReward() { const box = $('#crReward'); box.hidden = true; box.innerHTML = ''; }
+function takePack(i) {
+  const run = careerRun(), pack = CR.pend && CR.pend[i];
+  if (!run || !run.reward || !pack) return;
+  const r = CAR.addCards(DATA.pool, run, pack.cards);
+  const next = Object.assign({}, r.run, { reward: null });
+  careerSave(next);
+  const box = $('#crReward .rw-box');
+  const chips = (names) => names.map((n) => `<button type="button" class="chip" data-keycard="${esc(n)}">${esc(n)}</button>`).join('');
+  box.innerHTML = `<h2>Added to Cloud’s deck</h2><div class="rw-done"><p class="rw-sub">New cards in, and the weakest cards out to make room. Tap one to read it.</p><h3 class="rw-h">In</h3><div class="rw-chips">${chips(pack.cards)}</div><h3 class="rw-h">Out</h3><div class="rw-chips">${r.out.length ? chips(r.out) : '<span class="faint">Nothing</span>'}</div></div>`
+    + `<div class="cr-acts"><button type="button" class="pill pill-solid" data-rw="fight">${icon('swords')}On to stage ${next.stage + 1}</button><button type="button" class="link-btn" data-rw="close">Back to the journey</button></div>`;
+  box.querySelector('[data-rw="fight"]').focus();
+  renderCareer();
+}
+// The lobby's way in to both
+function renderHub() {
+  const hub = $('#hub');
+  if (!hub) return;
+  const run = careerRun(), list = journalList();
+  const s = list.length ? JRN.stats(list) : null;
+  const cmd = run ? run.cmd : CAR.CLOUD.start;
+  ensureImages([cmd]);
+  const sub = !run ? '10 stages to Sephiroth' : run.done ? 'Journey complete' : run.reward ? 'A reward is waiting' : `Stage ${run.stage + 1} of 10: ${CAR.STAGES[run.stage].title}`;
+  hub.innerHTML = `<button type="button" class="hub-card" id="careerBtn" data-art="${esc(cmd)}" style="${artOf(cmd) ? `background-image:url(&quot;${esc(artOf(cmd))}&quot;)` : ''}"><span class="hub-k">Career</span><b>Cloud’s Journey</b><span class="hub-s">${esc(sub)}</span></button>`
+    + `<button type="button" class="hub-card hub-journal" id="journalBtn">${s ? sparkHTML(s.last.slice(-14), true) : ''}<span class="hub-k">Journal</span><b>Your games</b><span class="hub-s">${s ? `${plural(s.n, 'game')} · ${pct(s.rate)} won` : 'Every game you play, with stats'}</span></button>`;
+}
+
+/* ============================================================
    Wiring
    ============================================================ */
 function wire() {
   $('#watchBtn').addEventListener('click', () => watch(newSeed()));
   $('#playBtn').addEventListener('click', () => playStart(newSeed()));
+  $('#hub').addEventListener('click', (e) => {
+    if (e.target.closest('#careerBtn')) openCareer(true);
+    else if (e.target.closest('#journalBtn')) openJournal(true);
+  });
+  $('#careerBody').addEventListener('click', (e) => {
+    const kc = e.target.closest('[data-keycard]');
+    if (kc) { const n = kc.dataset.keycard; openInspector(makeCard(DATA.byName.get(n) || stubDef(n), `key-${Arena.slug(n)}`)); return; }
+    const b = e.target.closest('[data-cr]');
+    if (!b || b.disabled) return;
+    const run = careerRun(), act = b.dataset.cr;
+    if (act === 'new') { if (run && !run.done && !confirm('Start Cloud’s journey over? Your progress and his cards will be lost.')) return; careerSave(CAR.newRun(Arena, DATA.pool, finNames(), newSeed())); store.set('arena.career.game.v1', null); renderCareer(); }
+    else if (act === 'reset') { if (confirm('Start Cloud’s journey over? Your progress and his cards will be lost.')) { careerSave(null); store.set('arena.career.game.v1', null); renderCareer(); } }
+    else if (act === 'fight') careerStartFight(false);
+    else if (act === 'resume') careerStartFight(true);
+    else if (act === 'reward') openReward();
+    else if (act === 'deck') { careerMe(); openDeckView('cr.me', b, 'career'); }
+    else if (act === 'foe') { careerFoe(run.stage); openDeckView(`cr.${run.stage}`, b, 'career'); }
+  });
+  $('#crReward').addEventListener('click', (e) => {
+    const card = e.target.closest('.card');
+    if (card) { openInspector(card); return; }
+    const kc = e.target.closest('[data-keycard]');
+    if (kc) { const n = kc.dataset.keycard; openInspector(makeCard(DATA.byName.get(n) || stubDef(n), `key-${Arena.slug(n)}`)); return; }
+    const tk = e.target.closest('[data-take]');
+    if (tk) { takePack(+tk.dataset.take); return; }
+    const b = e.target.closest('[data-rw]');
+    if (!b) return;
+    closeReward();
+    if (b.dataset.rw === 'fight') careerStartFight(false);
+  });
+  $('#journalBody').addEventListener('click', (e) => {
+    const f = e.target.closest('[data-jf]');
+    if (f) { JV.filter = f.dataset.jf; JV.shown = 40; store.set('arena.jfilter.v1', JV.filter); renderJournal(); return; }
+    const b = e.target.closest('[data-jr]');
+    if (b && b.dataset.jr === 'more') { JV.shown += 60; renderJournal(); return; }
+    if (b && b.dataset.jr === 'clear' && confirm('Clear every game from the journal? This can’t be undone.')) { store.set('arena.journal.v1', []); renderJournal(); return; }
+    const tip = e.target.closest('[data-tip]');
+    if (tip) { const r = tip.getBoundingClientRect(); jTip(tip.dataset.tip, tip.dataset.tip2, r.left + r.width / 2, r.top); }
+  });
+  $('#journalBody').addEventListener('pointerover', (e) => { const tip = e.target.closest('[data-tip]'); if (tip) { const r = tip.getBoundingClientRect(); jTip(tip.dataset.tip, tip.dataset.tip2, r.left + r.width / 2, r.top); } });
+  $('#journalBody').addEventListener('pointerout', (e) => { if (e.pointerType === 'mouse' && e.target.closest('[data-tip]')) jTip(); });
+  document.addEventListener('pointerdown', (e) => { if (!(e.target.closest && e.target.closest('#jrLine svg, [data-tip]'))) jTip(); });
+  let jrSized = 0;
+  addEventListener('resize', () => { clearTimeout(jrSized); jrSized = setTimeout(() => { if (S.view === 'journal') renderJournal(); if (!$('#crReward').hidden) sizeReward(); }, 200); });
+  addEventListener('scroll', () => jTip(), { passive: true });
   $('#aiSeg').addEventListener('click', (e) => { const b = e.target.closest('button[data-ai]'); if (!b) return; S.ai = b.dataset.ai; store.set('arena.ai.v1', S.ai); renderAi(); });
   $('#resume').addEventListener('click', (e) => {
     const b = e.target.closest('[data-res]');
@@ -3949,6 +4541,8 @@ function wire() {
     else if (k === 'all') { const all = PL.picks.size === PL.req.cands.length; PL.picks = new Set(all ? PL.req.must : PL.req.cands); renderPlaybar(); decorate(); }
     else if (k === 'blocks') answer({ type: 'block', blocks: [...PL.blocks] });
     else if (k === 'again') playStart(newSeed());
+    else if (k === 'crretry') careerStartFight(false);
+    else if (k === 'crjourney') { CR.autoReward = true; openCareer(true); }
     else if (k === 'relesson') lessonStart(TU.lesson.id);
     else if (k === 'lessons') goLessons();
     else if (k === 'showsheet') { $('#sheet').hidden = false; }
@@ -3986,7 +4580,7 @@ function wire() {
   $('#randBtn').addEventListener('click', randomMatchup);
   $('#swapBtn').addEventListener('click', () => { S.seats.reverse(); S.sim = null; L.sim.hidden = true; saveSeats(); renderSeats(); syncHash(false); });
   $('#fmtSeg').addEventListener('click', (e) => { const b = e.target.closest('button[data-fmt]'); if (!b || b.dataset.fmt === S.format) return; setFormat(b.dataset.fmt); renderSeats(); renderPick(); renderButtons(); syncHash(false); });
-  $('#toLobby').addEventListener('click', () => { if (S.view === 'watch' && TU.on) { goLessons(); return; } if (S.view === 'watch' && S.backTo === 'decks') { openLibrary(true); return; } setView('lobby', true); renderSeats(); });
+  $('#toLobby').addEventListener('click', () => { if (S.view === 'watch' && TU.on) { goLessons(); return; } if (S.view === 'watch' && S.backTo === 'decks') { openLibrary(true); return; } if (S.view === 'watch' && S.backTo === 'career') { openCareer(true); return; } setView('lobby', true); renderSeats(); });
   $('.lib-search-ic').innerHTML = icon('search');
   // The header's tabs switch views in place once the cards are in
   $('#navArena').addEventListener('click', (e) => { if (!plainClick(e) || !READY) return; e.preventDefault(); if (S.view !== 'lobby') { setView('lobby', true); renderSeats(); renderPick(); } });
@@ -4107,6 +4701,9 @@ function wire() {
     else if (a.dataset.act === 'replay') toReplay();
     else if (a.dataset.act === 'again') { T.banner.hidden = true; render(0, false); play(); }
     else if (a.dataset.act === 'lobby') { setView('lobby', true); renderSeats(); }
+    else if (a.dataset.act === 'career') openCareer(true);
+    else if (a.dataset.act === 'crreward') { CR.autoReward = true; openCareer(true); }
+    else if (a.dataset.act === 'crretry') careerStartFight(false);
     else if (a.dataset.act === 'close') T.banner.hidden = true;
   });
   // Press and hold any card to read it, even where a tap picks it (attacking, blocking, targets, choices).
@@ -4154,6 +4751,7 @@ function wire() {
   });
   document.addEventListener('keydown', (e) => {
     if (!$('#insp').hidden) { if (e.key === 'Escape') { e.preventDefault(); closeInspector(); } return; }
+    if (!$('#crReward').hidden) { if (e.key === 'Escape') { e.preventDefault(); closeReward(); } return; }
     if (!$('#deckView').hidden) { if (e.key === 'Escape') { e.preventDefault(); closeDeckView(); } return; }
     if (!T.spotlight.hidden && (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') && !(e.target.closest && e.target.closest('.sl-foot button, .sl-card .card'))) { e.preventDefault(); closeSpotlight(true); return; }
     if (S.view === 'watch' && W.mode === 'play') {
@@ -4201,6 +4799,8 @@ function wire() {
     if (h.lesson && lessonById(h.lesson)) { if (!(TU.on && TU.lesson.id === h.lesson && S.view === 'watch')) lessonStart(h.lesson, true); return; }
     if (h.learn) { if (S.view !== 'learn') { setView('learn', false); renderLessons(); } return; }
     if (h.decks) { if (S.view !== 'decks') openLibrary(false); return; }
+    if (h.career) { if (S.view !== 'career') openCareer(false); return; }
+    if (h.journal) { if (S.view !== 'journal') openJournal(false); return; }
     if (h.a && h.b && fmtOfKey(h.a.key) === fmtOfKey(h.b.key) && poolOfKey(h.a.key) === poolOfKey(h.b.key)) {
       const f = fmtOfKey(h.a.key);
       if (f !== S.format || poolOfKey(h.a.key) !== S.pool) { setFormat(f, [h.a.key, h.b.key]); renderPick(); } else S.seats = [h.a.key, h.b.key];
@@ -4242,9 +4842,12 @@ async function boot() {
   renderSeats();
   renderPick();
   renderResume();
+  renderHub();
   if (h.lesson && lessonById(h.lesson)) lessonStart(h.lesson, true);
   else if (h.learn) { setView('learn', false); renderLessons(); }
   else if (h.decks) openLibrary(false);
+  else if (h.career) openCareer(false);
+  else if (h.journal) openJournal(false);
   else if (h.play != null && h.a && h.b) { const sv = savedPlay(); const same = sv && sv.seed === h.play && sv.a === h.a.key && sv.b === h.b.key; playStart(h.play, same ? sv.answers : [], same ? savedOpts(sv) : {}); }
   else if (h.seed != null && h.a && h.b) watch(h.seed, { replace: true, paused: false });
   else syncHash(false);
