@@ -799,6 +799,7 @@ function snap(G) {
     p: G.players.map((P) => ({
       life: P.life, lib: P.library.length, mana: manaCount(P),
       hand: P.hand.map((c) => [c.id, c.def.id]),
+      rev: G.players.some((Q) => Q !== P && Q.bf.some((c) => c.def.telepathy)) ? 1 : 0, // Telepathy: this hand is played revealed
       bf: P.bf.map((c) => {
         const o = { id: c.id, d: c.def.id };
         if (c.tapped) o.tap = 1;
@@ -884,7 +885,7 @@ function leaveBattlefield(G, c) {
   if (k < 0) return;
   if (P.ring && P.ring.bearer === c.id) P.ring.bearer = null;
   P.leftTurn = G.turn;
-  if (G.pending) { dirty(G); fire(G, 'leave', { c, P, ctrl: P.i, leg: c.def.supertypes.includes('Legendary'), art: isArtifact(c), mem: c.mem, lki: trigsOf(G, c) }); }
+  if (G.pending) { dirty(G); fire(G, 'leave', { c, P, ctrl: P.i, leg: c.def.supertypes.includes('Legendary'), art: isArtifact(c), mem: c.mem, lki: trigsOf(G, c), cnt: c.cnt, ctr: Object.assign({}, c.ctr) }); }
 }
 // "When this leaves the battlefield" triggers, once the creatures are gone
 function leaves(G, list) {
@@ -1200,8 +1201,9 @@ function evalEffect(G, P, e, ctx, source, lastT, X) {
     case 'fight': case 'bite': {
       let bestF = null;
       for (const m of ownTargets({})) for (const o of oppTargets({})) {
-        const killsIt = !has(o, 'indestructible') && !protectedFrom(o, m) && pow(m) > 0 && (has(m, 'deathtouch') || pow(m) * (e.mult || 1) >= lethalTo(o));
-        const dies = e.k === 'fight' && !has(m, 'indestructible') && !protectedFrom(m, o) && pow(o) > 0 && (has(o, 'deathtouch') || pow(o) >= lethalTo(m));
+        const pm = pow(m) + (e.ctr || 0);
+        const killsIt = !has(o, 'indestructible') && !protectedFrom(o, m) && pm > 0 && (has(m, 'deathtouch') || pm * (e.mult || 1) >= lethalTo(o));
+        const dies = e.k === 'fight' && !has(m, 'indestructible') && !protectedFrom(m, o) && pow(o) > 0 && (has(o, 'deathtouch') || pow(o) >= lethalTo(m) + (e.ctr || 0));
         let sc = (killsIt ? cv(o) : 0) - (dies ? cv(m) : 0);
         if (e.trampleExcess && has(m, 'trample') && killsIt) sc += Math.max(0, pow(m) - lethalTo(o)) * 0.3;
         if (!bestF || sc > bestF.score) bestF = { score: sc, target: { c: m, c2: o } };
@@ -1333,7 +1335,7 @@ function damageCreature(G, c, n, src, opts) {
   if (opts && opts.combat && c.def.noCombatDmg) return 0;
   if (G.players[c.ctrl].shieldTurn === G.turn && !G.noPrevent) return 0;
   if (c.ctr && c.ctr.shield) { shieldSave(G, c); return 0; }
-  if (c.def.preventAll && !G.noPrevent) return 0;
+  if (c.def.preventAll && !G.noPrevent && (c.def.preventAll === true || c.def.preventAll(G, c))) return 0;
   if (c.def.healOnHit && c.dmg > 0) { c.dmg = 0; c.dt = false; }
   if (!(opts && opts.soaked)) { const ad = ctrlOf(G, c).bf.find((x) => x.def.soak && x !== c && isCreature(x)); n = dmgMod(G, src, c.ctrl, n); if (ad) return damageCreature(G, ad, n, src, Object.assign({}, opts, { soaked: true })); }
   const lethalBefore = Math.max(0, tou(c) - c.dmg);
@@ -1494,6 +1496,7 @@ function resolveInner(G, P, effects, source, targets, ctx, X) {
       }
       case 'fog': G.fog = true; emit(G, 'fog', 'All combat damage this turn will be prevented.', { who: P.i }); break;
       case 'fight': case 'bite': {
+        if (e.ctr && onBf(G, t.c)) addCounters(G, t.c, e.ctr);
         const m = t.c, o = t.c2, pm = Math.max(0, pow(m)) * (e.mult || 1), po = Math.max(0, pow(o));
         let toO = pm, excess = 0;
         if (e.trampleExcess && has(m, 'trample')) { const lethal = has(m, 'deathtouch') ? 1 : lethalTo(o); if (pm > lethal) { toO = lethal; excess = pm - lethal; } }
@@ -1521,7 +1524,7 @@ function resolveInner(G, P, effects, source, targets, ctx, X) {
         break;
       }
       case 'pumpSelf': if (source && onBf(G, source)) { source.tp += e.p; source.tt += e.t; emit(G, 'pump', `${source.def.name} gets +${e.p}/+${e.t} until end of turn.`, { who: P.i, cards: [source.id] }); } break;
-      case 'pumpTeam': { const cs = P.bf.filter(isCreature); cs.forEach((c) => { c.tp += e.p; c.tt += e.t; e.kw.forEach((kk) => { if (!c.tkw.includes(kk)) c.tkw.push(kk); }); }); emit(G, 'pump', `${P.name}'s creatures get +${e.p}/+${e.t}${e.kw.length ? ` and ${e.kw.join(' and ')}` : ''}.`, { who: P.i, cards: cs.map((c) => c.id) }); break; }
+      case 'pumpTeam': { const cs = (e.attacking ? allCreatures(G).filter((c) => c.attacking) : P.bf.filter(isCreature)); cs.forEach((c) => { c.tp += e.p; c.tt += e.t; e.kw.forEach((kk) => { if (!c.tkw.includes(kk)) c.tkw.push(kk); }); }); emit(G, 'pump', `${e.attacking ? 'Attacking creatures get' : `${P.name}'s creatures get`} +${e.p}/+${e.t}${e.kw.length ? ` and ${e.kw.join(' and ')}` : ''}.`, { who: P.i, cards: cs.map((c) => c.id) }); break; }
       case 'counters': t.c.cnt += e.n; emit(G, 'pump', `${t.c.def.name} gets ${e.n === 1 ? 'a +1/+1 counter' : `${e.n} +1/+1 counters`}.`, { who: P.i, cards: [t.c.id] }); break;
       case 'countersSelf': if (source && onBf(G, source)) { source.cnt += e.n; emit(G, 'pump', `${source.def.name} gets ${e.n === 1 ? 'a +1/+1 counter' : `${e.n} +1/+1 counters`}.`, { who: P.i, cards: [source.id] }); } break;
       case 'countersTeam': { const cs = P.bf.filter(isCreature); cs.forEach((c) => { c.cnt += e.n; }); emit(G, 'pump', `${P.name}'s creatures each get +1/+1 counters.`, { who: P.i, cards: cs.map((c) => c.id) }); break; }
@@ -1800,9 +1803,10 @@ function pay(P, cost, purpose) {
   if (!plan) return false;
   const G = P.g;
   const sacs = [];
+  const watched = G && G.pending && G.players.some((q) => q.bf.some((x) => x.def.watchMana));
   for (const { s, n } of plan) {
     if (s.pool) { P.pool[s.pool] -= n; continue; }
-    if (s.tap) s.c.tapped = true;
+    if (s.tap) { s.c.tapped = true; if (watched && isLand(s.c)) fire(G, 'manaTap', { P, c: s.c }); }
     if (s.once && G) s.c.manaTurn = G.turn;
     if (s.life) { P.life -= s.life; if (G) emit(G, 'life', `${P.name} pays ${s.life} life for mana.`, { who: P.i, target: `p${P.i}`, amount: s.life }); }
     if (s.unc && purpose && purpose.item) purpose.item.unc = true;
@@ -2075,6 +2079,7 @@ function sacrifice(G, P, c, quiet) {
   if (!onBf(G, c)) return;
   G.sacThisTurn = (G.sacThisTurn || 0) + 1;
   if (c.token) P.tokenSacs = (P.tokenSacs || 0) + 1;
+  if (hasSub(c, 'Food')) P.foodSacTurn = G.turn;
   fire(G, 'sac', { P, c, token: c.token });
   if (isCreature(c)) dieNow(G, [c], quiet ? undefined : 'as a sacrifice');
   else putInGraveyard(G, c);
@@ -2675,6 +2680,7 @@ function counterLegal(cs, item) {
   if (what === 'small creature spell') return d.types.includes('Creature') && (d.power <= 2 || d.toughness <= 2);
   if (what === 'noncreature spell') return !d.types.includes('Creature');
   if (what === 'instant or sorcery spell') return d.types.includes('Instant') || d.types.includes('Sorcery');
+  if (what === 'sorcery spell') return d.types.includes('Sorcery');
   return true;
 }
 function threatOf(G, O, item) {
@@ -2922,6 +2928,7 @@ function castSpell(G, P, card, targets, etbTargets, opts = {}) {
   if (zone === 'flashback') item.flashback = true;
   if (!opts.free && P.freeNext && P.freeNext.turn === G.turn && P.freeNext.f(def)) { P.freeNext = null; item.free = true; }
   if (xc && xc.free) item.free = true;
+  if (xc && xc.onPlay) xc.onPlay(G, P, card);
   (P.castDefs = P.castDefs || []).push(def);
   // "When you next cast a creature spell this turn": haste (Summon: Brynhildr), an extra counter (Summon: Fenrir)
   if (def.types.includes('Creature')) {
@@ -3196,11 +3203,13 @@ function reduceCost(m, by) {
 }
 const puLimit = (G, P) => 1 + P.bf.filter((x) => x.def.puExtra).length;
 const puUsed = (c, k) => (c.mem && c.mem.pu && c.mem.pu[k]) || 0;
-function abilityCost(G, P, c, ab) {
+function abilityCost(G, P, c, ab, targets) {
   const m = Object.assign(genericCost(0), ab.cost.m || {});
   if (m.hy) m.hy = m.hy.slice();
   if (ab.equip) {
     m.g = Math.max(0, m.g - P.bf.filter((x) => x.def.equipDiscount).length);
+    const host = targets && targets[0] && targets[0].c;
+    if (host && host.def.equipCheaper) m.g = Math.max(0, m.g - host.def.equipCheaper);
     if (G.active === P.i && P.bf.some((x) => x.def.equipFree) && P.freeEquipTurn !== G.turn) return genericCost(0);
   }
   if (ab.costMod) m.g = Math.max(0, m.g - ab.costMod(G, P, c));
@@ -3230,12 +3239,13 @@ function canActivate(G, P, e, when) {
   if (k.discard && P.hand.length < k.discard) return false;
   if (k.ctr && ctrCount(c, k.ctr.kind) < k.ctr.n) return false;
   if (k.sac && sacOptions(G, P, c, k.sac).length < (k.sac.n || 1)) return false;
-  if (k.tapCre && P.bf.filter((x) => x !== c && isCreature(x) && !x.tapped).length < k.tapCre) return false;
+  if (k.tapCre && P.bf.filter((x) => x !== c && isCreature(x) && !x.tapped && (!k.tapCreF || k.tapCreF(x))).length < k.tapCre) return false;
   if (k.exileGy && P.gy.filter((x) => x !== c).length < k.exileGy) return false;
   if (ab.crew && P.bf.filter((x) => x !== c && isCreature(x) && !x.tapped).reduce((s, x) => s + Math.max(0, pow(x)), 0) < c.def.crew) return false;
   if (ab.cond && !ab.cond(G, P, c, e)) return false;
   if (ab.equip && !P.bf.some((x) => x !== c && isCreature(x) && x.id !== c.att && (!ab.only || matches(G, x, ab.only, P, c)))) return false;
-  const m = abilityCost(G, P, c, ab);
+  const cheapHost = ab.equip ? P.bf.find((x) => x !== c && isCreature(x) && x.def.equipCheaper && x.id !== c.att && (!ab.only || matches(G, x, ab.only, P, c))) : null;
+  const m = abilityCost(G, P, c, ab, cheapHost ? [{ c: cheapHost }] : undefined);
   if (k.xMin != null) { if (!canPay(P, Object.assign({}, m, { g: m.g + k.xMin }), abilityPurpose(G, P, c, e))) return false; }
   else if (!canPay(P, m, abilityPurpose(G, P, c, e))) return false;
   return true;
@@ -3249,7 +3259,7 @@ function payOtherCosts(G, P, e, X) {
   if (k.life) { P.life -= k.life; emit(G, 'life', `${P.name} pays ${k.life} life.`, { who: P.i, target: `p${P.i}`, amount: k.life }); }
   if (k.ctr) removeCounters(G, c, k.ctr.kind, k.ctr.n);
   if (k.tapCre) {
-    const cs = P.bf.filter((x) => x !== c && isCreature(x) && !x.tapped);
+    const cs = P.bf.filter((x) => x !== c && isCreature(x) && !x.tapped && (!k.tapCreF || k.tapCreF(x)));
     const pick = isHuman(G, P) && cs.length > k.tapCre ? pickCards(G, { type: 'choose', reason: 'tap-cost', n: k.tapCre, min: k.tapCre, max: k.tapCre, zone: 'battlefield', cards: cs.map((x) => x.id), label: c.def.name }, cs, k.tapCre) : cs.sort((a, b) => (a.sick ? 0 : 1) - (b.sick ? 0 : 1) || cv(a) - cv(b)).slice(0, k.tapCre);
     pick.forEach((x) => { x.tapped = true; });
   }
@@ -3277,7 +3287,7 @@ function activate(G, P, e, targets, opts = {}) {
   const { c, ab } = e;
   if (ab.crew) return crew(G, P, c, opts.crewWith);
   const X = { x: 0, ab, entry: e };
-  const m = abilityCost(G, P, c, ab);
+  const m = abilityCost(G, P, c, ab, targets);
   if (ab.cost.m && ab.cost.m.x) {
     const purpose = abilityPurpose(G, P, c, e);
     let max = 0;
@@ -3405,7 +3415,9 @@ function aiEquip(G, P, when) {
       const host = eq.att != null ? byId(G, eq.att) : null;
       for (const t of P.bf) {
         if (!isCreature(t) || t === host || (e.ab.only && !matches(G, t, e.ab.only, P, eq))) continue;
-        let s = equipGain(G, P, eq, t) - (host ? equipGain(G, P, eq, host) : 0) - costMV(abilityCost(G, P, eq, e.ab)) * 0.25;
+        const cost = abilityCost(G, P, eq, e.ab, [{ c: t }]);
+        if (!canPay(P, cost, abilityPurpose(G, P, eq, e))) continue;
+        let s = equipGain(G, P, eq, t) - (host ? equipGain(G, P, eq, host) : 0) - costMV(cost) * 0.25;
         if (when === 'main1' && !canAttackNow(G, t)) s -= 0.6;
         if (!best || s > best.s) best = { e, t, s };
       }
@@ -3578,7 +3590,9 @@ function landChoices(G, P) {
 function playLandChoice(G, P, ch) {
   if (ch.from === 'hand') return playLand(G, P, ch.c);
   if (ch.x) P.xcast.splice(P.xcast.indexOf(ch.x), 1);
-  return playLand(G, P, ch.c, true);
+  const ok = playLand(G, P, ch.c, true);
+  if (ok !== false && ch.x && ch.x.onPlay) ch.x.onPlay(G, P, ch.c);
+  return ok;
 }
 function cheapestCounter(P) {
   return P.hand.filter((c) => c.def.spell && c.def.spell.some((e) => e.k === 'counter')).sort((a, b) => a.def.mv - b.def.mv)[0];
@@ -3738,10 +3752,11 @@ function aiBlocks(G, D, A, attackers) {
   const per = PERSONAS[D.persona];
   const map = new Map();
   const used = new Set();
+  const twice = new Set();
   let incoming = attackers.reduce((s, a) => s + dmgOut(a), 0);
   const order = attackers.slice().sort((x, y) => dmgOut(y) - dmgOut(x) || cv(y) - cv(x));
   for (const a of order) {
-    const cands = D.bf.filter((b) => !used.has(b) && canBlock(G, b, a));
+    const cands = D.bf.filter((b) => (!used.has(b) || (b.def.blockTwo && !twice.has(b))) && canBlock(G, b, a));
     const need = minBlockers(a);
     const needTwo = need >= 2;
     if (!cands.length || cands.length < need) continue;
@@ -3766,7 +3781,7 @@ function aiBlocks(G, D, A, attackers) {
     if (!pick && mustBeBlocked(G, a) && cands.length >= need) pick = cands.slice().sort((x, y) => cv(x) - cv(y)).slice(0, need);
     if (pick) {
       map.set(a.id, pick);
-      pick.forEach((b) => used.add(b));
+      pick.forEach((b) => { if (used.has(b)) twice.add(b); used.add(b); });
       const soak = pick.reduce((s, b) => s + Math.max(0, tou(b) - b.dmg), 0);
       incoming -= has(a, 'trample') ? Math.min(dmgOut(a), soak) : dmgOut(a);
     }
@@ -3778,11 +3793,14 @@ const strikesIn = (step) => (c) => (step === 'all' ? true : step === 'first' ? h
 function planDamage(G, D, attackers, step, alive, dmgOf) {
   const strikes = strikesIn(step);
   const events = [];
+  const bLeft = new Map(), seen = new Set();
   for (const a of attackers) {
     if (!alive(a) || !a.attacking) continue;
+    seen.add(a);
     const blockers = a.blockedBy.filter(alive);
     if (strikes(a) && combatPow(a) > 0) {
       if (!a.blocked) events.push({ src: a, to: D, n: combatPow(a) });
+      else if (a.def.asUnblocked && blockers.length && (combatPow(a) >= D.life || !blockers.some((b) => cv(b) >= 2.5 && (has(a, 'deathtouch') || combatPow(a) >= tou(b) - dmgOf(b))))) events.push({ src: a, to: D, n: combatPow(a) });
       else if (!blockers.length) { if (has(a, 'trample')) events.push({ src: a, to: D, n: combatPow(a) }); }
       else {
         let left = combatPow(a);
@@ -3797,7 +3815,16 @@ function planDamage(G, D, attackers, step, alive, dmgOf) {
         if (left > 0 && has(a, 'trample')) events.push({ src: a, to: D, n: left });
       }
     }
-    for (const b of blockers) if (strikes(b) && combatPow(b) > 0) events.push({ src: b, toC: a, n: combatPow(b) });
+    for (const b of blockers) {
+      if (!strikes(b) || combatPow(b) <= 0) continue;
+      if (!b.def.blockTwo) { events.push({ src: b, toC: a, n: combatPow(b) }); continue; }
+      const left = bLeft.has(b) ? bLeft.get(b) : combatPow(b);
+      if (left <= 0) continue;
+      const more = attackers.some((x) => x !== a && !seen.has(x) && alive(x) && x.attacking && x.blockedBy.includes(b));
+      const amt = more ? Math.min(left, has(b, 'deathtouch') ? 1 : Math.max(1, tou(a) - dmgOf(a))) : left;
+      events.push({ src: b, toC: a, n: amt });
+      bLeft.set(b, left - amt);
+    }
   }
   return events;
 }
@@ -3876,7 +3903,7 @@ function trickValue(G, P, D, attackers, spell, idx, tgt, card) {
     else if (e.k === 'grant' && t && e.kw) pumpOn(t, { p: 0, t: 0, kw: e.kw });
     else if ((e.k === 'destroyP' || e.k === 'exileP' || e.k === 'bounceP') && t && !(e.k === 'destroyP' && has(t, 'indestructible'))) gone.add(t);
     else if (e.k === 'dmgX' && t) { const n = e.nFn(G, X); if (!has(t, 'indestructible') && t.dmg + n >= tou(t)) gone.add(t); else pre.set(t, n); }
-    else if (e.k === 'pumpTeam') P.bf.filter(isCreature).forEach((c) => pumpOn(c, e));
+    else if (e.k === 'pumpTeam') (e.attacking ? allCreatures(G).filter((c) => c.attacking) : P.bf.filter(isCreature)).forEach((c) => pumpOn(c, e));
     else if ((e.k === 'destroy' && t && !has(t, 'indestructible')) || ((e.k === 'exile' || e.k === 'bounce' || e.k === 'tuck') && t)) gone.add(t);
     else if (e.k === 'edict') { const Q = other(G, P), cs = Q.bf.filter((c) => isCreature(c) && edictOk(G, Q, e.f, c)); if (cs.length) gone.add(cs.reduce((w, c) => (cv(c) < cv(w) ? c : w), cs[0])); }
     else if (e.k === 'dmg' && t) { if (!has(t, 'indestructible') && t.dmg + e.n >= tou(t)) gone.add(t); else pre.set(t, e.n); }
@@ -3965,6 +3992,7 @@ function aiFirebreathing(G, P, role, attackers) {
 }
 function combat(G) {
   const A = G.players[G.active], D = other(G, A);
+  if (A.skipCombat) { if (A.skipCombat !== G.turn) { A.skipCombat = G.turn; emit(G, 'info', `${A.name} skips combat this turn.`, { who: A.i }); } return; }
   G.phase = 'combat';
   G.combat = { attackers: [] };
   G.combatN = G.combatTurn === G.turn ? (G.combatN || 0) + 1 : 1;
@@ -4000,6 +4028,7 @@ function combat(G) {
   const live = G.combat.attackers.filter((c) => onBf(G, c) && c.attacking);
   if (live.length) {
     const blocks = isHuman(G, D) ? humanBlocks(G, D, A, live) : aiBlocks(G, D, A, live);
+    forcedBlocks(G, D, live, blocks);
     for (const [aid, bs] of blocks) { const a = live.find((x) => x.id === aid); a.blocked = true; a.blockedBy = bs.slice(); bs.forEach((b) => { b.blocking = aid; }); }
     G.combat.blocksDone = true;
     if (blocks.size) {
@@ -4170,8 +4199,8 @@ function aiInstantWindow(G, P, when) {
         if (ch && ch.score > 0.3) {
           let s = ch.score;
           if (when === 'attackers') {
-            const hitsAttacker = ch.targets.some((t) => t && t.c && t.c.attacking);
-            const pure = d.spell.every((e) => ['destroy', 'exile', 'dmg', 'pump', 'tap', 'bounce', 'tuck', 'noop', 'scry', 'draw', 'gain', 'refGain', 'refLand', 'refLose', 'loseRefTou', 'refToken'].includes(e.k));
+            const hitsAttacker = ch.targets.some((t) => targetList(t).some((x) => x.c && x.c.attacking));
+            const pure = d.spell.every((e) => ['destroy', 'exile', 'dmg', 'pump', 'tap', 'bounce', 'bounceP', 'tuck', 'noop', 'scry', 'draw', 'gain', 'refGain', 'refLand', 'refLose', 'loseRefTou', 'refToken'].includes(e.k));
             if (d.spell.some((e) => e.k === 'edict')) { /* the attacker will have to give something up */ }
             else if (!hitsAttacker || !pure) s = 0;
             else if (d.spell.some((e) => e.k === 'pump' && e.p >= 0)) s = 0;
@@ -4622,22 +4651,33 @@ function humanAttackers(G, A) {
   const ids = new Set((a.ids || []).concat(must.map((c) => c.id)));
   return cands.filter((c) => ids.has(c.id));
 }
+// Declare Dominance: every creature able to block a lured attacker blocks it, leaving any other block it chose
+function forcedBlocks(G, D, attackers, map) {
+  for (const a of attackers) {
+    if (!(a.tf && a.tf.lureAll)) continue;
+    const able = D.bf.filter((b) => canBlock(G, b, a));
+    if (!able.length) continue;
+    for (const [aid, bs] of [...map]) { const rest = bs.filter((b) => !able.includes(b)); if (aid === a.id) continue; if (rest.length) map.set(aid, rest); else map.delete(aid); }
+    map.set(a.id, able);
+  }
+}
 function humanBlocks(G, D, A, attackers) {
   const blockers = D.bf.filter((b) => isCreature(b) && !b.tapped && !b.def.cantBlock && !b.noBlock && !(b.sfl && b.sfl.cantBlock) && !(b.tf && b.tf.cantBlock));
   const opts = attackers.map((a) => Object.assign({ id: a.id, menace: has(a, 'menace'), by: blockers.filter((b) => canBlock(G, b, a)).map((b) => b.id) },
     minBlockers(a) > 2 ? { need: minBlockers(a) } : null, (a.tf && a.tf.maxOne) || a.def.maxOne ? { max: 1 } : null, mustBeBlocked(G, a) ? { lure: true } : null)).filter((o) => o.by.length);
   const map = new Map();
   if (!opts.length) return map;
-  const ans = ask(G, { type: 'block', attackers: opts });
+  const ans = ask(G, { type: 'block', attackers: opts, twice: blockers.filter((b) => b.def.blockTwo).map((b) => b.id) });
   const used = new Set();
+  const twice = new Set();
   for (const [aid, bids] of ans.blocks || []) {
     const a = attackers.find((x) => x.id === aid);
     if (!a || map.has(aid)) continue;
-    let bs = (bids || []).map((id) => blockers.find((b) => b.id === id)).filter((b, k, arr) => b && arr.indexOf(b) === k && !used.has(b) && canBlock(G, b, a));
+    let bs = (bids || []).map((id) => blockers.find((b) => b.id === id)).filter((b, k, arr) => b && arr.indexOf(b) === k && (!used.has(b) || (b.def.blockTwo && !twice.has(b))) && canBlock(G, b, a));
     if ((a.tf && a.tf.maxOne) || a.def.maxOne) bs = bs.slice(0, 1);
     if (!bs.length || bs.length < minBlockers(a)) continue;
     map.set(aid, bs);
-    bs.forEach((b) => used.add(b));
+    bs.forEach((b) => { if (used.has(b)) twice.add(b); used.add(b); });
   }
   // A creature that must be blocked gets a blocker if any creature is still free to block it
   for (const a of attackers) {
@@ -4686,8 +4726,11 @@ function takeTurn(G) {
   G.sacThisTurn = 0;
   phaseIn(G, P);
   // Untap step: stun counters, "doesn't untap" auras and Bewitching Leechcraft keep things tapped
+  const frozen = P.noUntapNext;
+  if (frozen) { P.noUntapNext = false; emit(G, 'info', `${P.name}'s creatures and lands don't untap this turn.`, { who: P.i }); }
   for (const c of P.bf) {
     c.sick = false;
+    if (frozen && c.tapped && (isCreature(c) || isLand(c))) continue;
     if (c.stun) { c.stun = false; continue; }
     if (!c.tapped) continue;
     if (c.sfl && c.sfl.noUntap) continue;
@@ -4717,14 +4760,17 @@ function takeTurn(G) {
       if (G.over) return;
       if (!G.endTurn) humanMain(G, P, 2); if (G.over) return;
     } else if (G.pending) { fire(G, 'combatStart', { P }); sba(G); if (G.over) return; }
+    while (G.extraMain && !G.over && !G.endTurn) { G.extraMain = false; combat(G); if (G.over) return; if (!G.endTurn) humanMain(G, P, 2); if (G.over) return; }
   } else {
     aiMain(G, P, 1); if (G.over) return;
     if (!G.endTurn) { combat(G); if (G.over) return; }
     while (G.extraCombat && !G.over && !G.endTurn) { G.extraCombat = false; combat(G); }
     if (G.over) return;
     if (!G.endTurn) aiMain(G, P, 2); if (G.over) return;
+    while (G.extraMain && !G.over && !G.endTurn) { G.extraMain = false; combat(G); if (G.over) return; if (!G.endTurn) aiMain(G, P, 2); if (G.over) return; }
   }
   G.extraCombat = false;
+  G.extraMain = false;
   emptyPool(G, P);
   G.phase = 'end';
   // End step (Y'shtola Rhul can add another one after the first)
@@ -4761,6 +4807,7 @@ function takeTurn(G) {
   G.noPrevent = false;
   sba(G);
   if (G.over) return;
+  if (typeof P.skipCombat === 'number') P.skipCombat = false;
   const k = G.extraTurns.indexOf(P.i);
   if (k >= 0) { G.extraTurns.splice(k, 1); emit(G, 'info', `${P.name} takes an extra turn.`, { who: P.i }); return; }
   G.active = 1 - G.active;
@@ -5061,7 +5108,7 @@ return {
   PERSONAS, ARCH, MAX_TURNS, createGame, playGame, runMatch, replayOf, buildDeck, deckFromList, guildName,
   runInteractive, NeedInput, humanActions, attackCandidates, costText,
   CMD, CMDR_ARCH, CMD_BANNED, colorIdentity, canCommand, commanderArchetype, buildCommanderDeck,
-  _internal: { cv, fight, kills, canBlock, planPayment, manaSources, evalEffect, chooseTargets, aiAttackers, aiBlocks, sba, snap, newCard, castSpell, resolveEffects, combat, takeTurn, enterBattlefield, forecast, protectedFrom, targetOk, pow, tou, applyAction, returnControl, damageCreature },
+  _internal: { cv, fight, kills, canBlock, planPayment, manaSources, evalEffect, chooseTargets, aiAttackers, aiBlocks, sba, snap, newCard, castSpell, resolveEffects, combat, takeTurn, enterBattlefield, forecast, protectedFrom, targetOk, pow, tou, applyAction, returnControl, damageCreature, planDamage },
   registerScripts, SCRIPTS,
   lib: { fx, tempt, amass, makeTokens, FOOD, TREASURE, ORC_ARMY, tokenDef, addCounters, removeCounters, matches, countMine, isCreature, isLand, isArtifact, isEnchantment,
     isLegendary, pow, tou, has, hasSub, orcish, subOf, ctrCount, isEquipped, equipmentOn, attachedTo, attach, ringBearer, other, emit, fire, dirty, dealDamage, damageCreature,

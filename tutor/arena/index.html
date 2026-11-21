@@ -197,6 +197,49 @@ svg.i .fill { fill: currentColor; }
 .tile-view { position: absolute; z-index: 3; top: 9px; right: 9px; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px 0 10px; border-radius: 999px; border: 0; font: 700 13px/1 var(--sans); color: var(--text); background: rgba(32, 29, 39, .8); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .tile-view:hover { background: rgba(52, 48, 62, .92); }
 .tile-view svg.i { width: 17px; height: 17px; }
+/* The deck library */
+.lib-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-top: 24px; }
+.lib-search { flex: 1 1 240px; display: flex; align-items: center; gap: 9px; height: 46px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: text; }
+.lib-search:focus-within { border-color: var(--line-strong); box-shadow: 0 0 0 3px rgba(236, 229, 216, .06); }
+.lib-search svg.i { width: 18px; height: 18px; }
+.lib-search input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; color: var(--text); font: 500 16px/1 var(--sans); outline: none; }
+.lib-search input::placeholder { color: var(--faint); }
+.chip { flex: none; height: 38px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line-strong); background: transparent; color: var(--muted); font: 500 14.5px/1 var(--sans); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.chip:hover { color: var(--text); background: var(--hover); }
+.chip[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 700; }
+.chip em { font-style: normal; font-weight: 500; opacity: .7; font-variant-numeric: tabular-nums; }
+.lib-filters { display: grid; gap: 4px; margin-top: 14px; }
+.lib-chips { padding-bottom: 6px; margin: 0; }
+.lib-pips { gap: 6px; margin-top: 2px; }
+.lib-pips .pip { width: 36px; height: 36px; }
+.lib-pips .pip img, .lib-pips .pip .sym-txt { width: 22px; height: 22px; }
+.lib-count { margin: 16px 0 0; color: var(--muted); font-size: 14.5px; }
+.lib-group { margin-top: 26px; }
+.lib-group > h2 { margin: 0; font: 800 24px/1.15 var(--serif); }
+.lib-group > h2 small { margin-left: 8px; font: 500 14px var(--sans); color: var(--faint); }
+.lib-group .deck-grid { margin-top: 12px; }
+.lib-tile .tile-art { height: 104px; }
+.lib-tile .by { font: 700 12px/1 var(--sans); padding: 5px 8px; border-radius: 999px; background: var(--raised); color: var(--muted); }
+.lib-tile .by.wotc { color: #f0d9a0; }
+.lib-state { display: flex; align-items: center; gap: 6px; margin-top: 9px; font: 600 12.5px/1.2 var(--sans); color: var(--good); }
+.lib-state::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+.lib-state.off { color: var(--faint); }
+.lib-empty { margin: 30px 0; color: var(--muted); }
+.lib-credits { margin-top: 40px; }
+.dv-plan { padding: 14px 26px 0; }
+.dv-plan h4 { margin: 0 0 8px; font: 700 13.5px var(--sans); color: var(--muted); }
+.dv-plan p { margin: 0; max-width: 72ch; font-size: 16px; line-height: 1.55; }
+.dv-plan .dv-keys-h { margin-top: 16px; }
+.dv-keys { display: flex; flex-wrap: wrap; gap: 8px; }
+.dv-keys .chip { height: 34px; color: var(--text); }
+.dv-note { margin: 14px 26px 0; padding: 12px 14px; border-radius: 12px; background: var(--raised); color: var(--muted); font-size: 14.5px; line-height: 1.45; }
+.dv-note b { color: var(--text); }
+.dv-pair { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14.5px; }
+.dv-pair select { height: 42px; max-width: 220px; padding: 0 10px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); font: 500 15px var(--sans); }
+.dv-cell.miss .card { opacity: .5; filter: grayscale(.6); }
+.dv-cell.miss::after { content: "Not in the engine yet"; position: absolute; left: 6px; right: 6px; bottom: 8px; z-index: 2; padding: 5px 6px; border-radius: 8px; background: rgba(20, 18, 26, .88); color: var(--text); font: 700 11px/1.15 var(--sans); text-align: center; pointer-events: none; }
+.decklist .row.miss .nm { color: var(--faint); text-decoration: line-through; text-decoration-color: var(--line-strong); }
+.decklist .row.miss .nm::after { content: " (not playable yet)"; text-decoration: none; display: inline; font-size: 12px; color: var(--faint); }
 .recent .tile .deck-name { padding-right: 78px; }
 .dview { position: fixed; inset: 0; z-index: 58; display: grid; place-items: center; padding: 20px; }
 .dv-scrim { position: absolute; inset: 0; background: rgba(14, 12, 18, .72); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); animation: fadein .2s; }
@@ -724,6 +767,14 @@ svg.i .fill { fill: currentColor; }
   .go-row .lbl { display: none; }
   .modes { margin-top: 18px; }
   .modes .seg-lg { width: 100%; }
+  .lib-bar .seg-lg { width: 100%; }
+  .lib-search { flex-basis: 100%; order: 2; }
+  #libPlay { order: 3; }
+  .lib-group > h2 { font-size: 21px; }
+  .dv-plan, .dv-note { padding-left: 16px; padding-right: 16px; }
+  .dv-note { margin-left: 16px; margin-right: 16px; }
+  #toLobby { width: 40px; padding: 0; justify-content: center; }
+  #toLobby span { display: none; }
   .seg-lg button { flex: 1 1 0; }
   .learn { width: 100%; }
   .legends { grid-template-columns: minmax(0, 1fr); max-height: 300px; }
@@ -833,6 +884,7 @@ svg.i .fill { fill: currentColor; }
   <nav class="nav" aria-label="Sections">
     <a href="../">Cards</a>
     <a href="./" id="navArena" aria-current="page">Arena</a>
+    <a href="./#decks" id="navDecks">Decks</a>
   </nav>
   <div class="matchup" id="matchup" hidden></div>
   <span class="grow"></span>
@@ -876,16 +928,41 @@ svg.i .fill { fill: currentColor; }
         </div>
         <div class="seg" role="group" aria-label="Deck source" id="srcSeg">
           <button type="button" data-src="claude" aria-pressed="true">Claude's decks</button>
+          <button type="button" data-src="official" aria-pressed="false" hidden>Official</button>
           <button type="button" data-src="gen" aria-pressed="false">Build one</button>
         </div>
       </div>
       <div id="pickBody"></div>
     </section>
     <footer class="credits">
-      Card data and images from <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>. The rules engine plays a simplified game with <span id="poolCount">4,093</span> cards whose text it can read, including every card in The Lord of the Rings: Tales of Middle-earth, Magic: The Gathering FINAL FANTASY and Marvel Super Heroes. There are no planeswalkers, and a spell can be answered once but not fought over on the stack.
+      Card data and images from <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>, official deck lists from <a href="https://mtgjson.com" target="_blank" rel="noopener">MTGJSON</a>. The rules engine plays a simplified game with <span id="poolCount">4,093</span> cards whose text it can read, including every card in The Lord of the Rings: Tales of Middle-earth, Magic: The Gathering FINAL FANTASY and Marvel Super Heroes. There are no planeswalkers, and a spell can be answered once but not fought over on the stack.
       Arena is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. &copy;Wizards of the Coast LLC.
     </footer>
   </div>
+</main>
+
+<main id="decks" class="lobby" hidden>
+  <section class="hero">
+    <h1>Decks</h1>
+    <p>Claude's decks and Wizards' own preconstructed decks, with how each one plans to win. Open a deck to read its strategy and card list, then play it.</p>
+  </section>
+  <div class="lib-bar">
+    <div class="seg seg-lg" role="group" aria-label="Who made the decks" id="libSrc">
+      <button type="button" data-src="all" aria-pressed="true">All</button>
+      <button type="button" data-src="claude" aria-pressed="false">Claude's</button>
+      <button type="button" data-src="official" aria-pressed="false">Official</button>
+    </div>
+    <label class="lib-search"><span class="lib-search-ic" aria-hidden="true"></span><input type="search" id="libQ" placeholder="Search decks and cards" autocomplete="off" spellcheck="false" aria-label="Search decks and cards"></label>
+    <button type="button" class="chip" id="libPlay" aria-pressed="false">Playable only</button>
+  </div>
+  <div class="lib-filters">
+    <div class="sets-row lib-chips" role="group" aria-label="Set" id="libSets"></div>
+    <div class="sets-row lib-chips" role="group" aria-label="Kind of deck" id="libKinds"></div>
+    <div class="pips lib-pips" role="group" aria-label="Colors" id="libCols"></div>
+  </div>
+  <p class="lib-count" id="libCount" role="status"></p>
+  <div id="libList"></div>
+  <p class="credits lib-credits">Official deck lists from <a href="https://mtgjson.com" target="_blank" rel="noopener">MTGJSON</a>. A deck is playable when the rules engine can read every card in it; for the others you can still browse the list and the strategy.</p>
 </main>
 
 <main id="learn" class="lobby" hidden>
@@ -938,10 +1015,11 @@ svg.i .fill { fill: currentColor; }
 <div class="insp" id="insp" role="dialog" aria-modal="true" aria-labelledby="inspName" hidden></div>
 <div class="sheet" id="sheet" hidden></div>
 
-<script src="engine.js?v=8"></script>
+<script src="engine.js?v=9"></script>
 <script src="ltr.js?v=1"></script>
 <script src="fin.js?v=1"></script>
 <script src="msh.js?v=1"></script>
+<script src="precon.js?v=1"></script>
 <script src="decks.js?v=3"></script>
 <script src="commanders.js?v=3"></script>
 <script src="sets.js?v=4"></script>
@@ -986,6 +1064,7 @@ const ICON = {
   check: '<path d="M5.5 12.5l4.2 4.2 8.8-9.4"/>',
   undo: '<path d="M9 7.5h6.2a4.3 4.3 0 0 1 0 8.6H9.5"/><path d="M11.8 4.6L8.8 7.5l3 3"/>',
   ext: '<path d="M13.5 5.5h5v5M18.5 5.5L11 13M16.5 13.5v4a1.5 1.5 0 0 1-1.5 1.5H7a1.5 1.5 0 0 1-1.5-1.5V9.5A1.5 1.5 0 0 1 7 8h4"/>',
+  search: '<circle cx="10.8" cy="10.8" r="6.2"/><path d="M15.4 15.4l4.6 4.6"/>',
 };
 const icon = (name) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICON[name]}</svg>`;
 
@@ -1047,7 +1126,7 @@ const ARCH_LABEL = { aggro: 'Aggro', midrange: 'Midrange', control: 'Control' };
 const COLOR_NAME = { W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green' };
 const COLOR_VAR = { W: 'var(--w)', U: 'var(--u)', B: 'var(--b)', R: 'var(--r)', G: 'var(--g)' };
 async function loadData() {
-  const res = await fetch('cards.json?v=3');
+  const res = await fetch('cards.json?v=4');
   if (!res.ok) throw new Error(`cards.json: HTTP ${res.status}`);
   const j = await res.json();
   // Double-faced, adventurer and meld cards carry their other faces: { b: back, a: adventure, m: melded card, mdfc: either face can be cast }
@@ -1068,7 +1147,7 @@ function finishDeck(d, extra) {
   const nonland = d.list.filter(({ def }) => !def.types.includes('Land'));
   if (!d.face) d.face = nonland.slice().sort((a, b) => b.def.value * (b.def.types.includes('Creature') ? 1.2 : 1) - a.def.value * (a.def.types.includes('Creature') ? 1.2 : 1))[0].def.name;
   d.accent = COLOR_VAR[d.colors[0]] || 'var(--c)';
-  d.size = d.commander ? 100 : 60;
+  d.size = d.list.reduce((t, x) => t + x.n, 0) + (d.commander ? 1 : 0);
   DECKS.set(d.key, d);
   return d;
 }
@@ -1201,7 +1280,90 @@ function deckByKey(key) {
   if (m) { const set = setByCode(m[1]); const spec = set && (SETS.commanders[set.code] || []).find((x) => x.id === m[2]); return spec ? setCmdDeck(set, spec) : null; }
   m = /^s\.([a-z0-9]{2,4})\.kg\.([a-z0-9-]+)\.(aggro|midrange|control)\.(\d{1,10})$/.exec(key);
   if (m) { const set = setByCode(m[1]); return set ? genCmdDeck(m[2], m[3], +m[4], set) : null; }
+  m = /^o\.([a-z0-9-]+)$/.exec(key);
+  if (m) { const o = OFF.byId.get(m[1]); return o ? offDeck(o) : null; }
+  m = /^j\.([a-z0-9-]+)\.([a-z0-9-]+)$/.exec(key);
+  if (m) { const a = OFF.byId.get(m[1]), b = OFF.byId.get(m[2]); return a && b && a !== b && isPack(a) && isPack(b) && a.set === b.set && offPlayable(a) && offPlayable(b) ? packPair(a, b) : null; }
   return null;
+}
+// A deck that can sit in a seat: the engine plays every card, and it isn't half of a Jumpstart pair
+const seatable = (d) => !!d && d.playable !== false && !d.half;
+// A click that isn't asking for a new tab or window
+const plainClick = (e) => !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button);
+
+/* ============================================================
+   Wizards' preconstructed decks (lists from MTGJSON, strategy notes by Claude)
+   ============================================================ */
+const OFF = { decks: [], byId: new Map(), cards: {}, err: false };
+async function loadOfficial() {
+  try {
+    const res = await fetch('official.json?v=1');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const j = await res.json();
+    OFF.decks = j.decks || [];
+    OFF.cards = j.cards || {};
+    for (const o of OFF.decks) OFF.byId.set(o.id, o);
+  } catch { OFF.err = true; }
+}
+const offPlayable = (o) => !o.miss;
+const isPack = (o) => o.type === 'Jumpstart pack';
+// Commander products sit with the set they were made for
+const GROUP_OF = { MSC: 'MSH', FIC: 'FIN', LTC: 'LTR' };
+const GROUP_NAME = { ALL: ['Every playable card', 0], MSH: ['Marvel Super Heroes', 2026], FIN: ['FINAL FANTASY', 2025], LTR: ['The Lord of the Rings: Tales of Middle-earth', 2023], M19: ['Core Set 2019', 2018],
+  M12: ['Magic 2012', 2011], M11: ['Magic 2011', 2010], M10: ['Magic 2010', 2009], '10E': ['Tenth Edition', 2007], '9ED': ['Ninth Edition', 2005], '8ED': ['Eighth Edition', 2003],
+  '7ED': ['Seventh Edition', 2001], S99: ['Starter 1999', 1999], POR: ['Portal', 1997] };
+const groupOf = (code) => GROUP_OF[code] || code;
+const groupName = (g) => (setByCode(g) && g !== 'ALL' ? setByCode(g).name : (GROUP_NAME[g] || [g])[0]);
+const groupYear = (g) => (g === 'ALL' ? 9999 : setByCode(g) ? setByCode(g).year : (GROUP_NAME[g] || [0, 0])[1]);
+const SHORT_EXTRA = { MSC: 'Marvel Commander', FIC: 'Final Fantasy Commander', LTC: 'Lord of the Rings Commander' };
+const shortSet = (code) => (setByCode(code) ? setByCode(code).short : SHORT_EXTRA[code] || code);
+// A card the engine can't play yet: enough to list it, count it and show its picture
+const STUBS = new Map();
+const TYPE_WORDS = ['Creature', 'Land', 'Instant', 'Sorcery', 'Artifact', 'Enchantment', 'Planeswalker', 'Battle', 'Kindred'];
+function stubDef(name) {
+  if (STUBS.has(name)) return STUBS.get(name);
+  const [manaCost, typeLine] = OFF.cards[name] || ['', ''];
+  let cost = null;
+  try { cost = manaCost ? Arena.parseCost(manaCost) : null; } catch { cost = null; }
+  cost = cost || { g: 0, W: 0, U: 0, B: 0, R: 0, G: 0 };
+  const [main, sub] = typeLine.split(' — ');
+  const words = (main || '').split(' ');
+  const def = { id: `stub-${Arena.slug(name)}`, name, manaCost, typeLine, cost, mv: Arena.lib.costMV(cost), types: words.filter((w) => TYPE_WORDS.includes(w)), supertypes: words.filter((w) => w === 'Legendary' || w === 'Basic'),
+    sub: sub ? sub.split(' ') : [], colors: ['W', 'U', 'B', 'R', 'G'].filter((c) => (cost[c] || 0) > 0 || (cost.hy || []).some((h) => h.includes(c))), kw: [], text: '', power: '?', toughness: '?', value: 0, stub: true };
+  STUBS.set(name, def);
+  return def;
+}
+const firstSentence = (t) => (/^.*?[.!?](\s|$)/.exec(t) || [t])[0].trim();
+function offDeck(o) {
+  const key = `o.${o.id}`;
+  if (DECKS.has(key)) return DECKS.get(key);
+  const cmdr = (o.cmdr || []).map((n) => DATA.byName.get(n) || stubDef(n));
+  const list = o.cards.map(([n, name]) => ({ def: DATA.byName.get(name) || stubDef(name), n })).concat(cmdr.slice(1).map((def) => ({ def, n: 1 })));
+  const playable = offPlayable(o) && list.every((x) => !x.def.stub) && cmdr.every((x) => !x.stub);
+  const base = playable && !o.cmdr ? Arena.deckFromList(o.name, o.colors, o.arch, list) : { name: o.name, colors: o.colors, archetype: o.arch, list, cards: [] };
+  if (cmdr.length) base.commander = cmdr[0];
+  const face = [o.keys[0]].concat(o.keys).find((n) => n && !/Land/.test((DATA.byName.get(n) || stubDef(n)).typeLine)) || o.keys[0];
+  return finishDeck(base, { key, by: 'wotc', off: o, blurb: o.plan, keys: o.keys, face, set: o.set, playable: playable && !o.cmdr, half: isPack(o) });
+}
+// Jumpstart: two half-deck packs from the same set, shuffled together
+function packPair(a, b) {
+  const key = `j.${a.id}.${b.id}`;
+  if (DECKS.has(key)) return DECKS.get(key);
+  const m = new Map();
+  for (const o of [a, b]) for (const [n, name] of o.cards) m.set(name, (m.get(name) || 0) + n);
+  const list = [...m].map(([name, n]) => ({ def: DATA.byName.get(name), n }));
+  if (list.some((x) => !x.def)) return null;
+  const colors = ['W', 'U', 'B', 'R', 'G'].filter((c) => a.colors.includes(c) || b.colors.includes(c));
+  const d = Arena.deckFromList(`${a.name} + ${b.name}`, colors, a.arch === b.arch ? a.arch : 'midrange', list);
+  return finishDeck(d, { key, by: 'wotc', pair: [a, b], blurb: `Two ${shortSet(a.set)} Jumpstart packs shuffled together. ${firstSentence(a.plan)} ${firstSentence(b.plan)}`,
+    keys: [a.keys[0], b.keys[0], a.keys[1], b.keys[1]].filter(Boolean), face: a.keys[0], set: a.set, playable: true });
+}
+const pickRandom = (arr) => (arr.length ? arr[Math.floor(Math.random() * arr.length)] : null);
+function randomPair(setCode, keep) {
+  const packs = OFF.decks.filter((o) => isPack(o) && offPlayable(o) && o.set === setCode);
+  const a = keep || pickRandom(packs);
+  const b = pickRandom(packs.filter((o) => o !== a));
+  return a && b ? `j.${a.id}.${b.id}` : null;
 }
 const newSeed = () => (Math.random() * 2 ** 31) >>> 0;
 const countOf = (d, f) => d.list.filter(({ def }) => f(def)).reduce((s, x) => s + x.n, 0);
@@ -1335,7 +1497,7 @@ function setMode(fmt, pool, seats) {
   S.format = fmt;
   S.pool = pool;
   store.set('arena.format.v1', fmt);
-  const fits = (k) => !!k && fmtOfKey(k) === fmt && poolOfKey(k) === pool && !!deckByKey(k);
+  const fits = (k) => !!k && fmtOfKey(k) === fmt && poolOfKey(k) === pool && seatable(deckByKey(k));
   const saved = seats || store.get(seatsKeyOf(fmt, pool), null);
   const def = defaultsFor(fmt, pool);
   S.seats = [0, 1].map((i) => (saved && fits(saved[i]) ? saved[i] : def[i]));
@@ -1414,6 +1576,7 @@ function migrateSets() {
 }
 function hashFor() {
   if (S.view === 'learn') return '#learn';
+  if (S.view === 'decks') return '#decks';
   if (S.view === 'watch' && TU.on && !TU.lesson.practice) return `#lesson=${TU.lesson.id}`;
   const p = new URLSearchParams();
   if (S.seats[0]) p.set('a', S.seats[0]);
@@ -1429,9 +1592,10 @@ function syncHash(push) {
 }
 function readHash() {
   const p = new URLSearchParams(location.hash.slice(1));
-  const a = deckByKey(p.get('a')), b = deckByKey(p.get('b'));
+  const ok = (d) => (seatable(d) ? d : null);
+  const a = ok(deckByKey(p.get('a'))), b = ok(deckByKey(p.get('b')));
   const seed = p.get('seed'), pl = p.get('play');
-  return { a, b, seed: seed != null && /^\d{1,10}$/.test(seed) ? +seed : null, play: pl != null && /^\d{1,10}$/.test(pl) ? +pl : null, learn: p.has('learn'), lesson: p.get('lesson') };
+  return { a, b, seed: seed != null && /^\d{1,10}$/.test(seed) ? +seed : null, play: pl != null && /^\d{1,10}$/.test(pl) ? +pl : null, learn: p.has('learn'), lesson: p.get('lesson'), decks: p.has('decks') };
 }
 
 /* ============================================================
@@ -1450,11 +1614,11 @@ function listHTML(d) {
   return `<div class="decklist">${head}${groups.map(([label, f]) => {
     const rows = d.list.filter(({ def }) => f(def)).sort((a, b) => a.def.mv - b.def.mv || a.def.name.localeCompare(b.def.name));
     if (!rows.length) return '';
-    return `<h4>${label} (${rows.reduce((s, x) => s + x.n, 0)})</h4>${rows.map(({ def, n }) => `<div class="row"><span class="n">${n}</span><span class="nm">${esc(def.name)}</span><span class="mc">${manaHTML(def.manaCost)}</span></div>`).join('')}`;
+    return `<h4>${label} (${rows.reduce((s, x) => s + x.n, 0)})</h4>${rows.map(({ def, n }) => `<div class="row${def.stub ? ' miss' : ''}"><span class="n">${n}</span><span class="nm">${esc(def.name)}</span><span class="mc">${manaHTML(def.manaCost)}</span></div>`).join('')}`;
   }).join('')}</div>`;
 }
 function metaHTML(d) {
-  return `<div class="deck-meta"><span class="cols" aria-label="${d.colors.map((c) => COLOR_NAME[c]).join(' and ')}">${colorsHTML(d.colors)}</span><span class="arch">${ARCH_LABEL[d.archetype]}</span>${d.commander ? `<span class="cmd-name">${icon('star')}${esc(d.commander.name)}</span>` : ''}<span class="by">${d.by === 'claude' ? 'Designed by Claude' : 'Built by the generator'}${d.set ? ` · ${esc((setByCode(d.set) || { short: d.set }).short)}` : ''}</span></div>`;
+  return `<div class="deck-meta"><span class="cols" aria-label="${d.colors.map((c) => COLOR_NAME[c]).join(' and ')}">${colorsHTML(d.colors)}</span><span class="arch">${ARCH_LABEL[d.archetype]}</span>${d.commander ? `<span class="cmd-name">${icon('star')}${esc(d.commander.name)}</span>` : ''}<span class="by">${d.by === 'claude' ? 'Designed by Claude' : d.by === 'wotc' ? `Official ${d.off ? esc(d.off.type) : 'Jumpstart pair'}` : 'Built by the generator'}${d.set ? ` · ${esc(shortSet(d.set))}` : ''}${d.off && d.off.year ? ` · ${d.off.year}` : ''}</span></div>`;
 }
 function renderSeats() {
   const parts = [0, 1].map((i) => {
@@ -1475,11 +1639,11 @@ function renderSeats() {
 }
 function tileHTML(d) {
   return `<div class="tile-wrap"><button type="button" class="tile" data-key="${esc(d.key)}"><div class="tile-art" data-art="${esc(d.face)}" style="${artOf(d.face) ? `background-image:url(&quot;${esc(artOf(d.face))}&quot;)` : ''}"></div>`
-    + `<div class="tile-body"><h3 class="deck-name">${esc(d.name)}</h3>${metaHTML(d).replace(/<span class="by">[^<]*<\/span>/, '')}<p class="blurb">${esc(d.blurb)}</p></div></button>`
+    + `<div class="tile-body"><h3 class="deck-name">${esc(d.name)}</h3>${metaHTML(d).replace(/<span class="by">[^<]*<\/span>/, d.by === 'wotc' ? `<span class="by">${esc(shortSet(d.set))}</span>` : '')}<p class="blurb">${esc(d.blurb)}</p></div></button>`
     + `<button type="button" class="tile-view" data-view="${esc(d.key)}" aria-label="View ${esc(d.name)}">${icon('eye')}View</button></div>`;
 }
 /* The deck view: every card in a deck, how it's built, and which seat to give it */
-const DV = { key: null, from: null, mode: store.get('arena.dvmode.v1', 'pics') === 'list' ? 'list' : 'pics' };
+const DV = { key: null, from: null, ctx: 'lobby', mode: store.get('arena.dvmode.v1', 'pics') === 'list' ? 'list' : 'pics' };
 const TYPE_GROUPS = [
   ['Creatures', (x) => x.types.includes('Creature')],
   ['Instants and sorceries', (x) => !x.types.includes('Creature') && (x.types.includes('Instant') || x.types.includes('Sorcery'))],
@@ -1501,18 +1665,51 @@ function deckText(d) {
   const rows = d.list.slice().sort((a, b) => a.def.types.includes('Land') - b.def.types.includes('Land') || a.def.mv - b.def.mv || a.def.name.localeCompare(b.def.name));
   return `${d.commander ? `Commander\n1 ${d.commander.name}\n\n` : ''}Deck\n${rows.map(line).join('\n')}\n`;
 }
-function openDeckView(key, from) {
+// The cards that make a deck work: its notes say for official decks; otherwise the commander and the strongest spells
+function keyCards(d) {
+  if (d.keys) return d.keys.map((n) => DATA.byName.get(n) || (OFF.cards[n] ? stubDef(n) : null)).filter(Boolean);
+  const seen = new Set(d.commander ? [d.commander.name] : []);
+  const top = d.list.filter(({ def }) => !def.types.includes('Land')).map((x) => x.def).sort((a, b) => b.value - a.value).filter((x) => (seen.has(x.name) ? false : seen.add(x.name)));
+  return (d.commander ? [d.commander] : []).concat(d.face && !seen.has(d.face) && DATA.byName.get(d.face) ? [DATA.byName.get(d.face)] : []).concat(top).slice(0, 4);
+}
+function missingCount(d) { return d.list.filter((x) => x.def.stub).length + (d.commander && d.commander.stub ? 1 : 0); }
+function dvFootHTML(d, key) {
+  if (DV.ctx === 'library') {
+    if (d.playable === false) return `<button type="button" class="pill" disabled>Not playable yet</button>`;
+    if (d.half) {
+      const mates = OFF.decks.filter((o) => isPack(o) && offPlayable(o) && o.set === d.off.set && o !== d.off);
+      return `<label class="dv-pair">Shuffle with <select id="dvMate"><option value="">a random pack</option>${mates.map((o) => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('')}</select></label>`
+        + `<button type="button" class="pill" data-dvplay="setup">Set up a match</button><button type="button" class="pill pill-solid" data-dvplay="play">${icon('play')}Play</button>`;
+    }
+    return `<button type="button" class="pill" data-dvplay="setup">Set up a match</button><button type="button" class="pill pill-solid" data-dvplay="play">${icon('play')}Play vs AI</button>`;
+  }
+  if (!seatable(d)) return d.half ? '<button type="button" class="pill" disabled>Half of a Jumpstart deck</button>' : '<button type="button" class="pill" disabled>Not playable yet</button>';
+  return [0, 1].map((i) => (S.seats[i] === key
+    ? `<button type="button" class="pill" disabled>${icon('check')}${seatName(i)}'s deck</button>`
+    : `<button type="button" class="pill${i === S.active ? ' pill-solid' : ''}" data-dvseat="${i}">Use for ${seatName(i)}</button>`)).join('');
+}
+function openDeckView(key, from, ctx) {
   const d = deckByKey(key);
   if (!d) return;
   DV.key = key;
+  DV.ctx = ctx || 'lobby';
   DV.from = from || document.activeElement;
+  const keys = keyCards(d);
+  const miss = missingCount(d);
+  const o = d.off;
+  const note = miss ? `<p class="dv-note"><b>Not playable yet.</b> The rules engine can't read ${miss === 1 ? 'one of these cards' : `${miss} of these cards`} (marked below), so for now this deck is for browsing.</p>`
+    : d.half ? `<p class="dv-note"><b>Half a deck.</b> A Jumpstart pack is ${d.size} cards: shuffle it with another pack from the same set and play the two as one deck.</p>`
+    : o && o.addon ? `<p class="dv-note">This is the starter deck with its ${esc(o.addon)} shuffled in, as the box suggests once you know the basics.</p>` : '';
   const st = deckStats(d);
   const maxPip = Math.max(1, ...Object.values(st.pips));
   const pips = 'WUBRG'.split('').filter((c) => st.pips[c]).map((c) => `<div class="dv-pip">${sym(c)}<i style="--pc:${COLOR_VAR[c]};width:${Math.round((st.pips[c] / maxPip) * 100)}%"></i><b>${st.pips[c]}</b></div>`).join('');
   const box = $('#deckView');
   box.innerHTML = `<div class="dv-scrim" data-dvclose></div><div class="dv-box">
     <div class="dv-hero" data-art="${esc(d.face)}" style="${artOf(d.face) ? `background-image:url(&quot;${esc(artOf(d.face))}&quot;)` : ''}"><button type="button" class="icon-btn dv-x" data-dvclose aria-label="Close">${icon('x')}</button></div>
-    <div class="dv-head"><h2 class="deck-name" id="dvName">${esc(d.name)}</h2>${metaHTML(d)}<p class="blurb">${esc(d.blurb)}</p></div>
+    <div class="dv-head"><h2 class="deck-name" id="dvName">${esc(d.name)}</h2>${metaHTML(d)}</div>
+    <div class="dv-plan"><h4>${d.by === 'gen' ? 'How it was built' : 'Strategy'}</h4><p>${esc(d.blurb)}</p>
+      ${keys.length ? `<h4 class="dv-keys-h">Key cards</h4><div class="dv-keys">${keys.map((k) => `<button type="button" class="chip" data-keycard="${esc(k.name)}">${esc(k.name)}</button>`).join('')}</div>` : ''}</div>
+    ${note}
     <div class="dv-stats">
       <div class="dv-stat"><b>${d.size}</b><span>cards</span></div>
       <div class="dv-stat"><b>${st.creatures}</b><span>creatures</span></div>
@@ -1529,9 +1726,7 @@ function openDeckView(key, from) {
       <button type="button" class="btn-ghost" data-dvcopy>Copy the list</button>
     </div>
     <div class="dv-cards" id="dvCards"></div>
-    <div class="dv-foot">${[0, 1].map((i) => (S.seats[i] === key
-      ? `<button type="button" class="pill" disabled>${icon('check')}${seatName(i)}'s deck</button>`
-      : `<button type="button" class="pill${i === S.active ? ' pill-solid' : ''}" data-dvseat="${i}">Use for ${seatName(i)}</button>`)).join('')}</div>
+    <div class="dv-foot">${dvFootHTML(d, key)}</div>
   </div>`;
   renderDeckCards(d);
   box.hidden = false;
@@ -1554,7 +1749,7 @@ function renderDeckCards(d) {
     const grid = sec.querySelector('.dv-grid');
     rows.forEach(({ def, n }, k) => {
       const cell = document.createElement('div');
-      cell.className = 'dv-cell';
+      cell.className = def.stub ? 'dv-cell miss' : 'dv-cell';
       const el = makeCard(def, `dv${g}-${k}`);
       el.setAttribute('aria-label', `${n > 1 ? `${n} copies of ` : ''}${def.name}. Open it to read it.`);
       cell.appendChild(el);
@@ -1672,9 +1867,22 @@ function renderPick() {
   const set = curSet();
   const cmd = S.format === 'commander';
   const designed = !set || ((cmd ? SETS.commanders[set.code] : SETS.decks[set.code]) || []).length;
+  const offOk = !cmd && !set && OFF.decks.some(offPlayable);
+  if (S.src === 'official' && !offOk) S.src = 'claude';
+  $('#srcSeg [data-src="official"]').hidden = !offOk;
   $$('#srcSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.src === S.src)));
-  $$('#srcSeg button')[0].textContent = designed ? "Claude's decks" : 'Ready decks';
-  $$('#srcSeg button')[1].textContent = cmd ? 'Pick a commander' : 'Build one';
+  $('#srcSeg [data-src="claude"]').textContent = designed ? "Claude's decks" : 'Ready decks';
+  $('#srcSeg [data-src="gen"]').textContent = cmd ? 'Pick a commander' : 'Build one';
+  if (S.src === 'official') {
+    const ds = OFF.decks.filter((o) => offPlayable(o) && !isPack(o)).map(offDeck);
+    const packs = [...new Set(OFF.decks.filter((o) => isPack(o) && offPlayable(o)).map((o) => o.set))];
+    L.pickBody.innerHTML = `<p class="set-note" style="margin:0 0 4px">Wizards' own preconstructed decks that the engine can play, card for card. The <a href="./#decks" data-go-decks>Decks</a> tab has each one's strategy, and many more to browse.</p>`
+      + `<div class="deck-grid">${ds.map(tileHTML).join('')}</div>`
+      + (packs.length ? `<div class="gen-row" style="margin-top:16px">${packs.map((c) => `<button type="button" class="pill" data-jspair="${esc(c)}">${icon('die')}Shuffle two ${esc(shortSet(c))} Jumpstart packs</button>`).join('')}</div>` : '');
+    ensureImages(ds.map((d) => d.face));
+    $$('.tile', L.pickBody).forEach(markTile);
+    return;
+  }
   if (cmd) { renderCmdPick(); $$('.tile', L.pickBody).forEach(markTile); return; }
   if (set) { renderSetPick(); $$('.tile', L.pickBody).forEach(markTile); return; }
   if (S.src === 'claude') {
@@ -1706,7 +1914,125 @@ function renderPick() {
   }
   $$('.tile', L.pickBody).forEach(markTile);
 }
+/* ============================================================
+   The deck library (the Decks tab): every deck, filtered, with its strategy
+   ============================================================ */
+const LIB = Object.assign({ src: 'all', q: '', set: 'all', kind: 'all', colors: [], playable: false }, store.get('arena.lib.v1', {}));
+LIB.q = '';
+const KIND_ORDER = ['60-card deck', 'Commander deck', 'Starter Kit', 'Welcome Deck', 'Jumpstart pack', 'Starter deck', 'Theme deck', 'Intro pack', 'Event deck', 'Planeswalker deck', 'Arena starter deck'];
+let libAll = null;
+function libEntries() {
+  if (libAll) return libAll;
+  const out = [];
+  const add = (d, src, group, kind) => {
+    if (!d) return;
+    const names = d.list.map((x) => x.def.name).concat(d.commander ? [d.commander.name] : []);
+    out.push({ key: d.key, d, src, group, kind, name: d.name, colors: d.colors, arch: d.archetype, plan: d.blurb, face: d.face,
+      playable: d.playable !== false, half: !!d.half, miss: missingCount(d), hay: `${d.name}\n${d.blurb}\n${names.join('\n')}`.toLowerCase() });
+  };
+  for (const x of window.ARENA_DECKS) add(DECKS.get(`c.${x.id}`), 'claude', 'ALL', '60-card deck');
+  for (const sp of CMDR.specs) add(cmdDeck(sp), 'claude', 'ALL', 'Commander deck');
+  for (const set of SETS.list) {
+    for (const sp of SETS.decks[set.code] || []) add(setDeck(set, sp), 'claude', set.code, '60-card deck');
+    for (const sp of SETS.commanders[set.code] || []) add(setCmdDeck(set, sp), 'claude', set.code, 'Commander deck');
+  }
+  for (const o of OFF.decks) add(offDeck(o), 'official', groupOf(o.set), o.type === 'Commander deck' ? 'Commander deck' : o.type);
+  libAll = out;
+  return out;
+}
+const libSave = () => store.set('arena.lib.v1', { src: LIB.src, set: LIB.set, kind: LIB.kind, colors: LIB.colors, playable: LIB.playable });
+function libFilter(entries, skip) {
+  const q = LIB.q.trim().toLowerCase();
+  return entries.filter((e) => (LIB.src === 'all' || e.src === LIB.src)
+    && (skip === 'set' || LIB.set === 'all' || e.group === LIB.set)
+    && (skip === 'kind' || LIB.kind === 'all' || e.kind === LIB.kind)
+    && (!LIB.playable || (e.playable && !e.miss))
+    && LIB.colors.every((c) => e.colors.includes(c))
+    && (!q || q.split(/\s+/).every((w) => e.hay.includes(w))));
+}
+function libStateHTML(e) {
+  if (e.miss) return `<span class="lib-state off">${e.miss === 1 ? '1 card' : `${e.miss} cards`} not in the engine yet</span>`;
+  if (e.half) return '<span class="lib-state">Playable: pair it with another pack</span>';
+  return '<span class="lib-state">Playable</span>';
+}
+function libTileHTML(e) {
+  const art = artOf(e.face);
+  const by = e.src === 'official' ? `<span class="by wotc">${esc(e.kind)}</span>` : `<span class="by">${e.kind === 'Commander deck' ? "Claude's commander" : "Claude's"}</span>`;
+  return `<button type="button" class="tile lib-tile" data-lib="${esc(e.key)}"><div class="tile-art" data-art="${esc(e.face)}" style="${art ? `background-image:url(&quot;${esc(art)}&quot;)` : ''}"></div>`
+    + `<div class="tile-body"><h3 class="deck-name">${esc(e.name)}</h3><div class="deck-meta"><span class="cols" aria-label="${e.colors.map((c) => COLOR_NAME[c]).join(' and ') || 'colorless'}">${colorsHTML(e.colors)}</span><span class="arch">${ARCH_LABEL[e.arch] || 'Midrange'}</span>${by}</div>`
+    + `<p class="blurb">${esc(e.plan)}</p>${libStateHTML(e)}</div></button>`;
+}
+function renderLibrary() {
+  const all = libEntries();
+  $$('#libSrc button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.src === LIB.src)));
+  $('#libPlay').setAttribute('aria-pressed', String(LIB.playable));
+  if ($('#libQ').value !== LIB.q) $('#libQ').value = LIB.q;
+  // Chips show only what the other filters leave, with how many decks each has
+  const bySet = libFilter(all, 'set');
+  const groups = [...new Set(bySet.map((e) => e.group))].sort((a, b) => groupYear(b) - groupYear(a));
+  if (LIB.set !== 'all' && !groups.includes(LIB.set)) LIB.set = 'all';
+  const cnt = (arr, f) => arr.filter(f).length;
+  $('#libSets').innerHTML = [`<button type="button" class="chip" data-lset="all" aria-pressed="${LIB.set === 'all'}">All sets <em>${bySet.length}</em></button>`]
+    .concat(groups.map((g) => `<button type="button" class="chip" data-lset="${esc(g)}" aria-pressed="${LIB.set === g}" title="${esc(groupName(g))}">${g === 'ALL' ? 'Every card' : esc(shortSet(g))} <em>${cnt(bySet, (e) => e.group === g)}</em></button>`)).join('');
+  const byKind = libFilter(all, 'kind');
+  const kinds = KIND_ORDER.filter((k) => byKind.some((e) => e.kind === k));
+  if (LIB.kind !== 'all' && !kinds.includes(LIB.kind)) LIB.kind = 'all';
+  $('#libKinds').innerHTML = [`<button type="button" class="chip" data-kind="all" aria-pressed="${LIB.kind === 'all'}">Every kind</button>`]
+    .concat(kinds.map((k) => `<button type="button" class="chip" data-kind="${esc(k)}" aria-pressed="${LIB.kind === k}">${esc(k)}s <em>${cnt(byKind, (e) => e.kind === k)}</em></button>`)).join('');
+  $('#libCols').innerHTML = ['W', 'U', 'B', 'R', 'G'].map((c) => `<button type="button" class="pip" data-c="${c}" aria-pressed="${LIB.colors.includes(c)}" aria-label="${COLOR_NAME[c]}">${sym(c)}</button>`).join('');
+  const shown = libFilter(all);
+  const playable = shown.filter((e) => e.playable && !e.miss).length;
+  $('#libCount').textContent = shown.length ? `${shown.length === all.length ? 'All ' : ''}${nf.format(shown.length)} deck${shown.length === 1 ? '' : 's'}${playable < shown.length ? `, ${nf.format(playable)} of them playable` : ''}.${OFF.err && LIB.src !== 'claude' ? " The official decks didn't load; reload the page to try again." : ''}` : '';
+  const order = [...new Set(shown.map((e) => e.group))].sort((a, b) => groupYear(b) - groupYear(a));
+  $('#libList').innerHTML = shown.length ? order.map((g) => {
+    const es = shown.filter((e) => e.group === g);
+    return `<section class="lib-group"><h2>${esc(groupName(g))}<small>${g === 'ALL' ? "Claude's decks from every card" : groupYear(g)}</small></h2><div class="deck-grid">${es.map(libTileHTML).join('')}</div></section>`;
+  }).join('') : `<p class="lib-empty">No deck matches. <button type="button" class="link-btn" id="libReset">Clear the filters</button></p>`;
+  ensureImages(shown.slice(0, 80).map((e) => e.face));
+}
+function openLibrary(push) {
+  closeDeckView();
+  setView('decks', push);
+  renderLibrary();
+}
+// Play a deck from the library: against a fitting opponent at once, or set the match up in the Arena
+function libOpponent(key) {
+  const d = deckByKey(key);
+  const fair = (ks) => pickRandom(ks.filter((k) => k && k !== key && seatable(deckByKey(k))));
+  if (d.by === 'wotc') {
+    const me = d.off || d.pair[0];
+    if (d.pair) return randomPair(me.set) || fair(OFF.decks.filter((o) => offPlayable(o) && !isPack(o)).map((o) => `o.${o.id}`));
+    const full = OFF.decks.filter((o) => o !== me && offPlayable(o) && !isPack(o));
+    return fair(full.filter((o) => o.set === me.set && o.type === me.type).map((o) => `o.${o.id}`)) || fair(full.filter((o) => o.set === me.set || o.type === me.type).map((o) => `o.${o.id}`))
+      || fair(full.map((o) => `o.${o.id}`)) || `c.${window.ARENA_DECKS[0].id}`;
+  }
+  const set = setByCode(poolOfKey(key));
+  const pool = fmtOfKey(key) === 'commander' ? (set ? setCmdDecks(set) : CMDR.specs.map(cmdDeck).filter(Boolean)) : set ? setDecks(set) : window.ARENA_DECKS.map((x) => DECKS.get(`c.${x.id}`));
+  return fair(pool.map((x) => x.key));
+}
+function libPlay(key, how) {
+  let d = deckByKey(key);
+  if (d && d.half) {
+    const mate = $('#dvMate') && $('#dvMate').value;
+    key = mate ? `j.${d.off.id}.${mate}` : randomPair(d.off.set, d.off);
+    d = deckByKey(key);
+  }
+  if (!seatable(d)) return;
+  const opp = libOpponent(key);
+  if (!opp) return;
+  closeDeckView();
+  setFormat(fmtOfKey(key), [key, opp]);
+  saveSeats();
+  if (d.by === 'wotc' && S.format === 'standard' && S.pool === 'all') S.src = 'official';
+  renderSeats();
+  renderPick();
+  renderButtons();
+  if (how === 'setup') { S.active = 1; renderSeats(); setView('lobby', true); S.backTo = null; return; }
+  S.backTo = 'decks';
+  playStart(newSeed());
+}
 function setSeat(key) {
+  if (!seatable(deckByKey(key))) return;
   S.seats[S.active] = key;
   if (S.active === 0 && S.seats[1]) S.active = 1;
   S.sim = null;
@@ -1887,26 +2213,41 @@ function setView(view, push) {
   S.view = view;
   $('#lobby').hidden = view !== 'lobby';
   $('#learn').hidden = view !== 'learn';
+  $('#decks').hidden = view !== 'decks';
   $('#watch').hidden = view !== 'watch';
+  const [on, off] = view === 'decks' ? ['#navDecks', '#navArena'] : ['#navArena', '#navDecks'];
+  $(on).setAttribute('aria-current', 'page');
+  $(off).removeAttribute('aria-current');
   const mu = $('#matchup'), back = $('#toLobby');
   if (view === 'watch') {
     mu.hidden = false;
     mu.innerHTML = TU.on ? `<span>${TU.lesson.practice ? 'Practice game' : `Lesson ${lessonNo(TU.lesson)}: ${esc(TU.lesson.title)}`}</span>`
       : `<span>${esc(W.decks[0].name)}${W.mode === 'play' ? ' <em>(you)</em>' : ''}</span><span class="vs">vs</span><span>${esc(W.decks[1].name)}</span>`;
     back.hidden = false;
-    back.innerHTML = `${icon('back')}<span>${TU.on ? 'Lessons' : 'Decks'}</span>`;
+    const to = TU.on ? 'Lessons' : S.backTo === 'decks' ? 'Decks' : 'Arena';
+    back.innerHTML = `${icon('back')}<span>${to}</span>`;
+    back.setAttribute('aria-label', `Back to ${to === 'Arena' ? 'the Arena' : to === 'Decks' ? 'the decks' : 'the lessons'}`);
     document.title = TU.on ? `${TU.lesson.title}: Learn to play` : `${W.mode === 'play' ? 'Playing ' : ''}${W.decks[0].name} vs ${W.decks[1].name}: Arena`;
+  } else if (view === 'decks') {
+    stop();
+    endPlay();
+    mu.hidden = true;
+    back.hidden = true;
+    document.title = 'Decks: Arena';
+    closeLog();
   } else if (view === 'learn') {
     stop();
     endPlay();
     mu.hidden = true;
     back.hidden = false;
-    back.innerHTML = `${icon('back')}<span>Decks</span>`;
+    back.innerHTML = `${icon('back')}<span>Arena</span>`;
+    back.setAttribute('aria-label', 'Back to the Arena');
     document.title = 'Learn to play: Arena';
     closeLog();
   } else {
     stop();
     endPlay();
+    S.backTo = null;
     renderResume();
     mu.hidden = true;
     back.hidden = true;
@@ -2204,7 +2545,7 @@ function renderSide(pi, ps, f, used) {
   placeChildren(lz, gnodes);
   // Hand
   const hz = side.querySelector('.hand');
-  const faceUp = W.mode === 'play' ? pi === 0 : W.hands;
+  const faceUp = W.mode === 'play' ? pi === 0 || !!ps.rev : W.hands;
   hz.classList.toggle('backs', !faceUp);
   const bigHand = W.mode === 'play' && pi === 0 && parseFloat(hz.style.getPropertyValue('--cardw')) >= 70;
   const handTiles = !!pp && pi === 0;
@@ -2567,6 +2908,7 @@ function openInspector(el, actions) {
       } else if (b && b.cmdr && whose === 'Yours') stateLine += ' Your commander.';
     }
   }
+  if (def.stub) stateLine = "The rules engine can't play this card yet, so decks with it are for browsing.";
   const big = makeCard(def, `insp-${id}`);
   big.disabled = true;
   big.removeAttribute('aria-label');
@@ -2993,6 +3335,9 @@ function handleBlockTap(id) {
     if (isAttacker && PL.sel != null && !want.some(([aid, bs]) => aid === id && bs.includes(PL.sel))) { nudge('Block the glowing attacker.'); return true; }
   }
   if (canBlockIt) {
+    // A creature that can block an additional creature (Ghastbark Twins) is picked up again for its second block
+    const already = [...PL.blocks].filter(([, bs]) => bs.includes(id)).map(([aid]) => aid);
+    if ((r.twice || []).includes(id) && already.length === 1 && PL.sel !== id && r.attackers.some((o) => o.id !== already[0] && o.by.includes(id))) { PL.sel = id; renderPlaybar(); decorate(); return true; }
     for (const [aid, bs] of PL.blocks) {
       if (!bs.includes(id)) continue;
       const left = bs.filter((b) => b !== id);
@@ -3506,7 +3851,24 @@ function wire() {
   $('#randBtn').addEventListener('click', randomMatchup);
   $('#swapBtn').addEventListener('click', () => { S.seats.reverse(); S.sim = null; L.sim.hidden = true; saveSeats(); renderSeats(); syncHash(false); });
   $('#fmtSeg').addEventListener('click', (e) => { const b = e.target.closest('button[data-fmt]'); if (!b || b.dataset.fmt === S.format) return; setFormat(b.dataset.fmt); renderSeats(); renderPick(); renderButtons(); syncHash(false); });
-  $('#toLobby').addEventListener('click', () => { if (S.view === 'watch' && TU.on) { goLessons(); return; } setView('lobby', true); renderSeats(); });
+  $('#toLobby').addEventListener('click', () => { if (S.view === 'watch' && TU.on) { goLessons(); return; } if (S.view === 'watch' && S.backTo === 'decks') { openLibrary(true); return; } setView('lobby', true); renderSeats(); });
+  $('.lib-search-ic').innerHTML = icon('search');
+  // The header's tabs switch views in place once the cards are in
+  $('#navArena').addEventListener('click', (e) => { if (!plainClick(e) || !DATA.count) return; e.preventDefault(); if (S.view !== 'lobby') { setView('lobby', true); renderSeats(); renderPick(); } });
+  $('#navDecks').addEventListener('click', (e) => { if (!plainClick(e) || !DATA.count) return; e.preventDefault(); if (S.view !== 'decks') openLibrary(true); });
+  // The library's filters and tiles
+  $('#libSrc').addEventListener('click', (e) => { const b = e.target.closest('button[data-src]'); if (!b) return; LIB.src = b.dataset.src; libSave(); renderLibrary(); });
+  $('#libPlay').addEventListener('click', () => { LIB.playable = !LIB.playable; libSave(); renderLibrary(); });
+  let libT = 0;
+  $('#libQ').addEventListener('input', (e) => { clearTimeout(libT); libT = setTimeout(() => { LIB.q = e.target.value; renderLibrary(); }, 140); });
+  $('#libSets').addEventListener('click', (e) => { const b = e.target.closest('[data-lset]'); if (!b) return; LIB.set = b.dataset.lset; libSave(); renderLibrary(); });
+  $('#libKinds').addEventListener('click', (e) => { const b = e.target.closest('[data-kind]'); if (!b) return; LIB.kind = b.dataset.kind; libSave(); renderLibrary(); });
+  $('#libCols').addEventListener('click', (e) => { const b = e.target.closest('.pip[data-c]'); if (!b) return; const c = b.dataset.c; LIB.colors = LIB.colors.includes(c) ? LIB.colors.filter((x) => x !== c) : LIB.colors.concat(c); libSave(); renderLibrary(); });
+  $('#libList').addEventListener('click', (e) => {
+    if (e.target.closest('#libReset')) { Object.assign(LIB, { src: 'all', q: '', set: 'all', kind: 'all', colors: [], playable: false }); libSave(); renderLibrary(); return; }
+    const t = e.target.closest('[data-lib]');
+    if (t) openDeckView(t.dataset.lib, t, 'library');
+  });
   $('#learnBtn').addEventListener('click', () => goLessons());
   $('#lessons').addEventListener('click', (e) => { const b = e.target.closest('[data-lesson]'); if (b) lessonStart(b.dataset.lesson); });
   document.addEventListener('click', (e) => {
@@ -3527,7 +3889,11 @@ function wire() {
       return;
     }
     const card = e.target.closest('.dv-cell .card');
-    if (card) openInspector(card);
+    if (card) { openInspector(card); return; }
+    const kc = e.target.closest('[data-keycard]');
+    if (kc) { const n = kc.dataset.keycard; openInspector(makeCard(DATA.byName.get(n) || stubDef(n), `key-${Arena.slug(n)}`)); return; }
+    const pb = e.target.closest('[data-dvplay]');
+    if (pb) libPlay(DV.key, pb.dataset.dvplay);
   });
   L.seats.addEventListener('click', (e) => {
     const seat = e.target.closest('.seat[data-seat]');
@@ -3542,6 +3908,10 @@ function wire() {
   $('#srcSeg').addEventListener('click', (e) => { const b = e.target.closest('button[data-src]'); if (!b) return; S.src = b.dataset.src; renderPick(); });
   $('#poolChips').addEventListener('click', (e) => { const b = e.target.closest('[data-pool]'); if (b) choosePool(b.dataset.pool); });
   L.pickBody.addEventListener('click', (e) => {
+    const go = e.target.closest('[data-go-decks]');
+    if (go && plainClick(e)) { e.preventDefault(); openLibrary(true); return; }
+    const jp = e.target.closest('[data-jspair]');
+    if (jp) { const k = randomPair(jp.dataset.jspair); if (k) setSeat(k); return; }
     const t = e.target.closest('.tile');
     if (t) { setSeat(t.dataset.key); if (S.format === 'commander' && S.src === 'gen') renderPick(); return; }
     const pip = e.target.closest('.pip[data-c]');
@@ -3692,6 +4062,7 @@ function wire() {
     const h = readHash();
     if (h.lesson && lessonById(h.lesson)) { if (!(TU.on && TU.lesson.id === h.lesson && S.view === 'watch')) lessonStart(h.lesson, true); return; }
     if (h.learn) { if (S.view !== 'learn') { setView('learn', false); renderLessons(); } return; }
+    if (h.decks) { if (S.view !== 'decks') openLibrary(false); return; }
     if (h.a && h.b && fmtOfKey(h.a.key) === fmtOfKey(h.b.key) && poolOfKey(h.a.key) === poolOfKey(h.b.key)) {
       const f = fmtOfKey(h.a.key);
       if (f !== S.format || poolOfKey(h.a.key) !== S.pool) { setFormat(f, [h.a.key, h.b.key]); renderPick(); } else S.seats = [h.a.key, h.b.key];
@@ -3708,8 +4079,10 @@ W.speed = SPEEDS.includes(store.get('arena.speed.v1', 1)) ? store.get('arena.spe
 
 async function boot() {
   wire();
+  const official = loadOfficial();
   try {
     await loadData();
+    await official;
   } catch (err) {
     L.boot.textContent = "The card pool didn't load. Check your connection and reload the page.";
     L.boot.classList.add('err');
@@ -3732,6 +4105,7 @@ async function boot() {
   renderResume();
   if (h.lesson && lessonById(h.lesson)) lessonStart(h.lesson, true);
   else if (h.learn) { setView('learn', false); renderLessons(); }
+  else if (h.decks) openLibrary(false);
   else if (h.play != null && h.a && h.b) { const sv = savedPlay(); const same = sv && sv.seed === h.play && sv.a === h.a.key && sv.b === h.b.key; playStart(h.play, same ? sv.answers : [], { legacy: same && sv.v !== 2 }); }
   else if (h.seed != null && h.a && h.b) watch(h.seed, { replace: true, paused: false });
   else syncHash(false);
