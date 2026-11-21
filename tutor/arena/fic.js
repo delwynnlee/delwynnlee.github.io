@@ -20,7 +20,7 @@ const { C, T, fn, YOU, OPP, drawN, edictOf, gain, grantKw, hit, hitOpp, loseLife
   ctrEach, chooseOne, copyToken, untilMyNextEnd, impulse, becomeCopy, unCopy } = L.mshKit;
 const { tok, kicker, borrow, borrowVal } = L.coreKit;
 const { GOAT, BIRD_U, count, nCre, monarchE, noMonarch, reanimate, gyCreatures, destroyEach, sweepVal, shrinkAll, shrinkVal, basicLand, fetchBasic, rampVal,
-  revealLand, painland, filterLand, cmdEnters, nextUpkeep } = L.cmdKit;
+  revealLand, painland, filterLand, cmdEnters, nextUpkeep, atMyUpkeep } = L.cmdKit;
 const targetOk = A._internal.targetOk;
 const S = {};
 
@@ -97,11 +97,18 @@ function delve(d) {
 }
 // Rebound: cast from your hand, it's exiled; at your next upkeep you may cast it for free
 const rebound = () => fn((G, X) => {
-  if (!X.item || X.item.zone !== 'hand' || !X.src || !X.P.gy) return;
+  if (!X.item || X.item.zone !== 'hand' || !X.src || X.src.isCopy || !X.P.gy) return;
   const P = X.P, card = X.src;
   const k = P.gy.indexOf(card);
-  if (k >= 0) { P.gy.splice(k, 1); P.exile.push(card); dirty(G); }
-  nextUpkeep(G, P, card, (GG) => { if (GG.active !== P.i || !P.exile.includes(card)) return; P.xcast.push({ card, until: GG.turn, free: true }); if (!castNow(GG, P, card, { free: true })) P.xcast = P.xcast.filter((x) => x.card !== card); });
+  if (k < 0) return;
+  P.gy.splice(k, 1); P.exile.push(card); dirty(G);
+  emit(G, 'exile', `${card.def.name} is exiled (rebound).`, { who: P.i, cards: [card.id] });
+  atMyUpkeep(G, P, card, (GG, XX, c) => {
+    const Q = XX.P;
+    if (!c || !Q.exile.includes(c)) return;
+    Q.xcast.push({ card: c, until: GG.turn, free: true });
+    if (!castNow(GG, Q, c, { free: true })) Q.xcast = Q.xcast.filter((x) => x.card !== c);
+  }, 'Rebound');
 }, { score: () => 0.6 });
 // Tiered: one tier, each with its extra cost
 const tiered = (d, tiers) => { d.modes = tiers.map(([label, cost, eff]) => ({ label, cost: cost ? C(cost) : undefined, eff })); d.spell = null; return d; };
@@ -1624,6 +1631,9 @@ S['Yuna, Grand Summoner'] = (d) => {
   } }));
   return d;
 };
+
+// Shared with the Marvel Commander decks (msc.js)
+L.ficKit = { rebound, ctrKinds, hasCtrs, modified, gyToHand, revealTil, toBottom, cloneAs };
 
 return S;
 });

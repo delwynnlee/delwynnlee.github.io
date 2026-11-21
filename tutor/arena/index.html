@@ -1268,23 +1268,24 @@ svg.i .fill { fill: currentColor; }
 <div class="insp" id="insp" role="dialog" aria-modal="true" aria-labelledby="inspName" hidden></div>
 <div class="sheet" id="sheet" hidden></div>
 
-<script src="engine.js?v=16"></script>
+<script src="engine.js?v=17"></script>
 <script src="ltr.js?v=1"></script>
 <script src="fin.js?v=1"></script>
-<script src="msh.js?v=3"></script>
+<script src="msh.js?v=4"></script>
 <script src="mshjmp.js?v=1"></script>
 <script src="precon.js?v=1"></script>
 <script src="core.js?v=2"></script>
 <script src="classic.js?v=1"></script>
 <script src="arena23.js?v=1"></script>
-<script src="cmdr.js?v=1"></script>
+<script src="cmdr.js?v=2"></script>
 <script src="ltc.js?v=2"></script>
-<script src="fic.js?v=1"></script>
+<script src="fic.js?v=2"></script>
+<script src="msc.js?v=1"></script>
 <script src="decks.js?v=3"></script>
 <script src="commanders.js?v=3"></script>
 <script src="sets.js?v=4"></script>
 <script src="tutorial.js?v=4"></script>
-<script src="glossary.js?v=7"></script>
+<script src="glossary.js?v=8"></script>
 <script src="career.js?v=1"></script>
 <script src="journal.js?v=1"></script>
 <script>
@@ -1392,7 +1393,7 @@ const ARCH_LABEL = { aggro: 'Aggro', midrange: 'Midrange', control: 'Control' };
 const COLOR_NAME = { W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green' };
 const COLOR_VAR = { W: 'var(--w)', U: 'var(--u)', B: 'var(--b)', R: 'var(--r)', G: 'var(--g)' };
 async function loadData() {
-  const res = await fetch('cards.json?v=9');
+  const res = await fetch('cards.json?v=10');
   if (!res.ok) throw new Error(`cards.json: HTTP ${res.status}`);
   const j = await res.json();
   // Double-faced, adventurer and meld cards carry their other faces: { b: back, a: adventure, m: melded card, mdfc: either face can be cast }
@@ -1574,7 +1575,7 @@ let READY = false;
 const OFF = { decks: [], byId: new Map(), cards: {}, err: false };
 async function loadOfficial() {
   try {
-    const res = await fetch('official.json?v=6');
+    const res = await fetch('official.json?v=7');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const j = await res.json();
     OFF.decks = j.decks || [];

@@ -894,7 +894,7 @@ function drawCards(G, P, n, step) {
       if (!P.library.length) { P.decked = true; return; }
       P.hand.push(P.library.pop());
       P.drawn = (P.drawn || 0) + 1;
-      if (G.pending) fire(G, 'draw', { P, nth: P.drawn, step: !!step && k === 0 && j === 0, oppTurn: G.active !== P.i });
+      if (G.pending) fire(G, 'draw', { P, nth: P.drawn, step: !!step && k === 0 && j === 0, oppTurn: G.active !== P.i, card: P.hand[P.hand.length - 1] });
     }
   }
 }
@@ -1033,7 +1033,7 @@ function sbaCore(G) {
       const legends = new Map();
       for (const c of P.bf) {
         if (isCreature(c) && (tou(c) <= 0 || (!has(c, 'indestructible') && (c.dmg >= tou(c) || (c.dt && c.dmg > 0)))) && !(tou(c) > 0 && regenSave(G, c))) dying.push(c);
-        if (isLegendary(c)) { if (legends.has(c.def.name)) legend.push(legends.get(c.def.name)); legends.set(c.def.name, c); }
+        if (isLegendary(c) && !(isCreature(c) && P.bf.some((x) => x.def.noLegendRule))) { if (legends.has(c.def.name)) legend.push(legends.get(c.def.name)); legends.set(c.def.name, c); } // Council of Reeds: no legend rule for creatures
         if (c.def.aura && (c.att == null || !byId(G, c.att))) gone.push(c);
         if (c.att != null && !c.def.aura) { const h = byId(G, c.att); if (!h || !isCreature(h)) c.att = null; }
         if (c.def.saga && c.def.saga.length && ctrCount(c, 'lore') >= sagaFinal(c.def) && !c.chapterBusy && !G.pending.some((it) => it.src === c)) gone.push(c);
@@ -1400,12 +1400,12 @@ function damageCreature(G, c, n, src, opts) {
   if (opts && opts.combat && c.def.noCombatDmg) return 0;
   if ((G.players[c.ctrl].shieldTurn === G.turn || G.players[c.ctrl].safeTurn === G.turn) && !G.noPrevent) return 0;
   if (c.ctr && c.ctr.shield) { shieldSave(G, c); return 0; }
-  if (c.tf && c.tf.dmgToCtr && !G.noPrevent) { addCounters(G, c, n); return 0; } // Gatta and Luzzu: prevented, and that many +1/+1 counters
+  if (((c.tf && c.tf.dmgToCtr) || (c.sfl && c.sfl.dmgToCtr)) && !G.noPrevent) { addCounters(G, c, n); return 0; } // Gatta and Luzzu: prevented, and that many +1/+1 counters
   if (c.def.preventAll && !G.noPrevent && (c.def.preventAll === true || c.def.preventAll(G, c, n))) return 0;
   if (c.sfl && c.sfl.noDamage && !G.noPrevent) return 0;
   if (c.def.healOnHit && c.dmg > 0) { c.dmg = 0; c.dt = false; }
   if (c.tf && c.tf.prevent > 0 && !G.noPrevent) { const k = Math.min(n, c.tf.prevent); c.tf.prevent -= k; n -= k; if (k && c.tf.redirect) redirectDmg(G, c.tf.redirect, k); if (n <= 0) return 0; }
-  if (!(opts && opts.soaked)) { const ad = ctrlOf(G, c).bf.find((x) => x.def.soak && x !== c && isCreature(x)); n = dmgMod(G, src, c.ctrl, n); if (ad) return damageCreature(G, ad, n, src, Object.assign({}, opts, { soaked: true })); }
+  if (!(opts && opts.soaked)) { const ad = ctrlOf(G, c).bf.find((x) => (x.def.soak || (x.tf && x.tf.soak)) && x !== c && isCreature(x)); n = dmgMod(G, src, c.ctrl, n); if (ad) return damageCreature(G, ad, n, src, Object.assign({}, opts, { soaked: true })); }
   if (n > 1 && hasSub(c, 'Hero') && ctrlOf(G, c).bf.some((x) => x.def.capOne)) n = 1; // Hyperion
   const lethalBefore = Math.max(0, tou(c) - c.dmg);
   c.dmg += n;
@@ -1424,13 +1424,14 @@ function damagePlayer(G, Q, n, srcCard, from) {
   if (Q.prevent && Q.prevent.turn === G.turn && Q.prevent.n > 0 && !G.noPrevent) { const k = Math.min(n, Q.prevent.n); Q.prevent.n -= k; n -= k; if (k && Q.prevent.redirect) redirectDmg(G, Q.prevent.redirect, k); if (k && G.pending) fire(G, 'prevented', { P: Q, n: k, src: srcCard }); if (n <= 0) return 0; }
   // Urza's Armor: prevent 1 of each damage; Pariah: the damage is dealt to the enchanted creature instead
   if (!G.noPrevent) for (const x of Q.bf) if (x.def.armor) { n -= x.def.armor; if (n <= 0) return 0; }
+  if (!G.noPrevent && (srcCard && srcCard.ctrl != null ? srcCard.ctrl !== Q.i : !!from && from !== Q)) for (const x of Q.bf) if (x.def.armorOpp) { n -= x.def.armorOpp; if (n <= 0) return 0; } // Heart-Shaped Herb
   const par = Q.bf.find((x) => x.def.pariah && x.att != null && byId(G, x.att) && isCreature(byId(G, x.att)));
   if (par) { const h = byId(G, par.att); emit(G, 'info', `${par.def.name}: the damage is dealt to ${h.def.name} instead.`, { who: Q.i, cards: [par.id, h.id] }); damageCreature(G, h, n, srcCard, { soaked: true, combat: !!G.combatDmg }); return 0; }
   n = dmgMod(G, srcCard, Q.i, n);
   if (G.dmgBonus && G.dmgBonus.turn === G.turn) n += G.dmgBonus.n; // Rankle and Torbran
   if (G.combatDmg && srcCard && srcCard.def && srcCard.def.doubleToPlayer) n *= 2;
   if (n > 1 && Q.bf.some((x) => x.def.capOne)) n = 1; // Hyperion
-  const ad = Q.bf.find((x) => x.def.soak && isCreature(x));
+  const ad = Q.bf.find((x) => (x.def.soak || (x.tf && x.tf.soak)) && isCreature(x));
   if (ad) { damageCreature(G, ad, n, srcCard, { soaked: true }); return 0; }
   if (srcCard && srcCard.def) srcCard.dealtTurn = G.turn;
   Q.life -= n;
@@ -2036,6 +2037,7 @@ function extraTrigs(G, Q, src, ev, d) {
   if (bearer && bearer.def.cloudEcho && equipmentOn(G, bearer).length && (src === bearer || src.att === bearer.id)) n++;
   if (ev === 'die' && isCreature(src) && equipmentOn(G, src).some((x) => x.def.masamune)) n++;
   if ((ev === 'enter' || ev === 'landfall') && d.c && d.c.ctrl === Q.i && (isLand(d.c) || hasSub(d.c, 'Bird'))) n += Q.bf.filter((x) => x.def.chocoEcho).length;
+  if (isCreature(src) && isLegendary(src)) n += Q.bf.filter((x) => x.def.legendEcho).length; // Annie Joins Up
   return n;
 }
 // Gandalf the White: legendary permanents and artifacts entering or leaving trigger your abilities twice
@@ -2294,6 +2296,8 @@ function noteEnter(G, P, c) { if (P.entTurn !== G.turn) { P.entTurn = G.turn; P.
 const enteredThisTurn = (G, P) => (P.entTurn === G.turn ? P.entered : []);
 const attackedThisTurn = (G, P) => (P.atkTurn === G.turn ? P.atkLog : []);
 function makeTokens(G, P, spec, n, opts = {}) {
+  // Divine Visitation: creature tokens you'd create are 4/4 Angels instead
+  if (!spec.art && n > 0) { const dv = P.bf.find((x) => x.def.tokenAs); if (dv && spec !== dv.def.tokenAs) spec = dv.def.tokenAs; }
   const def = spec.id && G.defs[spec.id] && !spec.p && spec.p !== 0 ? G.defs[spec.id] : tokenDef(G, spec);
   const made = [];
   for (let k = 0; k < n; k++) {
@@ -3660,7 +3664,7 @@ function enterBattlefield(G, P, card, etbTargets, opts = {}) {
       const auto = chooseTargets(G, P, card.def.etb, 'etb', card);
       tg = card.def.etb.map((e, k) => (etbTargets[k] === 'skip' ? 'skip' : etbTargets[k] && stillLegal(G, P, e, etbTargets[k], card) ? etbTargets[k] : auto ? auto.targets[k] : null));
     } else if (isHuman(G, P) && card.def.etb.some(needsTarget) && card.def.etbAskLate) tg = askTargets(G, P, card, card.def.etb, {});
-    const n = gandalfTwice(G, P, card) ? 2 : 1;
+    const n = (gandalfTwice(G, P, card) ? 2 : 1) + (isCreature(card) && isLegendary(card) ? P.bf.filter((x) => x.def.legendEcho).length : 0);
     for (let i = 0; i < n && !G.over; i++) resolveEffects(G, P, card.def.etb, card, i ? null : tg, 'etb', { item: opts.item });
   }
   if (isLand(card) && !G.over) for (const x of P.bf.slice()) if (isCreature(x) && x.def.landfall && x.def.landfall.length && !G.over) resolveEffects(G, P, x.def.landfall, x, null, 'trigger');
@@ -4037,7 +4041,7 @@ function evalCast(G, P, card, ctx) {
   let addc = null;
   if (def.addCost) { addc = aiAddCost(G, P, card); if (!addc) return null; if (addc.pay && !canPayBoth(P, castCost(P, card, [], x), addc.pay)) return null; }
   const pain = addc ? addc.pain || 0 : 0;
-  if (def.supertypes.includes('Legendary') && isPermanentSpell(def) && P.bf.some((c) => c.def.name === def.name)) return null;
+  if (def.supertypes.includes('Legendary') && isPermanentSpell(def) && P.bf.some((c) => c.def.name === def.name) && !(def.types.includes('Creature') && P.bf.some((x) => x.def.noLegendRule))) return null;
   // Bloodthirst: wait for combat damage when there's an attack to make first
   if (def.bloodthirst && ctx === 'main1' && G.active === P.i && !G.players.some((Q) => Q !== P && Q.hurtTurn === G.turn) && P.bf.some((c) => canAttackNow(G, c) && pow(c) > 0)) return null;
   // A permanent with a choice as it's cast (kicker): the best affordable option, by its mode's ai bonus
@@ -4112,6 +4116,7 @@ function modeChoices(G, P, def) {
   const n = typeof def.modeN === 'function' ? def.modeN(G, P) : def.modeN || 1;
   const out = def.modes.map((m, k) => [k]).filter(([k]) => !def.modes[k].cond || def.modes[k].cond(G, P)); // a mode can need a condition (Snuff Out's free cast)
   if (n >= 2) for (let i = 0; i < def.modes.length; i++) for (let j = i + 1; j < def.modes.length; j++) out.push([i, j]);
+  if (n >= 3) for (let i = 0; i < def.modes.length; i++) for (let j = i + 1; j < def.modes.length; j++) for (let k = j + 1; k < def.modes.length; k++) out.push([i, j, k]);
   return out;
 }
 // The best creature for an Aura: buffs go on your own, curses on theirs
@@ -5309,7 +5314,8 @@ function targetSpec(G, P, e, k, source, X) {
 }
 const canAttackNow = (G, c) => isCreature(c) && !c.tapped && (!c.sick || has(c, 'haste')) && (!has(c, 'defender') || !!(c.sfl && c.sfl.attackAnyway)) && !(c.sfl && c.sfl.cantAttack) && !(c.tf && c.tf.cantAttack) && !(has(c, 'flying') && G.players.some((Q) => Q.i !== c.ctrl && Q.bf.some((x) => x.def.noFlyers)))
   && (!c.def.attackIf || c.def.attackIf(G, c)) && !G.players.some((Q) => Q.bf.some((x) => x.def.attackBan && x.def.attackBan(G, x, c)))
-  && !(c.mem && c.mem.vowBy != null && c.mem.vowBy !== c.ctrl && ctrCount(c, 'vow') > 0); // Promise of Loyalty
+  && !(c.mem && c.mem.vowBy != null && c.mem.vowBy !== c.ctrl && ctrCount(c, 'vow') > 0) // Promise of Loyalty
+  && !(G.players[c.ctrl] && G.players[c.ctrl].noAttack === G.turn); // Willie Lumpkin
 // Stormtide Leviathan: every land is an Island too
 const allIslands = (G) => G.players.some((Q) => Q.bf.some((x) => x.def.allIslands));
 const isIsland = (G, c) => isLand(c) && (c.def.sub.includes('Island') || allIslands(G));

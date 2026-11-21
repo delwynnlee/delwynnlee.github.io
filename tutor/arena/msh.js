@@ -73,7 +73,8 @@ function lookTake(G, P, n, pred, k, why, rest = 'bottom', score) {
 function mk(G, P, spec, n, o = {}) {
   if (n <= 0) return [];
   const made = makeTokens(G, P, spec, n, { quiet: true, tapped: o.tapped });
-  emit(G, 'token', `${P.name} creates ${n === 1 ? `${/^[AEIOU]/.test(spec.name) ? 'an' : 'a'} ${spec.name} token` : `${n} ${spec.name} tokens`}${o.tapped ? ', tapped' : ''}.`, { who: P.i, cards: made.map((c) => c.id) });
+  const nm = made.length ? made[0].def.name : spec.name; // a replaced token (Divine Visitation) shows what was made
+  emit(G, 'token', `${P.name} creates ${n === 1 ? `${/^[AEIOU]/.test(nm) ? 'an' : 'a'} ${nm} token` : `${n} ${nm} tokens`}${o.tapped ? ', tapped' : ''}.`, { who: P.i, cards: made.map((c) => c.id) });
   return made;
 }
 const tokVal = (s) => (s.p != null ? s.p + s.t * 0.6 + 0.3 + (s.kw || []).length * 0.4 + (s.trig ? 0.8 : 0) : 1);

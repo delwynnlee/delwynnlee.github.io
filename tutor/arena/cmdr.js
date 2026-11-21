@@ -47,6 +47,13 @@ const ofType = (c, src) => !!src.mem.ctype && (isCreature(c) ? hasSub(c, src.mem
 const defOfType = (def, src) => !!src.mem.ctype && def.sub.includes(src.mem.ctype);
 // Something that happens at the beginning of the next turn's upkeep (Arcane Denial)
 function nextUpkeep(G, P, src, run) { (P.turnTrigs = (P.turnTrigs || []).filter((x) => x.turn >= G.turn)).push({ turn: G.turn + 1, src, t: T('upkeep', { run }) }); }
+// At the beginning of P's next upkeep, however many turns away: a one-shot boon that remembers the card it's about.
+// run(G, X, card) must only use what it's handed (the game may be copied for lookahead).
+function atMyUpkeep(G, P, card, run, name) {
+  const def = { id: 'cmd-next-upkeep', name: name || 'At your next upkeep', types: [], sub: [], supertypes: [], kw: [], colors: [], etb: [], dies: [], acts: [], statics: [], mv: 0, value: 0,
+    trig: [T('upkeep', { you: true, run: (GG, X) => { const k = (X.P.emblems || []).indexOf(X.src); if (k < 0) return; X.P.emblems.splice(k, 1); run(GG, X, X.src.mem.card); } })] };
+  (P.emblems = P.emblems || []).push({ id: -(G.nextId++), def, owner: P.i, ctrl: P.i, mem: { card }, tkw: [], cnt: 0, tp: 0, tt: 0, ctr: {}, tf: {}, emblem: true, boon: true });
+}
 // "Whenever your commander enters or attacks"
 const cmdEnters = (o) => T('enter', Object.assign({ you: true, cond: (G, s, ev) => isCommander(ev.c) }, o));
 const cmdAttacks = (o) => T('attack', Object.assign({ you: true, cond: (G, s, ev) => isCommander(ev.c) }, o));
@@ -79,7 +86,7 @@ function fetchBasic(G, P, tapped = true, n = 1) {
 }
 const rampVal = (G, P) => (P.library.some(basicLand) ? 1.4 + (P.bf.filter(isLand).length < 7 ? 0.6 : 0) : 0);
 L.cmdKit = { GOAT, BIRD_U, basic, count, nCre, painland, revealLand, tangoLand, crowdLand, filterLand, identityMana, monarchE, noMonarch, chooseTypeAs, ofType, defOfType, nextUpkeep,
-  cmdEnters, cmdAttacks, reanimate, gyCreatures, destroyEach, sweepVal, shrinkAll, shrinkVal, basicLand, fetchBasic, rampVal };
+  cmdEnters, cmdAttacks, reanimate, gyCreatures, destroyEach, sweepVal, shrinkAll, shrinkVal, basicLand, fetchBasic, rampVal, atMyUpkeep };
 
 /* ============================================================ Lands */
 S['Brushland'] = painland('G', 'W');
