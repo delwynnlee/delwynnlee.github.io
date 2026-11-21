@@ -11,7 +11,7 @@
    1. Oracle text -> card definition
    ============================================================ */
 const KW = new Set(['flying', 'reach', 'trample', 'haste', 'vigilance', 'deathtouch', 'lifelink', 'first strike', 'double strike',
-  'menace', 'defender', 'indestructible', 'hexproof', 'flash', 'prowess']);
+  'menace', 'defender', 'indestructible', 'hexproof', 'flash', 'prowess', 'fear', 'intimidate', 'shroud']);
 const WORDNUM = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
 const toNum = (s) => (s == null ? NaN : /^\d+$/.test(s) ? +s : (WORDNUM[String(s).toLowerCase()] ?? NaN));
 const COLOR_WORD = { white: 'W', blue: 'U', black: 'B', red: 'R', green: 'G' };
@@ -28,11 +28,12 @@ function parseCost(cost) {
     else if (s === 'X') c.x = (c.x || 0) + 1;
     else if (s === 'C') c.C = (c.C || 0) + 1;
     else if (/^[WUBRG]\/[WUBRG]$/.test(s)) (c.hy = c.hy || []).push(s[0] + s[2]); // hybrid: either color pays
-    else return null; // Phyrexian, {C}, snow: not supported
+    else if (/^[WUBRG]\/P$/.test(s)) (c.phy = c.phy || []).push(s[0]); // Phyrexian: the color or 2 life
+    else return null; // snow: not supported
   }
   return c;
 }
-const costMV = (c) => c.g + c.W + c.U + c.B + c.R + c.G + (c.C || 0) + (c.hy ? c.hy.length : 0);
+const costMV = (c) => c.g + c.W + c.U + c.B + c.R + c.G + (c.C || 0) + (c.hy ? c.hy.length : 0) + (c.phy ? c.phy.length : 0);
 
 // "nonblack creature an opponent controls" -> filter object
 function parseTarget(spec) {
@@ -91,7 +92,7 @@ function parseKwLine(l) {
   return kws ? { kws, pro, ward } : null;
 }
 function parseKwList(s) {
-  const kws = s.split(/, and |, | and /).map((x) => x.trim());
+  const kws = s.split(/, and |, | and |; /).map((x) => x.trim());
   return kws.every((k) => KW.has(k)) ? kws : null;
 }
 function parseToken(n, p, t, desc, withKw) {
@@ -294,7 +295,7 @@ const SCRIPTS = Object.create(null);
 // Per-card rules for text the reader below doesn't cover. A script gets the card's skeleton (types, cost, keywords,
 // equip, enchant, cycling lines already read) and fills in the rest; returning null keeps the card out of the game.
 function registerScripts(map) { Object.assign(SCRIPTS, map); }
-const TYPE_WORDS = ['Creature', 'Instant', 'Sorcery', 'Land', 'Artifact', 'Enchantment'];
+const TYPE_WORDS = ['Creature', 'Instant', 'Sorcery', 'Land', 'Artifact', 'Enchantment', 'Planeswalker'];
 const LAND_TYPES = ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'];
 function cap1(s) { return s[0].toUpperCase() + s.slice(1); }
 // Lines about the card's own shape, read the same way for scripted and plain cards. True when the line was used.
@@ -319,6 +320,10 @@ function parseStructural(def, l) {
   if (l === "~ can't be countered.") { def.uncounterable = true; return true; }
   if (l === 'you may look at the top card of your library any time.') { def.peekTop = true; return true; }
   if (l === 'enchant creature') { def.aura = { f: {} }; return true; }
+  if (l === 'enchant land') { def.aura = { f: { types: ['Land'] }, perm: true }; return true; }
+  if (l === 'enchant permanent') { def.aura = { f: { types: ['any'] }, perm: true }; return true; }
+  if (l === 'enchant creature or land') { def.aura = { f: { types: ['Creature', 'Land'] }, perm: true }; return true; }
+  if ((m = /^bloodthirst (\d+)$/.exec(l))) { def.bloodthirst = +m[1]; return true; }
   return false;
 }
 // "Equipped creature gets +2/+1 and has vigilance." and friends
@@ -401,7 +406,7 @@ function compileFace(raw) {
   const isCreature = types.has('Creature');
   const isSpell = types.has('Instant') || types.has('Sorcery');
   const isLand = types.has('Land');
-  const isOther = types.has('Artifact') || types.has('Enchantment');
+  const isOther = types.has('Artifact') || types.has('Enchantment') || types.has('Planeswalker');
   if (!isCreature && !isSpell && !isLand && !isOther) return null;
   if (isLand && (isCreature || isSpell)) return null;
   if (isSpell && (isCreature || isOther)) return null;
@@ -427,6 +432,7 @@ function compileFace(raw) {
   if (isNaN(def.toughness)) def.toughness = 0;
   if (isLand) { const basic = def.sub.map((w) => BASIC_COLOR[w.toLowerCase()]).filter(Boolean); if (basic.length) def.mana = basic; }
   if (script) return applyScript(def, raw, script);
+  if (types.has('Planeswalker')) return null;
   if (types.has('Enchantment') && sub.includes('Saga')) def.saga = [];
   if (cost.x) return null; // X costs need a script that says what X does
   const kw = new Set();
@@ -784,7 +790,7 @@ function createGame({ decks, seed, first = null, record = true, human = null, an
       if (su.life != null) P.life = su.life;
       P.library = (su.library || []).map(mk).reverse();
       P.hand = (su.hand || []).map(mk);
-      for (const b of su.bf || []) { const c = mk(b.def); c.tapped = !!b.tapped; c.sick = !!b.sick; c.cnt = b.cnt || 0; if (b.ctr) Object.assign(c.ctr, b.ctr); P.bf.push(c); }
+      for (const b of su.bf || []) { const c = mk(b.def); c.tapped = !!b.tapped; c.sick = !!b.sick; c.cnt = b.cnt || 0; if (c.def.loyalty) c.ctr.loyalty = c.def.loyalty; if (b.ctr) Object.assign(c.ctr, b.ctr); P.bf.push(c); }
       P.gy = (su.gy || []).map(mk);
       if (P.cmd && su.cmdOnBf) { P.command = []; P.cmd.sick = !!su.cmdSick; P.bf.push(P.cmd); }
       P.cmdCasts = su.cmdCasts || 0;
@@ -995,7 +1001,8 @@ function cmdHome(G) {
 }
 const cmdKO = (G, P) => G.format === 'commander' && Object.values(P.cmdDmg).some((n) => n >= CMD.lethal);
 function sbaCore(G) {
-  for (const P of G.players) { if (P.lifeSeen != null && P.life < P.lifeSeen && G.pending) fire(G, 'lostLife', { P, n: P.lifeSeen - P.life }); P.lifeSeen = P.life; }
+  for (const P of G.players) { if (P.lifeSeen != null && P.life < P.lifeSeen) { P.lostTurn = G.turn; if (G.pending) fire(G, 'lostLife', { P, n: P.lifeSeen - P.life }); } P.lifeSeen = P.life; }
+  for (const P of G.players) if (!P.blessed && P.bf.length >= 10 && P.bf.some((c) => c.def.ascend)) { P.blessed = true; emit(G, 'info', `${P.name} gets the city's blessing.`, { who: P.i }); }
   for (let guard = 0; guard < 25 && !G.over; guard++) {
     cmdHome(G);
     for (const P of G.players) {
@@ -1010,11 +1017,12 @@ function sbaCore(G) {
     for (const P of G.players) {
       const legends = new Map();
       for (const c of P.bf) {
-        if (isCreature(c) && (tou(c) <= 0 || (!has(c, 'indestructible') && (c.dmg >= tou(c) || (c.dt && c.dmg > 0))))) dying.push(c);
+        if (isCreature(c) && (tou(c) <= 0 || (!has(c, 'indestructible') && (c.dmg >= tou(c) || (c.dt && c.dmg > 0)))) && !(tou(c) > 0 && regenSave(G, c))) dying.push(c);
         if (isLegendary(c)) { if (legends.has(c.def.name)) legend.push(legends.get(c.def.name)); legends.set(c.def.name, c); }
         if (c.def.aura && (c.att == null || !byId(G, c.att))) gone.push(c);
         if (c.att != null && !c.def.aura) { const h = byId(G, c.att); if (!h || !isCreature(h)) c.att = null; }
         if (c.def.saga && c.def.saga.length && ctrCount(c, 'lore') >= sagaFinal(c.def) && !c.chapterBusy && !G.pending.some((it) => it.src === c)) gone.push(c);
+        if (c.def.loyalty && !ctrCount(c, 'loyalty') && !G.pending.some((it) => it.src === c)) gone.push(c);
       }
     }
     for (const c of dying) G.players[1 - c.ctrl].stats.kills++;
@@ -1024,6 +1032,7 @@ function sbaCore(G) {
       if (!onBf(G, c)) continue;
       const P = ctrlOf(G, c);
       if (c.def.saga) { emit(G, 'sac', `${c.def.name} has told its tale and is sacrificed.`, { who: P.i, cards: [c.id] }); sacrifice(G, P, c, true); }
+      else if (c.def.loyalty) { emit(G, 'die', `${c.def.name} has no loyalty left and goes to the graveyard.`, { who: P.i, cards: [c.id] }); putInGraveyard(G, c); }
       else { emit(G, 'die', `${c.def.name} goes to the graveyard.`, { who: P.i, cards: [c.id] }); putInGraveyard(G, c); }
     }
     let lost = false;
@@ -1080,11 +1089,13 @@ function protectedFrom(c, src) {
   if (!src || !src.def) return false;
   if (c.tf && c.tf.proColors && c.tf.proColors.some((col) => src.def.colors.includes(col))) return true;
   if (c.tf && c.tf.proTypes && c.tf.proTypes.some((t) => src.def.types.includes(t))) return true;
+  if (c.sfl && c.sfl.proTypes && c.sfl.proTypes.some((t) => src.def.types.includes(t))) return true;
   if (!c.def.pro) return false;
   return c.def.pro.some((q) => (q.color && src.def.colors.includes(q.color)) || (q.sub && src.def.sub.includes(q.sub)));
 }
 function targetOk(G, P, f, c, src) {
   if (!c || !onBf(G, c) || !isCreature(c)) return false;
+  if (has(c, 'shroud')) return false;
   if (f.side === 'opp' && c.ctrl === P.i) return false;
   if (f.side === 'you' && c.ctrl !== P.i) return false;
   if (c.ctrl !== P.i && has(c, 'hexproof')) return false;
@@ -1355,6 +1366,8 @@ function dmgMod(G, src, victim, n) {
   if (n <= 0) return n;
   if (G.stagger && G.stagger.some((x) => x.p === victim && x.until > G.turn)) n *= 2;
   if (src && src.def && src.ctrl != null && (src.def.sub || []).length && hasSub(src, 'Wizard') && G.players[src.ctrl].bf.some((x) => x.def.wizardDouble)) n *= 2;
+  // Fire Servant: red instant and sorcery spells you control deal double damage
+  if (src && src.def && isIS(src.def) && src.def.colors.includes('R') && !onBf(G, src)) { const sc = src.ctrl != null ? src.ctrl : src.owner; if (sc != null && G.players[sc]) for (const x of G.players[sc].bf) if (x.def.redDouble) n *= 2; }
   if (src && src.def && src.tkw) {
     // Mjölnir: double all damage the equipped creature would deal
     if (onBf(G, src) && isCreature(src)) for (const e of equipmentOn(G, src)) if (e.def.dmgDouble) n *= 2;
@@ -1369,10 +1382,11 @@ function damageCreature(G, c, n, src, opts) {
   if (!onBf(G, c) || n <= 0) return 0;
   if (src && protectedFrom(c, src) && !G.noPrevent) return 0;
   if (opts && opts.combat && c.def.noCombatDmg) return 0;
-  if (G.players[c.ctrl].shieldTurn === G.turn && !G.noPrevent) return 0;
+  if ((G.players[c.ctrl].shieldTurn === G.turn || G.players[c.ctrl].safeTurn === G.turn) && !G.noPrevent) return 0;
   if (c.ctr && c.ctr.shield) { shieldSave(G, c); return 0; }
-  if (c.def.preventAll && !G.noPrevent && (c.def.preventAll === true || c.def.preventAll(G, c))) return 0;
+  if (c.def.preventAll && !G.noPrevent && (c.def.preventAll === true || c.def.preventAll(G, c, n))) return 0;
   if (c.def.healOnHit && c.dmg > 0) { c.dmg = 0; c.dt = false; }
+  if (c.tf && c.tf.prevent > 0 && !G.noPrevent) { const k = Math.min(n, c.tf.prevent); c.tf.prevent -= k; n -= k; if (k && c.tf.redirect) redirectDmg(G, c.tf.redirect, k); if (n <= 0) return 0; }
   if (!(opts && opts.soaked)) { const ad = ctrlOf(G, c).bf.find((x) => x.def.soak && x !== c && isCreature(x)); n = dmgMod(G, src, c.ctrl, n); if (ad) return damageCreature(G, ad, n, src, Object.assign({}, opts, { soaked: true })); }
   if (n > 1 && hasSub(c, 'Hero') && ctrlOf(G, c).bf.some((x) => x.def.capOne)) n = 1; // Hyperion
   const lethalBefore = Math.max(0, tou(c) - c.dmg);
@@ -1388,15 +1402,37 @@ function damageCreature(G, c, n, src, opts) {
 function damagePlayer(G, Q, n, srcCard, from) {
   if (n <= 0) return 0;
   if (protectedPlayer(G, Q, from || (srcCard && G.players[srcCard.ctrl]))) return 0;
+  if (Q.safeTurn === G.turn && !G.noPrevent) return 0;
+  if (Q.prevent && Q.prevent.turn === G.turn && Q.prevent.n > 0 && !G.noPrevent) { const k = Math.min(n, Q.prevent.n); Q.prevent.n -= k; n -= k; if (k && Q.prevent.redirect) redirectDmg(G, Q.prevent.redirect, k); if (n <= 0) return 0; }
+  // Urza's Armor: prevent 1 of each damage; Pariah: the damage is dealt to the enchanted creature instead
+  if (!G.noPrevent) for (const x of Q.bf) if (x.def.armor) { n -= x.def.armor; if (n <= 0) return 0; }
+  const par = Q.bf.find((x) => x.def.pariah && x.att != null && byId(G, x.att) && isCreature(byId(G, x.att)));
+  if (par) { const h = byId(G, par.att); emit(G, 'info', `${par.def.name}: the damage is dealt to ${h.def.name} instead.`, { who: Q.i, cards: [par.id, h.id] }); damageCreature(G, h, n, srcCard, { soaked: true, combat: !!G.combatDmg }); return 0; }
   n = dmgMod(G, srcCard, Q.i, n);
+  if (G.combatDmg && srcCard && srcCard.def && srcCard.def.doubleToPlayer) n *= 2;
   if (n > 1 && Q.bf.some((x) => x.def.capOne)) n = 1; // Hyperion
   const ad = Q.bf.find((x) => x.def.soak && isCreature(x));
   if (ad) { damageCreature(G, ad, n, srcCard, { soaked: true }); return 0; }
   if (srcCard && srcCard.def) srcCard.dealtTurn = G.turn;
   Q.life -= n;
+  Q.hurtTurn = G.turn; // bloodthirst
   if (from && from !== Q) from.stats.damage += n;
   if (G.pending) fire(G, 'dmgPlayer', { P: Q, n, src: srcCard, by: srcCard && srcCard.def ? (srcCard.ctrl != null ? srcCard.ctrl : srcCard.owner) : from ? from.i : null, combat: !!G.combatDmg });
   return n;
+}
+// Damage a prevention shield caught goes to the shield's chosen target instead
+function redirectDmg(G, rd, k) {
+  const P = G.players[rd.by], src = rd.src;
+  if (rd.p != null) {
+    const Q = G.players[rd.p];
+    const d = damagePlayer(G, Q, k, src, P);
+    if (d) emit(G, 'hit', `${src.def.name} deals ${d} damage to ${Q.name}.`, { who: P.i, card: src.id, target: `p${Q.i}`, amount: d });
+  } else {
+    const t = byId(G, rd.c);
+    if (!t || !onBf(G, t)) return;
+    const d = damageCreature(G, t, k, src, { noncombat: true });
+    if (d) emit(G, 'hit', `${src.def.name} deals ${d} damage to ${t.def.name}.`, { who: P.i, card: src.id, target: t.id, amount: d });
+  }
 }
 function gainLife(G, P, n) {
   if (n <= 0) return;
@@ -1444,7 +1480,7 @@ function putBack(G, P, n) {
   }
 }
 function discardRandom(G, P, n) {
-  for (let k = 0; k < n && P.hand.length; k++) P.gy.push(P.hand.splice(G.rng.int(P.hand.length), 1)[0]);
+  for (let k = 0; k < n && P.hand.length; k++) { const c = P.hand.splice(G.rng.int(P.hand.length), 1)[0]; P.gy.push(c); noteDiscard(G, P, c); }
 }
 function resolveEffects(G, P, effects, source, targets, ctx, X) {
   if (!effects || !effects.length || G.over) return;
@@ -1523,7 +1559,7 @@ function resolveInner(G, P, effects, source, targets, ctx, X) {
       case 'loseSelf': P.life -= e.n; emit(G, 'life', `${P.name} loses ${e.n} life.`, { who: P.i, target: `p${P.i}`, amount: e.n }); break;
       case 'discard': {
         const n = Math.min(e.n, O.hand.length);
-        if (n) { if (e.random) discardRandom(G, O, n); else discardChoice(G, O, n, 'discard'); emit(G, 'discard', `${O.name} discards ${n === 1 ? 'a card' : `${n} cards`}${e.random ? ' at random' : ''}.`, { who: P.i }); }
+        if (n) { G.discCause = P.i; try { if (e.random) discardRandom(G, O, n); else discardChoice(G, O, n, 'discard'); } finally { G.discCause = null; } emit(G, 'discard', `${O.name} discards ${n === 1 ? 'a card' : `${n} cards`}${e.random ? ' at random' : ''}.`, { who: P.i }); }
         break;
       }
       case 'scry': scryChoice(G, P, e.n); break;
@@ -1534,7 +1570,7 @@ function resolveInner(G, P, effects, source, targets, ctx, X) {
         else emit(G, 'info', `${O.name} has nothing to sacrifice.`, { who: P.i });
         break;
       }
-      case 'fog': G.fog = true; emit(G, 'fog', 'All combat damage this turn will be prevented.', { who: P.i }); break;
+      case 'fog': if (e.mine) { P.safeTurn = G.turn; emit(G, 'fog', `All damage that would be dealt to ${P.name} and their creatures this turn will be prevented.`, { who: P.i }); break; } G.fog = true; emit(G, 'fog', 'All combat damage this turn will be prevented.', { who: P.i }); break;
       case 'fight': case 'bite': {
         if (e.ctr && onBf(G, t.c)) addCounters(G, t.c, e.ctr);
         if (e.pump && onBf(G, t.c)) { t.c.tp += e.pump; emit(G, 'pump', `${t.c.def.name} gets +${e.pump}/+0 until end of turn.`, { who: P.i, cards: [t.c.id] }); }
@@ -1622,7 +1658,7 @@ function noteDiscard(G, P, c) {
   if (P.discT !== G.turn) { P.discT = G.turn; P.discN = 0; }
   if (c) c.discTurn = G.turn;
   P.discN++;
-  if (G.pending) fire(G, 'discard', { P, card: c });
+  if (G.pending) fire(G, 'discard', { P, card: c, cause: G.discCause != null ? G.discCause : null });
 }
 const discardsThisTurn = (G, P) => (P.discT === G.turn ? P.discN : 0);
 function aiScry(G, P, n) {
@@ -1691,6 +1727,7 @@ function layers(G) {
   const perms = allPerms(G);
   for (const c of perms) { c.sp = 0; c.st = 0; c.skw = []; c.sfl = {}; c.sbase = null; c.ani = false; c.leg = false; c.subX = null; c.wardX = 0; }
   for (const c of perms) if ((c.def.animate && c.def.animate(G, c)) || (c.tf && c.tf.animated)) c.ani = true;
+  for (const c of perms) if (c.mem && c.mem.anim && G.turn < c.mem.anim.until) { c.ani = true; c.sbase = { p: c.mem.anim.p, t: c.mem.anim.t }; }
   for (const P of G.players) { const rb = P.ring && P.ring.n && P.ring.bearer ? P.bf.find((c) => c.id === P.ring.bearer) : null; if (rb) rb.leg = true; }
   for (const c of perms) if (c.def.subFn) c.subX = c.def.subFn(G, c);
   for (const c of perms) if (c.ctr && c.ctr.saurian > 0) { c.subX = ['Dinosaur']; c.sbase = { p: 5, t: 5 }; }
@@ -1718,6 +1755,7 @@ function layers(G) {
     }
   }
   for (const c of perms) if (c.def.ptFn) { const v = c.def.ptFn(G, c); c.sbase = { p: v, t: v }; }
+  for (const c of perms) if (c.sfl && c.sfl.animated) c.ani = true;
   for (const c of perms) if (c.addSubs) { const b = c.subX || c.def.sub; c.subX = b.concat(c.addSubs.filter((x) => !b.includes(x))); }
 }
 
@@ -1759,6 +1797,11 @@ function manaSources(P, purpose) {
   const chorus = P.bf.some((x) => x.def.name === 'Elven Chorus');
   const impro = !!(purpose && purpose.def && !purpose.count && (purpose.def.improvise || P.bf.some((x) => x.def.improviseFor && x.def.improviseFor(purpose.def))));
   const convoke = !!(purpose && purpose.def && !purpose.count && purpose.def.convoke);
+  // Wild Growth and Overgrowth (extra mana from an enchanted land), Stormtide Leviathan (every land is an Island),
+  // Grand Architect (blue creatures tap for {C}{C} to spend on artifacts)
+  let landAuras = null, islands = false, arch = false;
+  if (G) for (const Q of G.players) for (const x of Q.bf) { if (x.def.landMana && x.att != null) (landAuras = landAuras || []).push(x); if (x.def.allIslands) islands = true; if (x.def.archMana && Q === P) arch = true; }
+  const forArt = arch && !!purpose && !purpose.count && ((purpose.def && purpose.def.types.includes('Artifact')) || (purpose.ability && purpose.src && isArtifact(purpose.src)));
   for (const c of P.bf) {
     const sick = isCreature(c) && c.sick && !has(c, 'haste') && !P.bf.some((x) => x.def.hasteAbilities);
     if (c.sfl && (c.sfl.noActs || c.sfl.noAbil)) continue;
@@ -1766,11 +1809,17 @@ function manaSources(P, purpose) {
     if (!c.tapped && !sick && P.bf.some((x) => x.def.realmReborn && x !== c) && !(isLand(c) && ctrCount(c, 'blight'))) { out.push({ c, colors: ANY, amount: 1, tap: true }); continue; }
     const boostC = isLand(c) ? P.bf.filter((x) => x.def.cBoost).length : 0;
     if (isLand(c) && ctrCount(c, 'blight')) { if (!c.tapped) out.push({ c, colors: ['C'], amount: 1 + boostC, tap: true }); continue; }
+    if (forArt && isCreature(c) && !c.tapped && (c.def.colors.includes('U') || (c.tf && c.tf.blue))) { out.push({ c, colors: ['C'], amount: 2, tap: true }); continue; }
     if (c.def.mana && !c.tapped && !sick) {
       const two = c.def.mana.length === 2 && c.def.mana[0] === 'C' && c.def.mana[1] === 'C';
       const onlyC = two || (c.def.mana.length === 1 && c.def.mana[0] === 'C');
       const plus = c.def.manaPlus ? c.def.manaPlus(G, c, P).filter((col) => !c.def.mana.includes(col)) : [];
-      out.push({ c, colors: two ? ['C'] : plus.length ? c.def.mana.concat(plus) : c.def.mana, amount: (two ? 2 : 1) + (onlyC ? boostC : 0), tap: true });
+      let extra = 0;
+      if (isLand(c)) {
+        if (islands && !c.def.mana.includes('U') && !plus.includes('U')) plus.push('U');
+        if (landAuras) for (const a of landAuras) if (a.att === c.id) { extra += a.def.landMana.n; if (!c.def.mana.includes(a.def.landMana.col) && !plus.includes(a.def.landMana.col)) plus.push(a.def.landMana.col); }
+      }
+      out.push({ c, colors: two ? ['C'] : plus.length ? c.def.mana.concat(plus) : c.def.mana, amount: (two ? 2 : 1) + (onlyC ? boostC : 0) + extra, tap: true });
       continue;
     }
     if (c.def.manaAbs) {
@@ -1812,6 +1861,7 @@ function planPayment(sources, cost, purpose) {
     for (const col of COLORS) for (let k = 0; k < (cost[col] || 0); k++) pips.push([col]);
     for (let k = 0; k < (cost.C || 0); k++) pips.push(['C']);
     for (const h of cost.hy || []) pips.push(h.split(''));
+    for (const col of cost.phy || []) pips.push([col]);
   }
   const avail = sources.map((s) => ({ s, left: s.amount }));
   const viaFree = (a, pip) => !pip.some((col) => a.s.colors.includes(col));
@@ -1846,8 +1896,26 @@ function planPayment(sources, cost, purpose) {
   if (need > 0) return null;
   return avail.filter((a) => a.left < a.s.amount).map((a) => ({ s: a.s, n: a.s.amount - a.left }));
 }
-const canPay = (P, cost, purpose) => !!planPayment(manaSources(P, purpose), cost, purpose);
+// Phyrexian mana: pay each symbol with its color while the mana is there, otherwise with 2 life
+function phyPlan(P, cost, purpose) {
+  const n = cost.phy.length, srcs = manaSources(P, purpose);
+  for (let k = n; k >= 0; k--) {
+    const life = 2 * (n - k);
+    if (life && P.life < life) continue;
+    const c2 = Object.assign({}, cost, { phy: null });
+    for (const col of cost.phy.slice(0, k)) c2[col] = (c2[col] || 0) + 1;
+    if (planPayment(srcs, c2, purpose)) return { c2, life };
+  }
+  return null;
+}
+const canPay = (P, cost, purpose) => (cost.phy && cost.phy.length ? !!phyPlan(P, cost, purpose) : !!planPayment(manaSources(P, purpose), cost, purpose));
 function pay(P, cost, purpose) {
+  if (cost.phy && cost.phy.length) {
+    const pp = phyPlan(P, cost, purpose);
+    if (!pp || !pay(P, pp.c2, purpose)) return false;
+    if (pp.life) { P.life -= pp.life; if (P.g) emit(P.g, 'life', `${P.name} pays ${pp.life} life for Phyrexian mana.`, { who: P.i, target: `p${P.i}`, amount: pp.life }); }
+    return true;
+  }
   const plan = planPayment(manaSources(P, purpose), cost, purpose);
   if (!plan) return false;
   const G = P.g;
@@ -2146,9 +2214,22 @@ function putInGraveyard(G, c) {
   fire(G, 'toGy', { c, P: Q, ctrl: Q.i, lki });
   leaves(G, [{ c, P: Q, def: d }]);
 }
+// A regeneration shield used up: tapped, damage removed, out of combat, instead of being destroyed
+function regenSave(G, c) {
+  if (!c.tf || !(c.tf.regen > 0) || c.tf.noRegen) return false;
+  c.tf.regen--;
+  c.dmg = 0; c.dt = false; c.tapped = true;
+  if (c.attacking) c.attacking = false;
+  c.blocking = 0;
+  for (const Q of G.players) for (const x of Q.bf) if (x.blockedBy && x.blockedBy.includes(c)) x.blockedBy = x.blockedBy.filter((b) => b !== c);
+  dirty(G);
+  emit(G, 'info', `${c.def.name} regenerates.`, { who: c.ctrl, cards: [c.id] });
+  return true;
+}
 function destroyPermanent(G, P, c, why) {
   if (!onBf(G, c) || has(c, 'indestructible')) return false;
   if (shieldSave(G, c)) return false;
+  if (regenSave(G, c)) return false;
   if (isCreature(c)) { if (c.ctrl !== P.i) P.stats.kills++; dieNow(G, [c], why); }
   else { emit(G, 'die', `${c.def.name} is destroyed.`, { who: P.i, cards: [c.id] }); putInGraveyard(G, c); }
   return true;
@@ -2345,6 +2426,7 @@ function tgtOk(G, P, e, x, src, X) {
   if (T.other && x === src) return false;
   if (!matches(G, x, T.f || {}, P, src)) return false;
   if (x.ctrl !== P.i && (has(x, 'hexproof') || x.tf.hexproof)) return false;
+  if (has(x, 'shroud')) return false;
   if (src && protectedFrom(x, src)) return false;
   if (T.fn && !T.fn(G, P, x, src, X)) return false;
   return true;
@@ -2466,6 +2548,10 @@ const EFF = {
     value: () => 2.5, label: () => 'Deal damage',
   },
   ward: { res: () => {}, score: () => 0 },
+  prevent: { // prevent the next n damage that would be dealt to a creature or player this turn: { n | nFn, tgt }
+    res: (G, X, e, t) => { const n = e.nFn ? e.nFn(G, X) : e.n; for (const x of targetList(t)) { const to = x.c ? x.c : { p: x.p }; shieldFor(G, X.P, to, n, e.redirect ? redirectFor(G, X, to, n) : null); } },
+    val: (G, P, e, x) => preventVal(G, P, e.n || 1, x), value: (e) => 0.5 + (e.n || 1) * 0.15, label: () => 'Choose what to protect',
+  },
   // Job select: a 1/1 colorless Hero token, then this Equipment is attached to it
   jobSelect: {
     res: (G, X) => { const [h] = makeTokens(G, X.P, HERO_TOKEN, 1, { quiet: true }); if (!h) return; emit(G, 'token', `${X.P.name} creates a 1/1 Hero token.`, { who: X.P.i, cards: [h.id] }); if (onBf(G, X.src) && onBf(G, h)) attach(G, X.src, h); },
@@ -2481,6 +2567,51 @@ const EFF = {
     score: (G, P, e, X, ctx) => chooseTargets(G, P, e.eff, 'trigger', X && X.src, X) ? chooseTargets(G, P, e.eff, 'trigger', X && X.src, X).score : 0, value: (e) => effsValue(e.eff),
   },
 };
+// The current combat's expected outcome, once blockers are declared (null outside combat)
+function combatDoom(G) {
+  if (!G.combat || !G.combat.blocksDone) return null;
+  const A = G.players[G.active], D = other(G, A);
+  return forecast(G, D, G.combat.attackers.filter((a) => onBf(G, a) && a.attacking), new Set(), null);
+}
+// A prevention shield on a creature or player (to a creature: { c } or the card; to a player: { p }); redirect: where the prevented damage goes
+function shieldFor(G, P, x, n, redirect) {
+  if (n <= 0 || !x) return;
+  if (x.def) {
+    if (!onBf(G, x)) return;
+    x.tf.prevent = (x.tf.prevent || 0) + n;
+    if (redirect) x.tf.redirect = redirect;
+    emit(G, 'info', `The next ${n} damage that would be dealt to ${x.def.name} this turn ${redirect ? 'is redirected' : 'is prevented'}.`, { who: P.i, cards: [x.id] });
+    return;
+  }
+  const Q = G.players[x.p];
+  Q.prevent = { turn: G.turn, n: (Q.prevent && Q.prevent.turn === G.turn ? Q.prevent.n : 0) + n, redirect: redirect || (Q.prevent && Q.prevent.turn === G.turn ? Q.prevent.redirect : null) };
+  emit(G, 'info', `The next ${n} damage that would be dealt to ${Q.name} this turn ${redirect ? 'is redirected' : 'is prevented'}.`, { who: P.i, target: `p${Q.i}` });
+}
+// Where redirected damage goes when the card lets its controller choose (Harm's Way): what's fighting the shielded creature,
+// else the best creature n damage kills, else the opponent
+function redirectFor(G, X, to, n) {
+  const O = X.O;
+  const foes = to.def ? allCreatures(G).filter((c) => c.ctrl === O.i && (c.blocking === to.id || (to.blocking && c.id === to.blocking) || (c.attacking && to.blockedBy && to.blockedBy.includes(c)) || (to.attacking && to.blockedBy.includes(c)))) : [];
+  const killable = (cs) => cs.filter((c) => !has(c, 'indestructible') && lethalTo(c) <= n).sort((a, b) => cv(b) - cv(a));
+  const pick = killable(foes)[0] || foes[0] || killable(O.bf.filter(isCreature))[0];
+  return Object.assign({ src: X.src, by: X.P.i }, pick ? { c: pick.id } : { p: O.i });
+}
+// What preventing n damage to x is worth now: saving a creature (or the game) in combat
+function preventVal(G, P, n, x) {
+  const fc = combatDoom(G);
+  if (x.p != null && !x.def) {
+    if (x.p !== P.i) return -1;
+    if (!fc || G.active === P.i) return 0.02;
+    const left = P.life - fc.toD;
+    return left <= 0 && left + n > 0 ? 50 : Math.min(n, fc.toD) * 0.15;
+  }
+  if (x.ctrl !== P.i) return -0.5;
+  if (!fc || !fc.dead.has(x)) return 0.05;
+  x.tt += n;
+  let saved;
+  try { const f2 = combatDoom(G); saved = f2 && !f2.dead.has(x); } finally { x.tt -= n; }
+  return saved ? cv(x) + 1 : 0.1;
+}
 const P_kill = (X, c) => { if (c.ctrl !== X.P.i && isCreature(c)) X.P.stats.kills++; };
 const tcards = (t) => targetList(t).map((x) => x.c).filter(Boolean);
 function tgtNoun(e) {
@@ -2780,7 +2911,7 @@ function castCost(P, card, targets, x, mode) {
   if (c.hy) c.hy = c.hy.slice();
   if (P.command.includes(card)) c.g += CMD.tax * P.cmdCasts;
   if (d.modes && mode) for (const k of mode) { const mc = d.modes[k] && d.modes[k].cost; if (mc) addCostInto(c, mc); }
-  if (c.x) c.g += c.x * (x || 0);
+  if (c.x) { if (d.xColor) c[d.xColor] = (c[d.xColor] || 0) + c.x * (x || 0); else c.g += c.x * (x || 0); }
   delete c.x;
   if (d.costMod && P.g) c.g = Math.max(0, c.g - d.costMod(P.g, P, card, targets || []));
   // Cost reductions from permanents (The Wind Crystal: white spells you cast cost {1} less)
@@ -2793,10 +2924,12 @@ function castCost(P, card, targets, x, mode) {
 const silenced = (G, P) => {
   if (!G) return false;
   if (G.slavedTurn === G.turn && G.slavedP === P.i) return true; // a controlled player casts nothing
+  if (P.atkTurn === G.turn && P.atkLog && P.atkLog.length && G.players.some((Q) => Q !== P && Q.bf.some((c) => c.def.arbiter))) return true; // Angelic Arbiter
   return G.active !== P.i && G.players[G.active].bf.some((c) => c.def.silenceOpp && (typeof c.def.silenceOpp !== 'function' || c.def.silenceOpp(G, c)));
 };
 function castZone(G, P, card) {
   if (silenced(G, P)) return null;
+  if (P.noIS === G.turn && isIS(card.def)) return null;
   if (P.hand.includes(card)) return 'hand';
   if (P.command.includes(card)) return 'command';
   if (P.xcast.some((x) => x.card === card && xLive(G, P, x))) return 'xcast';
@@ -2840,7 +2973,7 @@ function fastFor(G, P, def) {
   }
   return false;
 }
-const spellEffects = (def, mode) => (def.modes ? (mode || [0]).flatMap((k) => (def.modes[k] ? def.modes[k].eff : [])) : def.spell || []);
+const spellEffects = (def, mode) => (def.modes ? (mode || [0]).flatMap((k) => (def.modes[k] ? def.modes[k].eff || [] : [])) : def.spell || []);
 const isPermanentSpell = (def) => !def.types.includes('Instant') && !def.types.includes('Sorcery');
 // Extra costs some spells have (sacrifice a creature, discard a card): can P pay them, and what would the AI give up?
 // Teamwork N: tap any number of untapped creatures you control with total power N or more
@@ -2893,9 +3026,13 @@ function addCostOptions(G, P, card, mode, over) {
   if (!a) return { ok: true, opts: [] };
   const out = [];
   if (a.bounceLand) for (const c of P.bf) if (isLand(c)) out.push({ bounce: c });
-  if (a.sac) for (const c of P.bf) if (matches(G, c, a.sac, P, card)) out.push({ sac: c });
+  if (a.sac && a.n > 1) { const cs = P.bf.filter((c) => matches(G, c, a.sac, P, card)); if (cs.length >= a.n) out.push({ sacs: cs, n: a.n }); }
+  else if (a.sac) for (const c of P.bf) if (matches(G, c, a.sac, P, card)) out.push({ sac: c });
+  if (a.tapArt) for (const c of P.bf) if (isArtifact(c) && !c.tapped) out.push({ tapArt: c });
+  if (a.reveal) { const c = P.hand.find((x) => x !== card && x.def.sub.includes(a.reveal)); if (c) out.push({ behold: c }); }
   if (a.discard) { if (P.hand.filter((c) => c !== card).length >= a.discard) out.push({ discard: a.discard }); }
   if (a.orPay) out.push({ pay: a.orPay });
+  if (a.pay && canPayBoth(P, castCost(P, card, [], 0, mode), a.pay)) out.push({ pay: a.pay });
   if (a.teamwork && twPower(P) >= a.teamwork) out.push({ teamwork: a.teamwork });
   if (a.behold) { const c = P.bf.find((x) => isCreature(x) && hasSub(x, a.behold)) || P.hand.find((x) => x !== card && x.def.types.includes('Creature') && x.def.sub.includes(a.behold)); if (c) out.push({ behold: c }); }
   return { ok: out.length > 0, opts: out };
@@ -2914,6 +3051,8 @@ function aiAddCost(G, P, card, mode, over) {
     else if (o.pay) s = canPayBoth(P, card.def.cost, o.pay) ? costMV(o.pay) * 0.45 : Infinity;
     else if (o.teamwork) { const tp = twPick(G, P, o.teamwork); if (tp) { o.tw = tp.cs; s = Math.max(0, tp.pain); } else s = Infinity; }
     else if (o.behold) s = 0;
+    else if (o.sacs) { o.pick = o.sacs.slice().sort((x, y) => pv(G, x) - pv(G, y) || x.id - y.id).slice(0, o.n); s = o.pick.reduce((t, c) => t + pv(G, c) + (c.token ? -0.6 : 0), 0); }
+    else if (o.tapArt) s = (o.tapArt.def.mana || o.tapArt.def.manaAbs ? 1 : 0.2) + (isCreature(o.tapArt) ? 0.5 : 0);
     if (s < bs) { bs = s; best = o; }
   }
   return bs === Infinity ? null : Object.assign({ pain: bs }, best);
@@ -2937,6 +3076,16 @@ function payAddCost(G, P, card, choice, item, mode, over) {
   } else if (choice.teamwork) {
     if (!teamworkPay(G, P, card, choice.teamwork, choice.tw)) return false;
     item.teamwork = true;
+  } else if (choice.sacs) {
+    item.kicked = true;
+    const pick = (choice.pick || choice.sacs.slice(0, choice.n)).filter((c) => onBf(G, c));
+    if (pick.length < choice.n) return false;
+    emit(G, 'sac', `${P.name} sacrifices ${nameList(pick)} to cast ${card.def.name}.`, { who: P.i, cards: pick.map((c) => c.id) });
+    for (const c of pick) sacrifice(G, P, c, true);
+  } else if (choice.tapArt) {
+    if (!onBf(G, choice.tapArt) || choice.tapArt.tapped) return false;
+    choice.tapArt.tapped = true;
+    emit(G, 'tapfx', `${P.name} taps ${choice.tapArt.def.name} to cast ${card.def.name}.`, { who: P.i, cards: [choice.tapArt.id] });
   } else if (choice.behold) {
     item.kicked = true;
     emit(G, 'info', `${P.name} beholds ${choice.behold.def.name}.`, { who: P.i, cards: [choice.behold.id] });
@@ -2953,6 +3102,10 @@ function humanAddCost(G, P, card, mode, over) {
   const tws = opts.filter((o) => o.teamwork);
   if (tws.length) { const cs = humanTwPick(G, P, card, tws[0].teamwork); return cs ? { teamwork: tws[0].teamwork, tw: cs } : null; }
   if (opts.some((o) => o.behold)) return opts.find((o) => o.behold);
+  const multi = opts.find((o) => o.sacs);
+  if (multi) { const pick = pickCards(G, { type: 'choose', reason: 'sacrifice-cost', n: multi.n, min: multi.n, max: multi.n, zone: 'battlefield', cards: multi.sacs.map((c) => c.id), label: card.def.name }, multi.sacs, multi.n); return { sacs: multi.sacs, n: multi.n, pick }; }
+  const taps = opts.filter((o) => o.tapArt).map((o) => o.tapArt);
+  if (taps.length) return { tapArt: taps.length === 1 ? taps[0] : pickCards(G, { type: 'choose', reason: 'tap-cost', n: 1, min: 1, max: 1, zone: 'battlefield', cards: taps.map((c) => c.id), label: card.def.name }, taps, 1)[0] };
   if (discards.length && pays.length && !sacs.length) return chooseMode(G, P, card, `${card.def.name}: pay the extra cost`, ['Discard a card', `Pay ${costText(pays[0].pay)}`], 0) === 1 ? pays[0] : discards[0];
   if (discards.length && (!sacs.length || chooseMode(G, P, card, `${card.def.name}: pay the extra cost`, [`Sacrifice ${(over || acOf(card.def, mode)).sacWord || 'a creature'}`, 'Discard a card'], 0) === 1)) return discards[0];
   if (sacs.length && pays.length) {
@@ -3097,7 +3250,7 @@ function resolveSpell(G, P, item, etbTargets) {
   if (isPermanentSpell(def)) {
     if (def.aura) {
       const host = allTargets(item.targets).map((t) => t.c).find(Boolean);
-      if (!host || !onBf(G, host) || !targetOk(G, P, def.aura.f || {}, host, card)) { emit(G, 'fizzle', `${def.name} has nothing to enchant and goes to the graveyard.`, { who: P.i }); toOwnerGy(G, card); return; }
+      if (!host || !onBf(G, host) || !auraOk(G, P, def, host, card)) { emit(G, 'fizzle', `${def.name} has nothing to enchant and goes to the graveyard.`, { who: P.i }); toOwnerGy(G, card); return; }
       enterBattlefield(G, P, card, etbTargets, { attachTo: host });
       return;
     }
@@ -3150,7 +3303,9 @@ function respondTo(G, O, P, item) {
     if (r.counter && uncounterable) return false;
     return r.legal(G, O, item);
   };
-  const opts = O.hand.filter((c) => legal(c) && canPay(O, castCost(O, c), { def: c.def }));
+  // Abilities on the battlefield that answer a spell: { cost, tap, sac (default true), unless (the caster may pay), counter: false + res (anything else: regenerate...) }
+  const abOpts = O.bf.filter((c) => { const ra = c.def.respondAb; return !!ra && !(uncounterable && ra.counter !== false) && (!ra.tap || (!c.tapped && !(isCreature(c) && c.sick && !has(c, 'haste')))) && !(c.sfl && (c.sfl.noActs || c.sfl.noAbil)) && ra.legal(G, O, item, c) && canPay(O, ra.cost, { ability: true, src: c }); });
+  const opts = O.hand.filter((c) => legal(c) && canPay(O, castCost(O, c), { def: c.def })).concat(abOpts);
   if (!opts.length) return false;
   let cs = null;
   if (isHuman(G, O)) {
@@ -3158,10 +3313,35 @@ function respondTo(G, O, P, item) {
     cs = opts.find((c) => c.id === a.id) || null;
   } else {
     const bar = PERSONAS[O.persona].counterBar;
-    const ranked = opts.map((c) => ({ c, s: c.def.respond ? c.def.respond.ai(G, O, item) : (() => { const ce = c.def.spell.find((e) => e.k === 'counter'); return ce.unless && canPay(P, genericCost(ce.unless)) ? -1 : threatOf(G, O, item); })() })).filter((o) => o.s >= bar).sort((a, b) => b.s - a.s || a.c.def.mv - b.c.def.mv);
+    const ranked = opts.map((c) => ({ c, s: abOpts.includes(c) ? c.def.respondAb.ai(G, O, item, c) : c.def.respond ? c.def.respond.ai(G, O, item) : (() => { const ce = c.def.spell.find((e) => e.k === 'counter'); return ce.unless && canPay(P, genericCost(ce.unless)) ? -1 : threatOf(G, O, item); })() })).filter((o) => o.s >= bar).sort((a, b) => b.s - a.s || a.c.def.mv - b.c.def.mv);
     if (ranked.length && G.rng.next() < 0.9) cs = ranked[0].c;
   }
   if (!cs) return false;
+  if (abOpts.includes(cs)) {
+    const ra = cs.def.respondAb;
+    pay(O, ra.cost, { ability: true, src: cs });
+    if (ra.tap) cs.tapped = true;
+    if (ra.res) {
+      emit(G, 'ability', `${O.name} activates ${cs.def.name}${ra.label ? `: ${ra.label}` : ''} in response to ${def.name}.`, { who: O.i, card: cs.id });
+      const done = ra.res(G, O, item, cs);
+      sba(G);
+      return !!done;
+    }
+    emit(G, 'ability', `${O.name} activates ${cs.def.name}, targeting ${def.name}.`, { who: O.i, card: cs.id, targets: [card.id] });
+    if (ra.sac !== false && onBf(G, cs)) sacrifice(G, O, cs, true);
+    if (ra.unless && canPay(P, genericCost(ra.unless))) {
+      pay(P, genericCost(ra.unless));
+      emit(G, 'info', `${P.name} pays {${ra.unless}}, so ${def.name} resolves.`, { who: P.i });
+      sba(G);
+      return false;
+    }
+    G.stack.splice(G.stack.indexOf(item), 1);
+    toOwnerGy(G, card);
+    emit(G, 'countered', `${def.name} is countered.`, { who: O.i, cards: [card.id] });
+    cmdHome(G);
+    sba(G);
+    return true;
+  }
   // The answer is cast like any spell (and can trigger things); then it does its job on this spell
   pay(O, castCost(O, cs), { def: cs.def });
   O.hand.splice(O.hand.indexOf(cs), 1);
@@ -3202,10 +3382,15 @@ function enterBattlefield(G, P, card, etbTargets, opts = {}) {
   else if (opts.face) { card.faceBase = card.def; card.def = opts.face; }
   card.ctrl = P.i;
   card.g = G;
+  if (card.def.enterAs && !opts.face) card.def.enterAs(G, P, card, opts);
   card.tapped = (!!card.def.etbTapped || !!opts.tapped) && !(isLand(card) && P.bf.some((x) => x.def.landsUntapped));
+  if (!card.tapped && card.def.types.includes('Creature') && other(G, P).bf.some((x) => x.def.oppCreaturesTapped)) card.tapped = true;
   P.bf.push(card);
   noteEnter(G, P, card);
-  if (card.def.etbCtr) for (const [k, n] of Object.entries(card.def.etbCtr(G, P, card))) { if (n > 0) { if (k === '+1/+1') card.cnt += n; else card.ctr[k] = n; } }
+  if (card.def.etbCtr) for (const [k, n] of Object.entries(card.def.etbCtr(G, P, card, opts))) { if (n > 0) { if (k === '+1/+1') card.cnt += n; else card.ctr[k] = n; } }
+  if (card.def.loyalty) card.ctr.loyalty = (card.ctr.loyalty || 0) + card.def.loyalty;
+  const thirst = card.def.bloodthirst && G.players.some((Q) => Q !== P && Q.hurtTurn === G.turn) ? card.def.bloodthirst : 0;
+  if (thirst) card.cnt += thirst;
   if (opts.item && opts.item.finality) card.ctr.finality = 1;
   if (card.finCtr) { card.cnt += card.finCtr; card.finCtr = 0; }
   if (card.finHaste === G.turn) { card.tkw.push('haste'); card.finHaste = 0; }
@@ -3213,7 +3398,7 @@ function enterBattlefield(G, P, card, etbTargets, opts = {}) {
   if (isCreature(card) && P.noteBonus) { const b = P.noteBonus.filter((nb) => nb.turn === G.turn && card.def.sub.includes(nb.type)); if (b.length) { card.cnt += b.length; P.noteBonus = P.noteBonus.filter((nb) => !b.includes(nb)); } }
   if (opts.attachTo) card.att = opts.attachTo.id;
   dirty(G);
-  emit(G, 'enter', `${card.def.name} enters the battlefield${opts.transformed && card.def.isBack ? ' transformed' : ''}${opts.attachTo ? ` attached to ${opts.attachTo.def.name}` : ''}${card.tapped && !card.def.etbTapped ? ' tapped' : ''}${card.ctr.finality ? ' with a finality counter' : ''}.`, { who: P.i, card: card.id });
+  emit(G, 'enter', `${card.def.name} enters the battlefield${opts.transformed && card.def.isBack ? ' transformed' : ''}${opts.attachTo ? ` attached to ${opts.attachTo.def.name}` : ''}${card.tapped && !card.def.etbTapped ? ' tapped' : ''}${card.ctr.finality ? ' with a finality counter' : ''}${thirst ? ` with ${thirst === 1 ? 'a +1/+1 counter' : `${thirst} +1/+1 counters`} (bloodthirst)` : ''}.`, { who: P.i, card: card.id });
   sba(G);
   if (G.over) return;
   if (card.def.saga) addLore(G, P, card, 1);
@@ -3263,6 +3448,12 @@ function playLand(G, P, c, fromZone) {
                 eff | run, sorcery, once, cond(G, P, c), label, ai(G, P, c, when) -> { score, targets, x } | null, equip, only }]
    def.gyActs: the same, usable while the card is in your graveyard. */
 const CREW_AB = { crew: true, label: 'Crew', cost: {} };
+// A planeswalker's loyalty ability as an activated ability: { n } is the loyalty cost (+N adds, -N removes)
+function pwAb(def, ab, k) {
+  def.pwAbs = def.pwAbs || [];
+  if (!def.pwAbs[k]) def.pwAbs[k] = Object.assign({}, ab, { cost: { loy: ab.n }, sorcery: true, pw: true, label: `${ab.n > 0 ? '+' : ab.n < 0 ? '−' : ''}${Math.abs(ab.n)}: ${ab.label}` });
+  return def.pwAbs[k];
+}
 function abilitiesOf(G, P, c, zone) {
   const out = [];
   if (zone === 'gy') { (c.def.gyActs || []).forEach((ab, k) => out.push({ c, ab, k: `g${k}`, zone })); return out; }
@@ -3271,6 +3462,7 @@ function abilitiesOf(G, P, c, zone) {
   if ((c.tf && c.tf.noAbil) || (c.sfl && c.sfl.noAbil)) return out;
   if (c.sfl && c.sfl.noActs) return out;
   (c.def.acts || []).forEach((ab, k) => out.push({ c, ab, k: `${k}`, zone: 'bf' }));
+  if (c.def.pw) c.def.pw.forEach((ab, k) => out.push({ c, ab: pwAb(c.def, ab, k), k: `pw${k}`, zone: 'bf' }));
   if (c.def.crew) out.push({ c, ab: CREW_AB, k: 'crew', zone: 'bf' });
   // Sharkey borrows the activated abilities (not mana abilities) of the opponents' lands
   if (c.def.sharkey) for (const land of other(G, P).bf.filter(isLand)) (land.def.acts || []).forEach((ab, k) => { if (!ab.cost.sacSelf) out.push({ c, ab, k: `s${land.id}.${k}`, zone: 'bf', borrowed: land }); });
@@ -3318,6 +3510,7 @@ function canActivate(G, P, e, when) {
   const sorceryTime = G.active === P.i && (when === 'main1' || when === 'main2') && !G.stack.length;
   if (ab.sorcery && !sorceryTime && !(ab.equip && G.active === P.i && P.bf.some((x) => x.def.equipFast))) return false;
   if (ab.crew && (c.crewed || c.ani)) return false;
+  if (ab.pw && (c.pwTurn === G.turn || (ab.cost.loy < 0 && ctrCount(c, 'loyalty') < -ab.cost.loy))) return false;
   if (ab.once) { const used = c.onceA && c.onceA[e.k]; if (used === G.turn) return false; }
   if (ab.powerUp && (puUsed(c, e.k) >= puLimit(G, P) || (G.puLocks && G.puLocks.includes(G.turn)))) return false;
   // Sharkey: the opponents' lands can only use mana abilities
@@ -3345,6 +3538,7 @@ function payOtherCosts(G, P, e, X) {
   const { c, ab } = e;
   const k = ab.cost;
   if (k.tap) c.tapped = true;
+  if (k.loy != null) { c.pwTurn = G.turn; if (k.loy > 0) addCounters(G, c, k.loy, 'loyalty', true); else if (k.loy < 0) removeCounters(G, c, 'loyalty', -k.loy); dirty(G); }
   if (k.life) { P.life -= k.life; emit(G, 'life', `${P.name} pays ${k.life} life.`, { who: P.i, target: `p${P.i}`, amount: k.life }); }
   if (k.ctr) removeCounters(G, c, k.ctr.kind, k.ctr.n);
   if (k.tapCre) {
@@ -3381,15 +3575,18 @@ function activate(G, P, e, targets, opts = {}) {
   if (ab.cost.m && ab.cost.m.x) {
     const purpose = abilityPurpose(G, P, c, e);
     let max = 0;
-    while (max < 20 && canPay(P, Object.assign({}, m, { g: m.g + (max + 1) * ab.cost.m.x }), purpose)) max++;
+    const xc = ab.cost.xColor || 'g'; // Crypt Rats: spend only black mana on X
+    while (max < 20 && canPay(P, Object.assign({}, m, { [xc]: (m[xc] || 0) + (max + 1) * ab.cost.m.x }), purpose)) max++;
     const min = ab.cost.xMin || 0;
+    if (max < min) return false;
     X.x = opts.x != null ? Math.min(opts.x, max) : isHuman(G, P) ? chooseNumber(G, P, c, `${c.def.name}: choose X`, min, max, max) : Math.min(max, ab.aiX ? ab.aiX(G, P, c, max) : max);
-    m.g += X.x * ab.cost.m.x;
+    m[xc] = (m[xc] || 0) + X.x * ab.cost.m.x;
   }
   if (!pay(P, m, abilityPurpose(G, P, c, e))) return false;
   if (ab.equip && G.active === P.i && P.bf.some((x) => x.def.equipFree) && P.freeEquipTurn !== G.turn) P.freeEquipTurn = G.turn;
   if (ab.once) { c.onceA = c.onceA || {}; c.onceA[e.k] = G.turn; }
   if (ab.powerUp) { c.mem = c.mem || {}; c.mem.pu = c.mem.pu || {}; c.mem.pu[e.k] = puUsed(c, e.k) + 1; if (G.active === P.i) P.freePuTurn = G.turn; if (G.pending) fire(G, 'powerUp', { c, P }); }
+  if (ab.pw && G.pending) fire(G, 'pwUsed', { c, P });
   const here = onBf(G, c);
   const untappedBefore = P.bf.filter((x) => isCreature(x) && !x.tapped);
   payOtherCosts(G, P, e, X);
@@ -3567,6 +3764,7 @@ function evalCast(G, P, card, ctx) {
   if (isLand(card)) return null;
   const zone = castZone(G, P, card);
   if (!zone || def.respondOnly) return null;
+  if (def.castIf && !def.castIf(G, P, card)) return null;
   const xc = zone === 'xcast' ? xcastOf(G, P, card) : null;
   const purpose = { def, card, anyType: !!(xc && xc.anyType) };
   let x = 0;
@@ -3577,21 +3775,34 @@ function evalCast(G, P, card, ctx) {
   if (def.addCost) { addc = aiAddCost(G, P, card); if (!addc) return null; if (addc.pay && !canPayBoth(P, castCost(P, card, [], x), addc.pay)) return null; }
   const pain = addc ? addc.pain || 0 : 0;
   if (def.supertypes.includes('Legendary') && isPermanentSpell(def) && P.bf.some((c) => c.def.name === def.name)) return null;
+  // Bloodthirst: wait for combat damage when there's an attack to make first
+  if (def.bloodthirst && ctx === 'main1' && G.active === P.i && !G.players.some((Q) => Q !== P && Q.hurtTurn === G.turn) && P.bf.some((c) => canAttackNow(G, c) && pow(c) > 0)) return null;
+  // A permanent with a choice as it's cast (kicker): the best affordable option, by its mode's ai bonus
+  let pmode = null, pbonus = 0;
+  if (def.modes && isPermanentSpell(def)) {
+    for (const m of modeChoices(G, P, def)) {
+      if (!canPay(P, castCost(P, card, [], x, m), purpose)) continue;
+      const md = def.modes[m[0]], b = md.ai ? md.ai(G, P, card) : 0;
+      if (b == null) continue;
+      if (!pmode || b > pbonus) { pmode = m; pbonus = b; }
+    }
+    if (!pmode) return null;
+  }
   if (def.types.includes('Creature')) {
     if (def.costMod && !canPay(P, castCost(P, card, [], x), purpose)) return null;
     if (def.sacAtEnd && ctx !== 'main1') return null;
-    let s = 2 + def.value * 0.6 + def.mv * 0.35;
+    let s = 2 + def.value * 0.6 + def.mv * 0.35 + pbonus;
     const ch = def.etb.length ? chooseTargets(G, P, def.etb, 'etb', card) : { score: 0, targets: [] };
     if (ch) s += Math.max(-4, ch.score * 0.5);
     if (ctx === 'main1' && !def.kw.includes('haste') && hasHeldTricks(P) && P.persona !== 'aggro') s -= 1;
     if (def.kw.includes('flash') && ctx !== 'end' && per.hold >= 0.6) s -= 1.5;
     if (P.command.includes(card)) s -= CMD.tax * P.cmdCasts * 0.3; // the tax makes a recast worse value than a fresh card
     if (def.castScore) s += def.castScore(G, P, card, ctx);
-    return { score: s - pain, targets: [], x };
+    return Object.assign({ score: s - pain, targets: [], x }, pmode ? { mode: pmode } : null);
   }
   if (isPermanentSpell(def)) {
     if (def.costMod && !canPay(P, castCost(P, card, [], x), purpose)) return null;
-    let s = 2 + def.value * 0.6 + def.mv * 0.2, targets = [];
+    let s = 2 + def.value * 0.6 + def.mv * 0.2 + pbonus, targets = [];
     if (def.aura) {
       const best = auraHost(G, P, card);
       if (!best || best.s <= 0.4) return null;
@@ -3600,7 +3811,7 @@ function evalCast(G, P, card, ctx) {
     if (def.etb.length) { const ch = chooseTargets(G, P, def.etb, 'etb', card); if (ch) s += Math.max(-4, ch.score * 0.5); }
     if (isInstantSpeed(def) && ctx !== 'end' && ctx !== 'combat' && per.hold >= 0.6 && !def.aura) s -= 1.5;
     if (def.castScore) s += def.castScore(G, P, card, ctx);
-    return s - pain > 0.5 ? { score: s - pain, targets, x } : null;
+    return s - pain > 0.5 ? Object.assign({ score: s - pain, targets, x }, pmode ? { mode: pmode } : null) : null;
   }
   // Instants and sorceries; a modal spell tries each choice of modes
   const options = def.modes ? modeChoices(G, P, def) : [null];
@@ -3641,11 +3852,21 @@ function modeChoices(G, P, def) {
   return out;
 }
 // The best creature for an Aura: buffs go on your own, curses on theirs
+// What an Aura can enchant: creatures, or (aura.perm) any permanent its filter allows (Wild Growth, Confiscate)
+const auraCands = (G, d) => (d.aura.perm ? allPerms(G) : allCreatures(G));
+function auraOk(G, P, d, c, card) {
+  if (!c || !onBf(G, c)) return false;
+  if (!d.aura.perm) return targetOk(G, P, d.aura.f || {}, c, card);
+  if (!matches(G, c, d.aura.f, P, card)) return false;
+  if (isCreature(c)) return targetOk(G, P, {}, c, card);
+  return !has(c, 'shroud') && !(c.ctrl !== P.i && has(c, 'hexproof'));
+}
+const auraNoun = (d) => (!d.aura.perm ? 'a creature' : (d.aura.f.types || ['any']).includes('any') ? 'a permanent' : `a ${d.aura.f.types.map((t) => t.toLowerCase()).join(' or ')}`);
 function auraHost(G, P, card) {
   const d = card.def;
   let best = null;
-  for (const c of allCreatures(G)) {
-    if (!targetOk(G, P, d.aura.f || {}, c, card)) continue;
+  for (const c of auraCands(G, d)) {
+    if (!auraOk(G, P, d, c, card)) continue;
     let s;
     if (d.auraVal) s = d.auraVal(G, P, c);
     else {
@@ -3749,18 +3970,23 @@ function canBlock(G, b, a) {
   if (G.noBlockNoFly === G.turn && !has(b, 'flying')) return false;
   if ((a.tf && a.tf.unblockable) || (a.sfl && a.sfl.unblockable)) return false;
   if (a.tf && a.tf.bigOnly && (pow(b) <= 2 || hasSub(b, 'Wall'))) return false;
+  if (a.tf && a.tf.spiritsOnly && !hasSub(b, 'Spirit')) return false;
   if (a.tf && a.tf.hasteOnly && !has(b, 'haste')) return false;
   if (has(b, 'flying') && G.players[a.ctrl] && G.players[a.ctrl].bf.some((x) => x.def.noFlyers)) return false;
   if (a.def.blockOnlyBy && !a.def.blockOnlyBy(G, b, a)) return false;
   const AP = G.players[a.ctrl];
   if (AP && AP.ring && AP.ring.n >= 1 && AP.ring.bearer === a.id && pow(b) > pow(a)) return false;
-  if (a.tf && a.tf.proTypes && a.tf.proTypes.includes('Creature')) return false;
+  if ((a.tf && a.tf.proTypes && a.tf.proTypes.includes('Creature')) || (a.sfl && a.sfl.proTypes && a.sfl.proTypes.includes('Creature'))) return false;
   if (a.def.noWallBlock && b.def.sub.includes('Wall')) return false;
   if (protectedFrom(a, b)) return false;
   const D = ctrlOf(G, b);
-  if (a.def.landwalk && D.bf.some((x) => isLand(x) && x.def.sub.includes(a.def.landwalk))) return false;
+  const lw = a.def.landwalk || (a.sfl && a.sfl.landwalk);
+  if (lw && D.bf.some((x) => isLand(x) && (x.def.sub.includes(lw) || (lw === 'Island' && allIslands(G))))) return false;
   if (has(a, 'flying') && !has(b, 'flying') && !has(b, 'reach')) return false;
+  if ((a.def.onlyFlyers || (a.sfl && a.sfl.onlyFlyers)) && !has(b, 'flying')) return false; // Treetop Bracers
   if (b.def.blockFlyersOnly && !has(a, 'flying')) return false;
+  if (has(a, 'fear') && !isArtifact(b) && !b.def.colors.includes('B')) return false;
+  if (has(a, 'intimidate') && !isArtifact(b) && !b.def.colors.some((col) => a.def.colors.includes(col))) return false;
   return true;
 }
 function kills(src, dst) {
@@ -4116,6 +4342,8 @@ function bestDoubleBlock(G, a, cands) {
   }
   return best && best.pair;
 }
+// A blocker already in use can block again: once more (Ghastbark Twins) or any number of times (Palace Guard)
+const reBlock = (b, twice) => !!b.def.blockAny || (!!b.def.blockTwo && !twice.has(b));
 function aiBlocks(G, D, A, attackers) {
   const per = PERSONAS[D.persona];
   const map = new Map();
@@ -4124,7 +4352,7 @@ function aiBlocks(G, D, A, attackers) {
   let incoming = attackers.reduce((s, a) => s + dmgOut(a), 0);
   const order = attackers.slice().sort((x, y) => dmgOut(y) - dmgOut(x) || cv(y) - cv(x));
   for (const a of order) {
-    const cands = D.bf.filter((b) => (!used.has(b) || (b.def.blockTwo && !twice.has(b))) && canBlock(G, b, a));
+    const cands = D.bf.filter((b) => (!used.has(b) || reBlock(b, twice)) && canBlock(G, b, a));
     const need = minBlockers(a);
     const needTwo = need >= 2;
     if (!cands.length || cands.length < need) continue;
@@ -4185,7 +4413,7 @@ function planDamage(G, D, attackers, step, alive, dmgOf) {
     }
     for (const b of blockers) {
       if (!strikes(b) || combatPow(b) <= 0) continue;
-      if (!b.def.blockTwo) { events.push({ src: b, toC: a, n: combatPow(b) }); continue; }
+      if (!b.def.blockTwo && !b.def.blockAny) { events.push({ src: b, toC: a, n: combatPow(b) }); continue; }
       const left = bLeft.has(b) ? bLeft.get(b) : combatPow(b);
       if (left <= 0) continue;
       const more = attackers.some((x) => x !== a && !seen.has(x) && alive(x) && x.attacking && x.blockedBy.includes(b));
@@ -4197,6 +4425,23 @@ function planDamage(G, D, attackers, step, alive, dmgOf) {
   return events;
 }
 const hasFirstStep = (G, attackers) => attackers.concat(attackers.flatMap((a) => a.blockedBy)).some((c) => onBf(G, c) && (has(c, 'first strike') || has(c, 'double strike')));
+// A planeswalker the attacker would rather hit than the player: one this damage finishes off, unless the player is nearly dead
+function pwRedirect(G, D, n) {
+  const pws = D.bf.filter((c) => c.def.loyalty && ctrCount(c, 'loyalty') > 0 && !c.pwDoomed);
+  if (!pws.length || D.life <= n * 2) return null;
+  const kill = pws.filter((c) => ctrCount(c, 'loyalty') <= n).sort((a, b) => b.def.value - a.def.value)[0];
+  if (kill) { kill.pwDoomed = true; return kill; }
+  return null;
+}
+// Damage to a planeswalker removes that many loyalty counters
+function damagePw(G, c, n, src) {
+  if (!onBf(G, c) || n <= 0) return 0;
+  const k = removeCounters(G, c, 'loyalty', n);
+  c.pwDoomed = false;
+  if (src && src.def) src.dealtTurn = G.turn;
+  dirty(G);
+  return k;
+}
 function combatDamage(G, A, D, attackers, step) {
   if (G.fog) return;
   const events = planDamage(G, D, attackers, step, (c) => onBf(G, c), (c) => c.dmg).filter((e) => !(e.toC && protectedFrom(e.toC, e.src)));
@@ -4207,7 +4452,9 @@ function combatDamage(G, A, D, attackers, step) {
   for (const ev of events) {
     const P = ctrlOf(G, ev.src);
     let dealt;
-    if (ev.toC) dealt = damageCreature(G, ev.toC, ev.n, ev.src, { combat: true });
+    if (!ev.toC && ev.to) { const pwT = pwRedirect(G, ev.to, ev.n); if (pwT) { ev.toC = pwT; ev.pw = true; } }
+    if (ev.toC && ev.pw) dealt = damagePw(G, ev.toC, ev.n, ev.src);
+    else if (ev.toC) dealt = damageCreature(G, ev.toC, ev.n, ev.src, { combat: true });
     else {
       dealt = damagePlayer(G, ev.to, ev.n, ev.src, P);
       if (dealt) { hitPlayer.set(ev.src, (hitPlayer.get(ev.src) || 0) + dealt); if (ev.src.cmdr) ev.to.cmdDmg[ev.src.id] = (ev.to.cmdDmg[ev.src.id] || 0) + dealt; }
@@ -4270,6 +4517,7 @@ function trickValue(G, P, D, attackers, spell, idx, tgt, card) {
     if (e.k === 'pump' && t) pumpOn(t, e);
     else if (e.k === 'pumpT' && t) pumpOn(t, { p: e.pFn ? e.pFn(G, X, t) : e.p || 0, t: e.tFn ? e.tFn(G, X, t) : e.t || 0, kw: e.kw || [] });
     else if (e.k === 'grant' && t && e.kw) pumpOn(t, { p: 0, t: 0, kw: e.kw });
+    else if (e.k === 'prevent' && t) pumpOn(t, { p: 0, t: e.nFn ? e.nFn(G, X) : e.n || 0, kw: [] });
     else if ((e.k === 'destroyP' || e.k === 'exileP' || e.k === 'bounceP') && t && !(e.k === 'destroyP' && has(t, 'indestructible'))) gone.add(t);
     else if (e.k === 'dmgX' && t) { const n = e.nFn(G, X); if (!has(t, 'indestructible') && t.dmg + n >= tou(t)) gone.add(t); else pre.set(t, n); }
     else if (e.k === 'pumpTeam') (e.attacking ? allCreatures(G).filter((c) => c.attacking) : P.bf.filter(isCreature)).forEach((c) => pumpOn(c, e));
@@ -4306,7 +4554,7 @@ function aiTricks(G, P, role, attackers) {
         if (delta > 2.5 && (!best || delta > best.score)) best = { card, idx: -1, tgt: null, score: delta };
         continue;
       }
-      const idx = dd.spell.findIndex((e) => needsTarget(e) && ['pump', 'destroy', 'exile', 'bounce', 'dmg', 'tuck', 'pumpT', 'grant', 'destroyP', 'exileP', 'bounceP', 'dmgX'].includes(e.k));
+      const idx = dd.spell.findIndex((e) => needsTarget(e) && ['pump', 'destroy', 'exile', 'bounce', 'dmg', 'tuck', 'pumpT', 'grant', 'destroyP', 'exileP', 'bounceP', 'dmgX', 'prevent'].includes(e.k));
       const special = dd.spell.some((e) => e.k === 'pumpTeam' || e.k === 'edict');
       if (idx < 0 && !special) continue;
       if (idx >= 0 && dd.spell.some((e, k) => k !== idx && needsTarget(e))) continue; // one target only
@@ -4619,7 +4867,7 @@ function ask(G, req) {
   req.turn = G.turn; req.active = G.active; req.phase = G.phase; req.qi = G.qi;
   throw new NeedInput(req);
 }
-const costText = (c) => `${c.g ? `{${c.g}}` : ''}${'{C}'.repeat(c.C || 0)}${(c.hy || []).map((h) => `{${h[0]}/${h[1]}}`).join('')}${COLORS.map((k) => `{${k}}`.repeat(c[k] || 0)).join('')}` || '{0}';
+const costText = (c) => `${c.g ? `{${c.g}}` : ''}${'{C}'.repeat(c.C || 0)}${(c.hy || []).map((h) => `{${h[0]}/${h[1]}}`).join('')}${COLORS.map((k) => `{${k}}`.repeat(c[k] || 0)).join('')}${(c.phy || []).map((k) => `{${k}/P}`).join('')}` || '{0}';
 // Pick cards from a pool; answers that are short or stale are topped up the same way every replay.
 function pickCards(G, req, pool, n) {
   req.defs = Object.fromEntries(pool.map((c) => [c.id, c.def.id]));
@@ -4770,9 +5018,13 @@ function targetSpec(G, P, e, k, source, X) {
   if (e.k === 'dmg' && e.to === 'any') cands.push(...G.players.filter((Q) => !Q.lost && !hexP(G, Q, P)).map((Q) => `p${Q.i}`));
   return cands.length ? { k, cands, may: !!e.may, label: specLabel(e) } : null;
 }
-const canAttackNow = (G, c) => isCreature(c) && !c.tapped && (!c.sick || has(c, 'haste')) && !has(c, 'defender') && !(c.sfl && c.sfl.cantAttack) && !(c.tf && c.tf.cantAttack) && !(has(c, 'flying') && G.players.some((Q) => Q.i !== c.ctrl && Q.bf.some((x) => x.def.noFlyers)));
+const canAttackNow = (G, c) => isCreature(c) && !c.tapped && (!c.sick || has(c, 'haste')) && (!has(c, 'defender') || !!(c.sfl && c.sfl.attackAnyway)) && !(c.sfl && c.sfl.cantAttack) && !(c.tf && c.tf.cantAttack) && !(has(c, 'flying') && G.players.some((Q) => Q.i !== c.ctrl && Q.bf.some((x) => x.def.noFlyers)))
+  && (!c.def.attackIf || c.def.attackIf(G, c)) && !G.players.some((Q) => Q.bf.some((x) => x.def.attackBan && x.def.attackBan(G, x, c)));
+// Stormtide Leviathan: every land is an Island too
+const allIslands = (G) => G.players.some((Q) => Q.bf.some((x) => x.def.allIslands));
+const isIsland = (G, c) => isLand(c) && (c.def.sub.includes('Island') || allIslands(G));
 const mustAttackNow = (G, c) => !!(c.goad && c.goad >= G.turn);
-const mustBeBlocked = (G, a) => !!(a.tf && a.tf.lure) || (!!a.def.lureBearer && G.players[a.ctrl].ring.bearer === a.id);
+const mustBeBlocked = (G, a) => !!(a.tf && a.tf.lure) || !!(a.tf && a.tf.lureAll) || !!a.def.lureAll || !!(a.sfl && a.sfl.lureAll) || (!!a.def.lureBearer && G.players[a.ctrl].ring.bearer === a.id);
 const attackCandidates = (G, P) => P.bf.filter((c) => canAttackNow(G, c));
 // Everything a human could do right now, with the legal targets for each choice.
 function humanActions(G, P, when) {
@@ -4816,8 +5068,8 @@ function humanActions(G, P, when) {
       const list = d.aura ? [{ k: 'aura', f: d.aura.f || {} }] : perm ? d.etb : spellEffects(d, mode);
       list.forEach((e, k) => {
         if (e.k === 'aura') {
-          const cands = allCreatures(G).filter((x) => targetOk(G, P, e.f, x, c)).map((x) => x.id);
-          if (cands.length) specs.push({ k, cands, label: `Choose a creature for ${d.name}` }); else ok = false;
+          const cands = auraCands(G, d).filter((x) => auraOk(G, P, d, x, c)).map((x) => x.id);
+          if (cands.length) specs.push({ k, cands, label: `Choose ${auraNoun(d)} for ${d.name}` }); else ok = false;
           return;
         }
         if (!needsTarget(e) || e.k === 'divided') return; // split damage is planned automatically
@@ -4899,6 +5151,7 @@ function humanActions(G, P, when) {
     const k = ab.cost;
     const parts = [];
     if (costMV(cost) || cost.x) parts.push(costText(cost) + (ab.cost.m && ab.cost.m.x ? '{X}'.repeat(ab.cost.m.x) : ''));
+    if (k.loy != null) parts.push(k.loy > 0 ? `+${k.loy}` : k.loy < 0 ? `−${-k.loy}` : '0');
     if (k.tap) parts.push('Tap');
     if (k.sacSelf) parts.push('sacrifice it');
     if (k.sac && k.sac.label) parts.push(`sacrifice ${k.sac.label}`);
@@ -4961,7 +5214,8 @@ function applyAction(G, P, a) {
       const d = toCast.def;
       const mode = extra ? extra.split('.').map(Number) : null;
       let x = 0;
-      if (d.cost.x) { const purpose = { def: d }; x = chooseNumber(G, P, toCast, `${d.name}: choose X`, d.minX || 0, Math.max(d.minX || 0, maxX(G, P, toCast, purpose)), 0); }
+      if (d.cost.x && d.xFromTarget) x = d.xFromTarget(t0);
+      else if (d.cost.x) { const purpose = { def: d }; x = chooseNumber(G, P, toCast, `${d.name}: choose X`, d.minX || 0, Math.max(d.minX || 0, maxX(G, P, toCast, purpose)), 0); }
       if (d.aura) castSpell(G, P, toCast, [t0[0] || null], null, { x });
       else if (isPermanentSpell(d)) castSpell(G, P, toCast, [], d.etb.map((e, k) => fromRef(G, (a.etb || [])[k])), { x });
       else castSpell(G, P, toCast, spellEffects(d, mode).map((e, k) => (e.k === 'divided' ? { plan: dividePlan(G, P, e, toCast).plan } : t0[k] || null)), null, { x, mode });
@@ -5051,7 +5305,7 @@ function humanAttackers(G, A) {
 // Declare Dominance: every creature able to block a lured attacker blocks it, leaving any other block it chose
 function forcedBlocks(G, D, attackers, map) {
   for (const a of attackers) {
-    if (!(a.tf && a.tf.lureAll)) continue;
+    if (!((a.tf && a.tf.lureAll) || a.def.lureAll || (a.sfl && a.sfl.lureAll))) continue;
     const able = D.bf.filter((b) => canBlock(G, b, a));
     if (!able.length) continue;
     for (const [aid, bs] of [...map]) { const rest = bs.filter((b) => !able.includes(b)); if (aid === a.id) continue; if (rest.length) map.set(aid, rest); else map.delete(aid); }
@@ -5064,13 +5318,13 @@ function humanBlocks(G, D, A, attackers) {
     minBlockers(a) > 2 ? { need: minBlockers(a) } : null, (a.tf && a.tf.maxOne) || a.def.maxOne ? { max: 1 } : null, mustBeBlocked(G, a) ? { lure: true } : null)).filter((o) => o.by.length);
   const map = new Map();
   if (!opts.length) return map;
-  const ans = ask(G, { type: 'block', attackers: opts, twice: blockers.filter((b) => b.def.blockTwo).map((b) => b.id) });
+  const ans = ask(G, { type: 'block', attackers: opts, twice: blockers.filter((b) => b.def.blockTwo).map((b) => b.id), any: blockers.filter((b) => b.def.blockAny).map((b) => b.id) });
   const used = new Set();
   const twice = new Set();
   for (const [aid, bids] of ans.blocks || []) {
     const a = attackers.find((x) => x.id === aid);
     if (!a || map.has(aid)) continue;
-    let bs = (bids || []).map((id) => blockers.find((b) => b.id === id)).filter((b, k, arr) => b && arr.indexOf(b) === k && (!used.has(b) || (b.def.blockTwo && !twice.has(b))) && canBlock(G, b, a));
+    let bs = (bids || []).map((id) => blockers.find((b) => b.id === id)).filter((b, k, arr) => b && arr.indexOf(b) === k && (!used.has(b) || reBlock(b, twice)) && canBlock(G, b, a));
     if ((a.tf && a.tf.maxOne) || a.def.maxOne) bs = bs.slice(0, 1);
     if (!bs.length || bs.length < minBlockers(a)) continue;
     map.set(aid, bs);
@@ -5527,6 +5781,6 @@ return {
     targetList, allTargets, findCard, protectedFrom, historicDef, isPermanentSpell, spellEffects, effsValue, effectValue, castZone, aiScry, pickBasicFrom, putInGraveyard, defMatches, lethalTo,
     canBlock, kills, dmgOut, combatPow, minBlockers, phaseIn, ctrlOf, onBfC: onBf, equipGain, uniqueByName, discardWorst, emptyPool, refFor, tgtOk, castCost, maxX,
     EFF, abilitiesOf, readyAbilities, activate, aiAbilities, parseEffects, parseKwLine, parseStructural, parseStatic, parseActivated, normalizeText,
-    surveil, transform, blink, meld, castAdventure, addEmblem, castNow, evalCast, modeChoices, auraHost, abilityCost, sneakWindow, teamworkPay, discardsThisTurn, noteDiscard, finishCountered, enteredThisTurn, attackedThisTurn, investigate, connive, shieldSave, CLUE, altFace, reduceCost, twPick, twPower, hexP, landChoices, landLimit, gyPermit, acOf, addCostInto, facesOf, sagaFinal, dmgMod, isInstantSpeed, playLandChoice },
+    surveil, transform, blink, meld, castAdventure, addEmblem, castNow, evalCast, modeChoices, auraHost, auraOk, shieldFor, combatDoom, preventVal, redirectDmg, redirectFor, allIslands, isIsland, regenSave, abilityCost, sneakWindow, teamworkPay, discardsThisTurn, noteDiscard, finishCountered, enteredThisTurn, attackedThisTurn, investigate, connive, shieldSave, CLUE, altFace, reduceCost, twPick, twPower, hexP, landChoices, landLimit, gyPermit, acOf, addCostInto, facesOf, sagaFinal, dmgMod, isInstantSpeed, playLandChoice },
 };
 });

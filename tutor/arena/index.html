@@ -1266,17 +1266,19 @@ svg.i .fill { fill: currentColor; }
 <div class="insp" id="insp" role="dialog" aria-modal="true" aria-labelledby="inspName" hidden></div>
 <div class="sheet" id="sheet" hidden></div>
 
-<script src="engine.js?v=12"></script>
+<script src="engine.js?v=13"></script>
 <script src="ltr.js?v=1"></script>
 <script src="fin.js?v=1"></script>
 <script src="msh.js?v=2"></script>
 <script src="mshjmp.js?v=1"></script>
 <script src="precon.js?v=1"></script>
+<script src="core.js?v=1"></script>
+<script src="classic.js?v=1"></script>
 <script src="decks.js?v=3"></script>
 <script src="commanders.js?v=3"></script>
 <script src="sets.js?v=4"></script>
 <script src="tutorial.js?v=4"></script>
-<script src="glossary.js?v=3"></script>
+<script src="glossary.js?v=4"></script>
 <script src="career.js?v=1"></script>
 <script src="journal.js?v=1"></script>
 <script>
@@ -1384,7 +1386,7 @@ const ARCH_LABEL = { aggro: 'Aggro', midrange: 'Midrange', control: 'Control' };
 const COLOR_NAME = { W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green' };
 const COLOR_VAR = { W: 'var(--w)', U: 'var(--u)', B: 'var(--b)', R: 'var(--r)', G: 'var(--g)' };
 async function loadData() {
-  const res = await fetch('cards.json?v=5');
+  const res = await fetch('cards.json?v=6');
   if (!res.ok) throw new Error(`cards.json: HTTP ${res.status}`);
   const j = await res.json();
   // Double-faced, adventurer and meld cards carry their other faces: { b: back, a: adventure, m: melded card, mdfc: either face can be cast }
@@ -1558,7 +1560,7 @@ let READY = false;
 const OFF = { decks: [], byId: new Map(), cards: {}, err: false };
 async function loadOfficial() {
   try {
-    const res = await fetch('official.json?v=2');
+    const res = await fetch('official.json?v=3');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const j = await res.json();
     OFF.decks = j.decks || [];
@@ -3681,9 +3683,10 @@ function handleBlockTap(id) {
     if (isAttacker && PL.sel != null && !want.some(([aid, bs]) => aid === id && bs.includes(PL.sel))) { nudge('Block the glowing attacker.'); return true; }
   }
   if (canBlockIt) {
-    // A creature that can block an additional creature (Ghastbark Twins) is picked up again for its second block
+    // A creature that can block an additional creature (Ghastbark Twins) or any number of them (Palace Guard) is picked up again for its next block
     const already = [...PL.blocks].filter(([, bs]) => bs.includes(id)).map(([aid]) => aid);
-    if ((r.twice || []).includes(id) && already.length === 1 && PL.sel !== id && r.attackers.some((o) => o.id !== already[0] && o.by.includes(id))) { PL.sel = id; renderPlaybar(); decorate(); return true; }
+    const more = (r.any || []).includes(id) ? already.length >= 1 : (r.twice || []).includes(id) && already.length === 1;
+    if (more && PL.sel !== id && r.attackers.some((o) => !already.includes(o.id) && o.by.includes(id))) { PL.sel = id; renderPlaybar(); decorate(); return true; }
     for (const [aid, bs] of PL.blocks) {
       if (!bs.includes(id)) continue;
       const left = bs.filter((b) => b !== id);
@@ -3891,10 +3894,12 @@ function openChoice(req) {
     acts = '<button type="button" class="pill pill-solid" data-sh="confirm"></button>';
   } else if (req.type === 'counter') {
     ids = [req.spell];
-    const counterOnly = req.options.every((id) => { const d = defOf(defs[id]); return !d.respond || d.respond.counter; });
+    // Answers from the hand are cast; answers on the battlefield (Spiketail Hatchling, a regenerating Troll) are activated
+    const counterOnly = req.options.every((id) => { const d = defOf(defs[id]); return d.respondAb ? d.respondAb.counter !== false : !d.respond || d.respond.counter; });
     title = `${counterOnly ? 'Counter' : 'Respond to'} ${defOf(defs[req.spell]).name}?`;
     sub = `${W.decks[1].name} is casting it.`;
-    acts = `<button type="button" class="pill" data-sh="let">Let it resolve</button>` + req.options.map((id) => `<button type="button" class="pill pill-solid" data-sh="counter" data-id="${id}">${esc(defOf(defs[id]).name)} ${manaHTML(defOf(defs[id]).manaCost)}</button>`).join('');
+    const answer = (id) => { const d = defOf(defs[id]); return d.respondAb ? `${esc(d.name)}${d.respondAb.label ? `: ${esc(d.respondAb.label)}` : ''} ${manaHTML(Arena.costText(d.respondAb.cost).replace(/^\{0\}$/, ''))}` : `${esc(d.name)} ${manaHTML(d.manaCost)}`; };
+    acts = `<button type="button" class="pill" data-sh="let">Let it resolve</button>` + req.options.map((id) => `<button type="button" class="pill pill-solid" data-sh="counter" data-id="${id}">${answer(id)}</button>`).join('');
   } else {
     ids = req.cards;
     selectable = true;
