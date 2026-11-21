@@ -509,6 +509,27 @@ main { min-width: 0; padding: 22px 0 40px; outline: none; }
 .f-text p.mode { padding-left: 1.05em; text-indent: -1.05em; }
 .f-text .rem { color: var(--muted); }
 .f-text .sym { width: .92em; height: .92em; vertical-align: -.1em; }
+.kwt { -webkit-appearance: none; appearance: none; display: inline; padding: 0; margin: 0; border: 0; border-radius: 3px; background: none; font: inherit; color: inherit; line-height: inherit; text-align: inherit; cursor: help;
+  text-decoration: underline dotted color-mix(in srgb, var(--m) 75%, transparent); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+.kwt:hover { text-decoration-color: var(--m); }
+.kwt:focus-visible { outline: 2px solid var(--text); outline-offset: 1px; }
+.d-gloss dl { margin: 0; max-width: 62ch; }
+.d-gloss .gl { margin: 0 -12px; padding: 9px 12px; border-radius: 10px; scroll-margin: 100px 0; }
+.d-gloss .gl + .gl { border-top: 1px solid var(--line); }
+.d-gloss dt { font: 700 16px/1.3 var(--sans); color: var(--text); }
+.d-gloss dd { margin: 3px 0 0; font-size: 16px; line-height: 1.5; color: var(--muted); }
+.d-gloss dd .sym { width: .92em; height: .92em; vertical-align: -.1em; }
+.d-gloss .gl.hit { animation: glhit 1.6s var(--ease); }
+@keyframes glhit { 0%, 35% { background: color-mix(in srgb, var(--m) 22%, transparent); } 100% { background: transparent; } }
+.d-gloss dl + .gl-more { border-top: 1px solid var(--line); margin-top: 2px; }
+.gl-more summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 8px; padding: 11px 0; font: 600 15px/1.3 var(--sans); color: var(--muted); max-width: 62ch; }
+.gl-more summary::-webkit-details-marker { display: none; }
+.gl-more summary::before { content: ""; flex: none; width: 7px; height: 7px; border: solid currentColor; border-width: 0 1.7px 1.7px 0; rotate: -45deg; translate: 0 -1px; transition: rotate .2s; }
+.gl-more[open] summary::before { rotate: 45deg; translate: 0 -3px; }
+.gl-more summary:hover { color: var(--text); }
+.gl-more summary span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; color: var(--faint); }
+.gl-more[open] summary span { display: none; }
+.gl-more .gl:first-child { border-top: 1px solid var(--line); }
 .f-flavor { margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--line); max-width: 54ch; }
 .f-flavor p { margin: 0 0 .4em; font: italic 400 17.5px/1.5 var(--serif); color: var(--muted); }
 .f-stats { margin: 16px 0 0; }
@@ -774,6 +795,7 @@ main { min-width: 0; padding: 22px 0 40px; outline: none; }
 <div class="sr-only" id="announce" aria-live="polite"></div>
 <noscript><p style="position:relative;z-index:2;padding:24px">Tutor needs JavaScript to search cards.</p></noscript>
 
+<script src="arena/glossary.js?v=2"></script>
 <script>
 (() => {
 'use strict';
@@ -970,20 +992,40 @@ function sym(code, cls = 'sym', alt) {
 const manaHTML = (cost) => (cost ? esc(cost).replace(/\{[^}]+\}/g, (m) => sym(m)) : '');
 
 // Oracle text: ability words in italics, reminder text muted and italic, symbols inline.
-function lineHTML(line) {
+// With `gl` ({ found, used } from the glossary) each explained term is marked once, outside reminder text
+function lineHTML(line, gl) {
+  const mark = (h) => (gl ? Gloss.mark(h, gl.found, gl.used) : h);
   let lead = '';
   const m = /^([A-Z][a-z’'-]+(?: [a-z’'-]+){0,3}) — /.exec(line);
   if (m && !/^(Choose|Level)\b/.test(m[1])) {
-    lead = `<i class="aw">${esc(m[1])}</i> — `;
+    lead = `<i class="aw">${mark(esc(m[1]))}</i> — `;
     line = line.slice(m[0].length);
   }
-  return lead + esc(line)
-    .replace(/\(([^()]*)\)/g, '<i class="rem">($1)</i>')
+  return lead + esc(line).split(/(\([^()]*\))/).map((part, k) => (k % 2 ? `<i class="rem">${part}</i>` : mark(part))).join('')
     .replace(/\{[^}]+\}/g, (s) => sym(s));
 }
-function textHTML(text) {
+function textHTML(text, gl) {
   if (!text) return '';
-  return text.split('\n').filter((l) => l.trim()).map((l) => `<p${l.startsWith('•') ? ' class="mode"' : ''}>${lineHTML(l)}</p>`).join('');
+  return text.split('\n').filter((l) => l.trim()).map((l) => `<p${l.startsWith('•') ? ' class="mode"' : ''}>${lineHTML(l, gl)}</p>`).join('');
+}
+// What the keywords on a card mean, under its text; basic game words wait behind "More terms"
+function glossHTML(found) {
+  if (!found.length) return '';
+  const main = found.filter((t) => !t.more), more = found.filter((t) => t.more);
+  const row = (t) => `<div class="gl" data-gl="${esc(t.id)}"><dt>${esc(t.k)}</dt><dd>${esc(t.d).replace(/\{[^}]+\}/g, (s) => sym(s))}</dd></div>`;
+  return `<section class="d-sec d-gloss">${main.length ? `<h3>${main.length > 1 ? 'Keywords' : 'Keyword'}</h3><dl>${main.map(row).join('')}</dl>` : ''}`
+    + `${more.length ? `<details class="gl-more"><summary>${main.length ? 'More terms' : 'Terms'} on this card <span>${more.map((t) => esc(t.k)).join(', ')}</span></summary><dl>${more.map(row).join('')}</dl></details>` : ''}</section>`;
+}
+// A tapped term: open its meaning and point at it
+function showGloss(id) {
+  const row = $(`.gl[data-gl="${CSS.escape(id)}"]`, E.details);
+  if (!row) return;
+  const det = row.closest('details');
+  if (det) det.open = true;
+  row.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  row.classList.remove('hit');
+  void row.offsetWidth;
+  row.classList.add('hit');
 }
 const flavorHTML = (text) => (text ? text.split('\n').filter((l) => l.trim()).map((l) => `<p>${esc(l)}</p>`).join('') : '');
 
@@ -2228,12 +2270,12 @@ function bindTilt() {
 }
 
 /* ---------- Details ---------- */
-function faceHTML(f, multi, i, sides) {
+function faceHTML(f, multi, i, sides, gl) {
   const stats = f.power != null ? `${f.power}/${f.toughness}` : f.loyalty != null ? `Loyalty ${f.loyalty}` : f.defense != null ? `Defense ${f.defense}` : '';
   return `<section class="d-face${multi ? ' is-multi' : ''}${sides && i === Insp.face ? ' is-current' : ''}" data-face="${i}">
     ${multi ? `${sides ? `<span class="f-side">${i === 0 ? 'Front' : 'Back'}</span>` : ''}<h3 class="f-name"><span>${esc(f.name)}</span><span class="f-cost">${manaHTML(f.mana_cost)}</span></h3>` : ''}
     <p class="f-type">${esc(f.type_line || '')}</p>
-    ${f.oracle_text ? `<div class="f-text">${textHTML(f.oracle_text)}</div>` : ''}
+    ${f.oracle_text ? `<div class="f-text">${textHTML(f.oracle_text, gl)}</div>` : ''}
     ${f.flavor_text ? `<div class="f-flavor">${flavorHTML(f.flavor_text)}</div>` : ''}
     ${stats ? `<p class="f-stats"><span>${esc(stats)}</span></p>` : ''}
   </section>`;
@@ -2306,7 +2348,10 @@ function renderDetails() {
     E.details.innerHTML = parts.join('');
     return;
   }
-  fs.forEach((f, i) => parts.push(faceHTML(f, multi, i, sides)));
+  const found = window.Gloss ? Gloss.find(fs.map((f) => f.oracle_text || '').join('\n'), fs.map((f) => f.type_line || '').join(' '), (c.keywords || []).map((k) => k.toLowerCase()), fs.map((f) => f.name).concat(c.name)) : [];
+  const gl = found.length ? { found, used: new Set() } : null;
+  fs.forEach((f, i) => parts.push(faceHTML(f, multi, i, sides, gl)));
+  parts.push(glossHTML(found));
   parts.push(metaHTML(c), marketsHTML(c), legalHTML(c));
   parts.push(`<section class="d-sec" id="d-prints"><h3>Printings</h3><div class="prints"><span class="faint">Loading printings…</span></div></section>`);
   parts.push(relatedHTML(c));
@@ -2388,6 +2433,8 @@ function jumpTo(q) {
 function bindInspector() {
   E.insp.addEventListener('click', (e) => {
     const t = e.target;
+    const kt = t.closest('.kwt');
+    if (kt) { showGloss(kt.dataset.gl); return; }
     // On wide screens a click on the empty space around the card closes it, like a lightbox.
     if (!narrow.matches && (t === E.inspBody || t === E.stage || t === E.inspFrame)) { closeInspector(); return; }
     const b = t.closest('[data-act]');

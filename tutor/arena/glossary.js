@@ -55,6 +55,71 @@
     { id: 'transform', k: 'Transform', re: /\btransform(?:s|ed)?\b/i, d: 'Turn this double-faced card over to its other face.' },
     { id: 'stun', k: 'Stun counter', re: /\bstun counters?\b/i, d: 'If a permanent with a stun counter would untap, remove a stun counter from it instead.' },
     { id: 'commander', k: 'Commander', re: /\bcommanders?\b/i, d: 'The legendary creature leading a Commander deck. It starts in the command zone and can be cast from there; each cast after the first costs {2} more (commander tax). If it would go to the graveyard or exile, its owner can put it back in the command zone. A player dealt 21 combat damage by the same commander loses.' },
+    // More keywords from across Magic, for the card browser
+    { id: 'cascade', k: 'Cascade', re: /\bcascade\b/i, d: 'When you cast it, exile cards from the top of your library until you hit a nonland card that costs less. You may cast that card for free; the rest go to the bottom in a random order.' },
+    { id: 'storm', k: 'Storm', re: /\bStorm\b(?! Crow)/, d: 'When you cast it, copy it once for each other spell cast before it this turn.' },
+    { id: 'delve', k: 'Delve', re: /\bdelve\b/i, d: 'Each card you exile from your graveyard while casting it pays for {1}.' },
+    { id: 'dredge', k: 'Dredge', re: /\bdredge\b/i, d: 'If you would draw a card, you can instead mill that many cards and return this card from your graveyard to your hand.' },
+    { id: 'madness', k: 'Madness', re: /\bmadness\b/i, d: 'If you discard it, you can cast it right away for its madness cost.' },
+    { id: 'morph', k: 'Morph', re: /\b(?:mega)?morph\b/i, d: 'You can cast it face down as a nameless 2/2 creature for {3}, then turn it face up any time by paying its morph cost. Megamorph adds a +1/+1 counter when it turns up.' },
+    { id: 'manifest', k: 'Manifest', re: /\bmanifest(?:s|ed)?\b/i, d: 'Put the top card of your library onto the battlefield face down as a 2/2 creature. If it’s a creature card, you can turn it face up for its mana cost.' },
+    { id: 'persist', k: 'Persist', re: /\bpersist\b/i, d: 'When it dies, if it had no −1/−1 counters, it comes back with a −1/−1 counter.' },
+    { id: 'undying', k: 'Undying', re: /\bundying\b/i, d: 'When it dies, if it had no +1/+1 counters, it comes back with a +1/+1 counter.' },
+    { id: 'evolve', k: 'Evolve', re: /\bevolves?\b/i, d: 'Whenever a creature with greater power or toughness comes into play under your control, put a +1/+1 counter on this one.' },
+    { id: 'exalted', k: 'Exalted', re: /\bexalted\b/i, d: 'Whenever a creature you control attacks alone, it gets +1/+1 until end of turn for each instance of exalted you have.' },
+    { id: 'rebound', k: 'Rebound', re: /\brebound\b/i, d: 'If you cast it from your hand, it’s exiled as it resolves, and you can cast it again for free at the start of your next turn.' },
+    { id: 'suspend', k: 'Suspend', re: /\bsuspend(?:ed)?\b/i, d: 'Instead of casting it, pay the suspend cost and exile it with that many time counters. One comes off at the start of each of your turns; when the last one does, you cast it for free.' },
+    { id: 'annihilator', k: 'Annihilator', re: /\bannihilator\b/i, d: 'Whenever it attacks, the defending player sacrifices that many permanents.' },
+    { id: 'infect', k: 'Infect', re: /\binfect\b/i, d: 'It deals damage to creatures as −1/−1 counters and to players as poison counters.' },
+    { id: 'toxic', k: 'Toxic', re: /\btoxic\b/i, d: 'A player it deals combat damage to also gets that many poison counters.' },
+    { id: 'poison', k: 'Poison counters', re: /\bpoison counters?\b/i, d: 'A player with ten or more poison counters loses the game.' },
+    { id: 'proliferate', k: 'Proliferate', re: /\bproliferate\b/i, d: 'Choose any number of permanents and players that have counters, then give each one more of each kind it already has.' },
+    { id: 'populate', k: 'Populate', re: /\bpopulate\b/i, d: 'Create a copy of a creature token you control.' },
+    { id: 'explore', k: 'Explore', re: /\bexplores?\b/i, d: 'Reveal the top card of your library. If it’s a land, put it into your hand. If not, put a +1/+1 counter on this creature, and you can put the card into your graveyard.' },
+    { id: 'investigate', k: 'Investigate', re: /\binvestigates?\b/i, d: 'Create a Clue token: an artifact you can pay {2} and sacrifice to draw a card.' },
+    { id: 'adapt', k: 'Adapt', re: /\badapts?\b/i, d: 'If it has no +1/+1 counters, put that many +1/+1 counters on it.' },
+    { id: 'monstrosity', k: 'Monstrosity', re: /\bmonstrosity\b|\bmonstrous\b/i, d: 'If it isn’t monstrous yet, put that many +1/+1 counters on it and it becomes monstrous.' },
+    { id: 'mentor', k: 'Mentor', re: /\bmentor\b/i, d: 'Whenever it attacks, put a +1/+1 counter on another attacking creature with less power.' },
+    { id: 'training', k: 'Training', re: /\btraining\b|\btrains\b/i, d: 'Whenever it attacks alongside a creature with greater power, put a +1/+1 counter on it.' },
+    { id: 'riot', k: 'Riot', re: /\briot\b/i, d: 'It comes into play with your choice of a +1/+1 counter or haste.' },
+    { id: 'spectacle', k: 'Spectacle', re: /\bspectacle\b/i, d: 'You can cast it for its spectacle cost if an opponent lost life this turn.' },
+    { id: 'escape', k: 'Escape', re: /\bescapes?\b/i, d: 'You can cast it from your graveyard for its escape cost, which includes exiling other cards from your graveyard.' },
+    { id: 'unearth', k: 'Unearth', re: /\bunearth\b/i, d: 'Pay its unearth cost to return it from your graveyard to the battlefield with haste. It’s exiled at the end of the turn.' },
+    { id: 'mutate', k: 'Mutate', re: /\bmutat(?:e|es|ed|ing)\b/i, d: 'Cast it for its mutate cost onto a non-Human creature you own; the two merge into one creature with the top card’s name and stats and the abilities of both.' },
+    { id: 'foretell', k: 'Foretell', re: /\bforetold\b|\bforetell\b/i, d: 'During your turn, you can pay {2} to exile it face down. On a later turn, cast it for its foretell cost.' },
+    { id: 'disturb', k: 'Disturb', re: /\bdisturb\b/i, d: 'You can cast it from your graveyard, transformed to its back face, for its disturb cost.' },
+    { id: 'blitz', k: 'Blitz', re: /\bblitz\b/i, d: 'Cast it for its blitz cost and it gets haste and “when this dies, draw a card,” but you sacrifice it at the end of the turn.' },
+    { id: 'casualty', k: 'Casualty', re: /\bcasualty\b/i, d: 'As you cast it, you can sacrifice a creature with at least that much power to copy the spell.' },
+    { id: 'backup', k: 'Backup', re: /\bbackup\b/i, d: 'When it comes into play, put that many +1/+1 counters on a creature. If that’s another creature, it also gets this one’s other abilities until end of turn.' },
+    { id: 'bargain', k: 'Bargain', re: /\bbargain(?:ed)?\b/i, d: 'As you cast it, you can sacrifice an artifact, enchantment or token for an extra effect.' },
+    { id: 'discover', k: 'Discover', re: /\bdiscover\b/i, d: 'Exile cards from the top of your library until you hit a nonland card with that mana value or less. Cast it for free or put it into your hand; the rest go to the bottom.' },
+    { id: 'offspring', k: 'Offspring', re: /\boffspring\b/i, d: 'You can pay the offspring cost as you cast it. If you do, a 1/1 token copy of it comes along when it comes into play.' },
+    { id: 'plot', k: 'Plot', re: /\bplot(?:ted)?\b/i, d: 'Pay the plot cost to exile it from your hand. On a later turn you can cast it for free, at the speed of a sorcery.' },
+    { id: 'saddle', k: 'Saddle', re: /\bsaddled?\b/i, d: 'Tap your other creatures with that much total power: this Mount becomes saddled until end of turn. Only when you could cast a sorcery.' },
+    { id: 'gift', k: 'Gift', re: /\bgift\b/i, d: 'As you cast it, you can promise an opponent a gift. If you do, they get the gift and the spell does something extra.' },
+    { id: 'exhaust', k: 'Exhaust', re: /\bexhaust\b/i, d: 'An ability you can use only once.' },
+    { id: 'echo', k: 'Echo', re: /\becho\b/i, d: 'At the start of your next turn after it comes into play, sacrifice it unless you pay its echo cost.' },
+    { id: 'ninjutsu', k: 'Ninjutsu', re: /\bninjutsu\b/i, d: 'Return one of your unblocked attackers to your hand to put this card from your hand into play tapped and attacking.' },
+    { id: 'bushido', k: 'Bushido', re: /\bbushido\b/i, d: 'Whenever it blocks or becomes blocked, it gets +N/+N until end of turn.' },
+    { id: 'bloodthirst', k: 'Bloodthirst', re: /\bbloodthirst\b/i, d: 'If an opponent was dealt damage this turn, it comes into play with that many +1/+1 counters.' },
+    { id: 'emerge', k: 'Emerge', re: /\bemerge\b/i, d: 'You can cast it by sacrificing a creature and paying the emerge cost, reduced by that creature’s mana value.' },
+    { id: 'bestow', k: 'Bestow', re: /\bbestow(?:ed)?\b/i, d: 'You can cast it as an Aura on a creature for its bestow cost. If that creature leaves, it becomes a creature again.' },
+    { id: 'afterlife', k: 'Afterlife', re: /\bafterlife\b/i, d: 'When it dies, create that many 1/1 white and black Spirit tokens with flying.' },
+    { id: 'fabricate', k: 'Fabricate', re: /\bfabricate\b/i, d: 'When it comes into play, put that many +1/+1 counters on it, or create that many 1/1 Servo artifact creature tokens.' },
+    { id: 'embalm', k: 'Embalm', re: /\bembalm\b|\beternalize\b/i, d: 'Exile it from your graveyard and pay the cost to create a token copy of it (a white Zombie for embalm, a 4/4 black Zombie for eternalize). Only as a sorcery.' },
+    { id: 'entwine', k: 'Entwine', re: /\bentwine\b/i, d: 'Pay the entwine cost to get all of its modes instead of one.' },
+    { id: 'overload', k: 'Overload', re: /\boverload(?:ed)?\b/i, d: 'Cast it for its overload cost and every “target” in its text becomes “each”.' },
+    { id: 'buyback', k: 'Buyback', re: /\bbuyback\b/i, d: 'Pay the buyback cost as you cast it and it returns to your hand instead of the graveyard.' },
+    { id: 'jump-start', k: 'Jump-start', re: /\bjump-start\b/i, d: 'You can cast it from your graveyard by also discarding a card. Then it’s exiled.' },
+    { id: 'regenerate', k: 'Regenerate', re: /\bregenerat(?:e|es|ed)\b/i, d: 'The next time it would be destroyed this turn, instead tap it, remove all damage from it and take it out of combat.' },
+    { id: 'changeling', k: 'Changeling', re: /\bchangeling\b/i, d: 'It has every creature type.' },
+    { id: 'devoid', k: 'Devoid', re: /\bdevoid\b/i, d: 'It’s colorless, whatever its mana cost.' },
+    { id: 'split second', k: 'Split second', re: /\bsplit second\b/i, d: 'While it’s being cast, nobody can cast spells or use abilities, apart from mana abilities.' },
+    { id: 'partner', k: 'Partner', re: /\bpartner\b/i, d: 'Two commanders with partner can lead a Commander deck together.' },
+    { id: 'monarch', k: 'Monarch', re: /\bmonarch\b/i, d: 'The monarch draws an extra card at the end of their turn. Deal combat damage to the monarch to become the monarch yourself.' },
+    { id: 'incubate', k: 'Incubate', re: /\bincubate\b/i, d: 'Create an Incubator artifact token with that many +1/+1 counters. Pay {2} to turn it into a 0/0 Phyrexian artifact creature.' },
+    { id: 'blood', k: 'Blood', re: /\bBlood token\b/, d: 'An artifact token. {1}, {T}, discard a card, sacrifice it: draw a card.' },
+    { id: 'map', k: 'Map', re: /\bMap tokens?\b/, d: 'An artifact token. {1}, {T}, sacrifice it: target creature you control explores.' },
     // Game words, explained when asked
     { id: 'exile', k: 'Exile', re: /\bexiled?\b|\bexiles\b/i, more: true, d: 'Removed from the game and set aside. Unlike the graveyard, nothing comes back from exile unless a card says so.' },
     { id: 'sacrifice', k: 'Sacrifice', re: /\bsacrific(?:e|es|ed)\b/i, more: true, d: 'Put a permanent you control into its owner’s graveyard. Indestructible doesn’t stop it, and it can’t be answered.' },
@@ -75,11 +140,11 @@
   ];
   const byId = new Map(T.map((t) => [t.id, t]));
   const global = (re) => new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`);
-  // Terms in a card's text and type line, keywords it has (ids), in the order they appear; reminder text in
-  // parentheses and the card's own name don't count
-  function find(text, typeLine, extra, name) {
+  // Terms in a card's text and type line, plus keywords it has (ids), in the order they appear; reminder text in
+  // parentheses and the card's own name (or names, one per face) don't count
+  function find(text, typeLine, extra, names) {
     let src = `${typeLine || ''}\n${text || ''}`.replace(/\([^()]*\)/g, ' ');
-    if (name) src = src.split(name).join(' ');
+    for (const n of [].concat(names || [])) if (n) src = src.split(n).join(' ');
     const hits = [];
     for (const t of T) {
       const m = global(t.re).exec(src);

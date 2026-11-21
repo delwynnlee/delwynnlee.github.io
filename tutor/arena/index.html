@@ -1092,7 +1092,7 @@ svg.i .fill { fill: currentColor; }
 <script src="commanders.js?v=3"></script>
 <script src="sets.js?v=4"></script>
 <script src="tutorial.js?v=4"></script>
-<script src="glossary.js?v=1"></script>
+<script src="glossary.js?v=2"></script>
 <script>
 'use strict';
 /* ============================================================
@@ -3020,7 +3020,7 @@ function openInspector(el, actions) {
   }
   if (def.stub) stateLine = "The rules engine can't play this card yet, so decks with it are for browsing.";
   const faces = facesOf(def);
-  const found = window.Gloss ? Gloss.find(faces.map((f) => f.text || '').join('\n'), faces.map((f) => f.typeLine || '').join(' '), extra.concat(def.kw || []), def.name) : [];
+  const found = window.Gloss ? Gloss.find(faces.map((f) => f.text || '').join('\n'), faces.map((f) => f.typeLine || '').join(' '), extra.concat(def.kw || []), faces.map((f) => f.name)) : [];
   const gl = found.length ? { found, used: new Set() } : null;
   const big = makeCard(def, `insp-${id}`);
   big.disabled = true;
