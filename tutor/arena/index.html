@@ -336,10 +336,14 @@ svg.i .fill { fill: currentColor; }
 .board { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 8px 16px 6px; touch-action: manipulation; }
 .side { position: relative; isolation: isolate; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: 6px; padding: 6px 10px; border-radius: 18px; }
 .side::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
-  background: radial-gradient(80% 90% at 50% var(--glow-y, 0%), color-mix(in srgb, var(--pc, var(--c)) 9%, transparent), transparent 75%);
-  border: 1px solid color-mix(in srgb, var(--pc, var(--c)) 14%, transparent); }
-.side[data-p="0"] { flex-direction: column-reverse; --glow-y: 100%; }
-.side.active::before { border-color: color-mix(in srgb, var(--pc, var(--c)) 34%, transparent); }
+  background: linear-gradient(var(--wash, 180deg), color-mix(in srgb, var(--pc, var(--c)) 24%, transparent), color-mix(in srgb, var(--pc2, var(--pc, var(--c))) 10%, transparent) 55%, transparent 94%);
+  border: 1px solid color-mix(in srgb, var(--pc, var(--c)) 30%, transparent); transition: border-color .3s, box-shadow .3s; }
+.side[data-p="0"] { flex-direction: column-reverse; --wash: 0deg; }
+.side.active::before { border-color: color-mix(in srgb, var(--pc, var(--c)) 58%, transparent); box-shadow: inset 0 0 26px color-mix(in srgb, var(--pc, var(--c)) 13%, transparent); }
+/* The deck's own art, blurred and faded toward the middle of the table (its image arrives as this element's background) */
+.side-art { position: absolute; inset: 0; z-index: -2; border-radius: inherit; overflow: hidden; pointer-events: none; background-size: 0 0;
+  -webkit-mask-image: linear-gradient(var(--wash, 180deg), #000, rgba(0, 0, 0, .45) 50%, transparent 92%); mask-image: linear-gradient(var(--wash, 180deg), #000, rgba(0, 0, 0, .45) 50%, transparent 92%); }
+.side-art::before { content: ""; position: absolute; inset: -28px; background-image: inherit; background-position: center 28%; background-size: cover; background-repeat: no-repeat; filter: blur(16px) saturate(1.3); opacity: .44; }
 .side.active .pbar .nm::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--text); box-shadow: 0 0 10px rgba(236, 229, 216, .7); display: inline-block; margin-right: 8px; vertical-align: 2px; }
 .pbar { display: flex; align-items: center; gap: 14px; height: var(--pbar-h, 72px); flex: none; }
 .who { min-width: 0; flex: 0 1 auto; max-width: 30%; }
@@ -539,8 +543,8 @@ svg.i .fill { fill: currentColor; }
 /* Inspector */
 .insp { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 20px; }
 .insp-scrim { position: absolute; inset: 0; background: rgba(14, 12, 18, .72); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); animation: fadein .2s; }
-.insp-box { position: relative; display: grid; grid-template-columns: auto minmax(0, 340px); grid-template-rows: auto auto auto 1fr; column-gap: 24px; align-items: start; max-height: calc(100dvh - 40px); overflow: auto; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 20px; padding: 20px; box-shadow: 0 30px 90px rgba(0, 0, 0, .6); animation: rise .3s var(--ease); }
-.insp-pic { grid-row: 1 / span 4; }
+.insp-box { position: relative; display: grid; grid-template-columns: auto minmax(0, 340px); grid-template-rows: auto auto auto auto 1fr; column-gap: 24px; align-items: start; max-height: calc(100dvh - 40px); overflow: auto; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 20px; padding: 20px; box-shadow: 0 30px 90px rgba(0, 0, 0, .6); animation: rise .3s var(--ease); }
+.insp-pic { grid-row: 1 / span 5; }
 .insp-info, .insp-box > .state, .insp-box > .acts, .insp-box > .links { grid-column: 2; }
 .insp .card { --cardw: min(300px, 62vw); cursor: default; }
 .insp .card .face { box-shadow: 0 18px 40px rgba(0, 0, 0, .5); }
@@ -556,6 +560,29 @@ svg.i .fill { fill: currentColor; }
 @media (prefers-reduced-motion: reduce) { .card.turning .face { animation: none; } }
 .insp .otext p { margin: 0 0 7px; }
 .insp .otext .rem { color: var(--faint); }
+.kwt { -webkit-appearance: none; appearance: none; display: inline; padding: 0; margin: 0; border: 0; border-radius: 3px; background: none; font: inherit; color: inherit; line-height: inherit; text-align: inherit; cursor: help;
+  text-decoration: underline dotted color-mix(in srgb, var(--m) 75%, transparent); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+.kwt:hover { text-decoration-color: var(--m); }
+.kwt:focus-visible { outline: 2px solid var(--text); outline-offset: 1px; }
+.insp-box > .gloss { grid-column: 2; }
+.gloss { margin-top: 14px; padding: 0 14px; border-radius: 14px; background: var(--raised); border: 1px solid var(--line); }
+.gl-h { margin: 11px 0 1px; font: 600 11px/1.3 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.gloss dl { margin: 0; }
+.gl { margin: 0 -14px; padding: 8px 14px; scroll-margin: 90px 0; }
+.gl + .gl { border-top: 1px solid var(--line); }
+.gl dt { font: 700 15px/1.3 var(--sans); color: var(--text); }
+.gl dd { margin: 2px 0 0; font-size: 14.5px; line-height: 1.45; color: var(--muted); }
+.gl.hit { animation: glhit 1.6s var(--ease); }
+@keyframes glhit { 0%, 35% { background: color-mix(in srgb, var(--m) 22%, transparent); } 100% { background: transparent; } }
+.gl-more { margin: 0 -14px; padding: 0 14px; }
+.gloss dl + .gl-more { border-top: 1px solid var(--line); }
+.gl-more summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 8px; padding: 11px 0; font: 600 14px/1.3 var(--sans); color: var(--muted); }
+.gl-more summary::-webkit-details-marker { display: none; }
+.gl-more summary::before { content: ""; flex: none; width: 7px; height: 7px; border: solid currentColor; border-width: 0 1.7px 1.7px 0; rotate: -45deg; translate: 0 -1px; transition: rotate .2s; }
+.gl-more[open] summary::before { rotate: 45deg; translate: 0 -3px; }
+.gl-more summary span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; color: var(--faint); }
+.gl-more[open] summary span { display: none; }
+.gl-more .gl:first-child { border-top: 1px solid var(--line); }
 .insp .ipt { margin-top: 8px; font: 800 18px var(--sans); }
 .insp .state { margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: var(--raised); color: var(--muted); font-size: 14.5px; }
 .insp .state b { color: var(--text); }
@@ -673,7 +700,21 @@ svg.i .fill { fill: currentColor; }
 .pile .taxn { color: var(--m); }
 .card .cmdb { left: -4px; top: -5px; background: var(--m); color: #2a2108; border: 1px solid rgba(0, 0, 0, .4); }
 .card .taxb { right: -4px; top: -5px; background: #15131a; color: var(--m); border: 1px solid color-mix(in srgb, var(--m) 60%, transparent); }
-.card.incmd .face { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--m) 50%, transparent); }
+.card.incmd .face { box-shadow: 0 0 0 2px color-mix(in srgb, var(--m) 80%, transparent), 0 0 14px color-mix(in srgb, var(--m) 32%, transparent); }
+.cmdz .card .face { box-shadow: 0 0 0 1.5px var(--m), 0 0 10px color-mix(in srgb, var(--m) 45%, transparent); }
+.card.cmdr { z-index: 2; scale: 1.08; }
+.card.cmdr .face { box-shadow: 0 0 0 2px var(--m), 0 0 0 3.5px rgba(30, 22, 6, .85), 0 0 22px color-mix(in srgb, var(--m) 55%, transparent); }
+.card.cmdr.att .face { box-shadow: 0 0 0 2px var(--m), 0 0 0 4px var(--r), 0 0 26px rgba(232, 105, 63, .55); }
+.card.cmdr.blk .face { box-shadow: 0 0 0 2px var(--m), 0 0 0 4px var(--u), 0 0 22px rgba(95, 163, 217, .5); }
+.card.cmdr .face::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 238, 196, .32) 50%, transparent 62%) no-repeat 140% 0 / 260% 100%; animation: cmdshine 7s ease-in-out infinite; }
+@keyframes cmdshine { 0%, 74% { background-position: 140% 0; } 100% { background-position: -40% 0; } }
+.card.cmdr > .cmdb, .card.incmd > .cmdb { left: 50%; top: -9px; translate: -50% 0; display: inline-flex; padding: max(2px, 2.5cqw) max(5px, 6cqw); box-shadow: 0 2px 6px rgba(0, 0, 0, .45); }
+.card .cmdb svg.i { width: max(11px, 13cqw); height: max(11px, 13cqw); }
+.card.cmdr > .rbb { top: auto; bottom: -7px; }
+.card.cmdr-in .face { animation: cmdin 1.4s var(--ease); }
+@keyframes cmdin { 0% { scale: 1.4; filter: brightness(2.3) saturate(1.4); box-shadow: 0 0 0 3px #ffe7a6, 0 0 70px 24px rgba(255, 205, 110, .8); } 45% { scale: .98; filter: brightness(1.2); } 100% { scale: 1; filter: none; } }
+@media (prefers-reduced-motion: reduce) { .card.cmdr .face::after, .card.cmdr-in .face { animation: none; } }
 .myhand .card.incmd { margin-right: calc(var(--cardw) * .22); }
 .card.incmd.can-act .face { box-shadow: 0 0 0 2px rgba(255, 216, 140, .95), 0 0 18px rgba(255, 200, 110, .45); }
 
@@ -710,7 +751,23 @@ svg.i .fill { fill: currentColor; }
 .sl-scrim { position: absolute; inset: 0; background: rgba(14, 12, 18, .62); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); animation: fadein .25s; }
 .sl-box { position: relative; display: flex; flex-direction: column; align-items: center; gap: 9px; width: min(440px, 100%); text-align: center; animation: slrise .35s var(--ease); }
 @keyframes slrise { from { opacity: 0; transform: translateY(14px) scale(.97); } }
-.sl-kick { margin: 0; font: 700 12.5px/1.2 var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--m); }
+.sl-kick { margin: 0; font: 700 12.5px/1.2 var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--m); display: inline-flex; align-items: center; gap: 7px; }
+.sl-kick svg.i { width: 19px; height: 19px; }
+.sl-kws { display: grid; gap: 3px; max-width: 42ch; margin-top: -2px; }
+.sl-kws p { margin: 0; font-size: 13.5px; line-height: 1.35; color: var(--muted); }
+.sl-kws b { color: var(--text); margin-right: 3px; }
+.spotlight.cmdr .sl-scrim { background: radial-gradient(60% 52% at 50% 42%, rgba(120, 88, 26, .5), rgba(14, 12, 18, .88) 78%); }
+.sl-cmdr .sl-card { position: relative; isolation: isolate; }
+.sl-cmdr .sl-card::before { content: ""; position: absolute; left: 50%; top: 50%; width: calc(var(--slw, 250px) * 2.7); aspect-ratio: 1; translate: -50% -50%; z-index: -1; pointer-events: none; border-radius: 50%;
+  background: repeating-conic-gradient(rgba(255, 214, 130, .22) 0deg 5deg, transparent 5deg 15deg);
+  -webkit-mask-image: radial-gradient(closest-side, #000 28%, transparent); mask-image: radial-gradient(closest-side, #000 28%, transparent); animation: slrays 48s linear infinite; }
+.sl-cmdr .sl-card::after { content: ""; position: absolute; inset: -16%; z-index: -1; pointer-events: none; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 205, 110, .42), transparent); }
+.sl-cmdr .sl-card .card { animation: cmdrise .85s var(--ease) both; }
+.sl-cmdr .sl-card .card .face { box-shadow: 0 0 0 2px var(--m), 0 0 0 4px rgba(30, 22, 6, .85), 0 0 44px rgba(255, 205, 110, .55), 0 26px 70px rgba(0, 0, 0, .65); }
+.sl-cmdr .sl-name { font-size: 28px; background: linear-gradient(180deg, #fff3cf, var(--m)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+@keyframes slrays { to { rotate: 360deg; } }
+@keyframes cmdrise { 0% { scale: .55; opacity: 0; filter: brightness(2.4); } 60% { scale: 1.04; opacity: 1; } 100% { scale: 1; filter: none; } }
+@media (prefers-reduced-motion: reduce) { .sl-cmdr .sl-card::before, .sl-cmdr .sl-card .card { animation: none; } }
 .sl-card .card { --cardw: var(--slw, 250px); cursor: zoom-in; }
 .sl-card .card .face { box-shadow: 0 26px 70px rgba(0, 0, 0, .65), 0 0 0 1px rgba(236, 229, 216, .22); }
 .sl-name { margin: 2px 0 0; font: 800 22px/1.15 var(--serif); }
@@ -834,12 +891,13 @@ svg.i .fill { fill: currentColor; }
   .coach-sheet .tu-text { font-size: 16.5px; }
   .insp { padding: 0; place-items: stretch; }
   .insp-box { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; width: 100%; height: 100dvh; max-height: none; border: 0; border-radius: 0; padding: calc(var(--safe-t) + 62px) 10px calc(var(--safe-b) + 24px); animation: fadein .2s; }
-  .insp-pic, .insp-info, .insp-box > .state, .insp-box > .acts, .insp-box > .links { grid-row: auto; grid-column: auto; }
+  .insp-pic, .insp-info, .insp-box > .state, .insp-box > .gloss, .insp-box > .acts, .insp-box > .links { grid-row: auto; grid-column: auto; }
   .insp-pic { order: 1; }
   .insp-box > .state { order: 2; margin: 14px 4px 0; }
-  .insp-info { order: 3; padding: 16px 6px 0; }
-  .insp-box > .acts { order: 4; position: sticky; bottom: calc(-24px - var(--safe-b)); z-index: 2; margin: 16px -10px 0; padding: 18px 16px calc(14px + var(--safe-b)); background: linear-gradient(180deg, rgba(41, 37, 47, 0), var(--surface) 16px); }
-  .insp-box > .links { order: 5; padding: 0 6px; }
+  .insp-box > .gloss { order: 3; margin: 12px 4px 0; }
+  .insp-info { order: 4; padding: 16px 6px 0; }
+  .insp-box > .acts { order: 5; position: sticky; bottom: calc(-24px - var(--safe-b)); z-index: 2; margin: 16px -10px 0; padding: 18px 16px calc(14px + var(--safe-b)); background: linear-gradient(180deg, rgba(41, 37, 47, 0), var(--surface) 16px); }
+  .insp-box > .links { order: 6; padding: 0 6px; }
   .insp .x { position: fixed; top: calc(var(--safe-t) + 10px); right: 10px; z-index: 3; background: var(--raised); }
   .insp h2 { padding-right: 0; }
   .insp .card { --cardw: calc(100vw - 20px); justify-self: center; }
@@ -1034,6 +1092,7 @@ svg.i .fill { fill: currentColor; }
 <script src="commanders.js?v=3"></script>
 <script src="sets.js?v=4"></script>
 <script src="tutorial.js?v=4"></script>
+<script src="glossary.js?v=1"></script>
 <script>
 'use strict';
 /* ============================================================
@@ -1070,6 +1129,7 @@ const ICON = {
   back: '<path d="M14.5 5.5L8 12l6.5 6.5"/>',
   sparkle: '<path d="M11 4l1.7 4.8L17.5 10.5l-4.8 1.7L11 17l-1.7-4.8L4.5 10.5l4.8-1.7z"/><path d="M18 14.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
   star: '<path class="fill" d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.6L12 16.5l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/>',
+  crown: '<path class="fill" d="M3.2 8.2l4.6 4.1L12 5.2l4.2 7.1 4.6-4.1-1.5 9H4.7z"/><path class="fill" d="M4.9 18.6h14.2v1.7H4.9z"/>',
   cap: '<path d="M2.8 9.5L12 5l9.2 4.5L12 14z"/><path d="M6.5 11.4v4.3c1.6 1.5 3.4 2.2 5.5 2.2s3.9-.7 5.5-2.2v-4.3M21.2 9.5v5.2"/>',
   check: '<path d="M5.5 12.5l4.2 4.2 8.8-9.4"/>',
   undo: '<path d="M9 7.5h6.2a4.3 4.3 0 0 1 0 8.6H9.5"/><path d="M11.8 4.6L8.8 7.5l3 3"/>',
@@ -1123,9 +1183,11 @@ document.addEventListener('error', (e) => {
     t.replaceWith(s);
   }
 }, true);
-function textHTML(text) {
+// Rules text; with `gl` ({ found, used } from the glossary) each explained term is marked once, outside reminder text
+function textHTML(text, gl) {
   if (!text) return '';
-  return text.split('\n').filter((l) => l.trim()).map((l) => `<p>${esc(l).replace(/\(([^()]*)\)/g, '<i class="rem">($1)</i>').replace(/\{([^}]+)\}/g, (m, c) => sym(c))}</p>`).join('');
+  const line = (l) => esc(l).split(/(\([^()]*\))/).map((part, k) => (k % 2 ? `<i class="rem">${part}</i>` : gl ? Gloss.mark(part, gl.found, gl.used) : part)).join('');
+  return text.split('\n').filter((l) => l.trim()).map((l) => `<p>${line(l).replace(/\{([^}]+)\}/g, (m, c) => sym(c))}</p>`).join('');
 }
 
 /* ============================================================
@@ -2280,7 +2342,10 @@ function buildSides() {
     const mine = W.mode === 'play' && pi === 0;
     const cmdFmt = W.replay.format === 'commander';
     T.sides[pi].style.setProperty('--pc', playerColor(pi));
+    T.sides[pi].style.setProperty('--pc2', playerColor2(pi));
+    const face = W.decks[pi] && W.decks[pi].face;
     T.sides[pi].innerHTML = `
+      <div class="side-art" aria-hidden="true"${face ? ` data-art="${esc(face)}"${artOf(face) ? ` style="background-image:url(&quot;${esc(artOf(face))}&quot;)"` : ''}` : ''}></div>
       <div class="pbar">
         ${pi === 1 && W.mode === 'play' ? `<button type="button" class="icon-btn gback" aria-label="${TU.on ? 'Back to the lessons' : 'Leave the game'}" title="${TU.on ? 'Lessons' : 'Decks'}">${icon('back')}</button>` : ''}
         <span class="life" data-player="${pi}" aria-label="Life"><span class="lv">${cmdFmt ? 40 : 20}</span><small>life</small>${cmdFmt ? '<span class="cdb" hidden></span>' : ''}</span>
@@ -2333,6 +2398,8 @@ function playerColor(pi) {
   const c = COLOR_VAR[d.colors[0]] || 'var(--c)';
   return pi === 1 && c === c0 ? 'var(--muted)' : c;
 }
+// A two-colour deck washes its half from one colour into the other
+const playerColor2 = (pi) => COLOR_VAR[(W.decks[pi].colors || [])[1]] || playerColor(pi);
 function buildTimeline() {
   const fr = W.replay.frames;
   T.scrub.max = String(fr.length - 1);
@@ -2524,8 +2591,10 @@ function renderSide(pi, ps, f, used) {
     if (ons.length) badges += `<span class="badge attb" title="${esc(ons.map((x) => defOf(x.d).name).join(', '))}">${ons.length > 1 ? `×${ons.length}` : defOf(ons[0].d).sub.includes('Equipment') ? 'Eq' : 'Aura'}</span>`;
     if (b.tok) badges += '<span class="badge tokb">Token</span>';
     if (b.stolen) badges += '<span class="badge stolb" title="Controlled by the other player">Stolen</span>';
-    if (b.cmdr) badges += '<span class="badge cmdb" title="Commander">★</span>';
+    if (b.cmdr) badges += `<span class="badge cmdb" title="Commander">${icon('crown')}</span>`;
     el.classList.remove('incmd');
+    if (b.cmdr && !el.classList.contains('cmdr') && W.animating) { el.classList.add('cmdr-in'); setTimeout(() => el.classList.remove('cmdr-in'), 1500); }
+    el.classList.toggle('cmdr', !!b.cmdr);
     setBadges(el, badges);
     const extra = [b.rb ? 'Ring-bearer' : '', ...ctrWords(b.ctr), ons.length ? `with ${ons.map((x) => defOf(x.d).name).join(' and ')}` : '', b.stolen ? 'stolen' : ''].filter(Boolean);
     el.setAttribute('aria-label', `${def.name}, ${b.p}/${b.t}${b.tap ? ', tapped' : ''}${b.att ? ', attacking' : ''}${b.blk ? ', blocking' : ''}${b.dmg ? `, ${b.dmg} damage` : ''}${extra.length ? `, ${extra.join(', ')}` : ''}`);
@@ -2551,7 +2620,7 @@ function renderSide(pi, ps, f, used) {
     const b0 = list[0], d0 = defOf(b0.d);
     const host = b0.on != null ? f.s.p.flatMap((q) => q.bf).find((x) => x.id === b0.on) : null;
     const words = [...ctrWords(b0.ctr), host ? `attached to ${defOf(host.d).name}` : '', b0.rb ? 'Ring-bearer' : '', b0.stolen ? 'stolen' : '', b0.harn ? 'harnessed' : ''].filter(Boolean);
-    const els = shown.map((b) => { const el = cardFor(b.id, b.d); used.add(b.id); el.classList.toggle('tapped', !!b.tap); el.classList.remove('att', 'blk', 'sick', 'incmd'); el.dataset.small = '1'; tile(el, tiles); setBadges(el, ''); el.setAttribute('aria-label', `${d0.name}${b.tap ? ', tapped' : ''}${words.length ? `, ${words.join(', ')}` : ''}`); return el; });
+    const els = shown.map((b) => { const el = cardFor(b.id, b.d); used.add(b.id); el.classList.toggle('tapped', !!b.tap); el.classList.remove('att', 'blk', 'sick', 'incmd', 'cmdr'); el.dataset.small = '1'; tile(el, tiles); setBadges(el, ''); el.setAttribute('aria-label', `${d0.name}${b.tap ? ', tapped' : ''}${words.length ? `, ${words.join(', ')}` : ''}`); return el; });
     list.slice(3).forEach((b) => used.add(b.id));
     const last = `${list.length > 1 ? `<span class="badge xn">${list.length}</span>` : ''}${ctrBadge(b0.ctr, d0)}${host ? `<span class="badge attb" title="Attached to ${esc(defOf(host.d).name)}">On ${esc(defOf(host.d).name.split(/[ ,]/)[0])}</span>` : ''}${b0.stolen ? '<span class="badge stolb">Stolen</span>' : ''}${b0.harn ? '<span class="badge harnb" title="Harnessed: its ∞ ability is active">∞</span>' : ''}`;
     if (last) setBadges(els[els.length - 1], last);
@@ -2565,22 +2634,22 @@ function renderSide(pi, ps, f, used) {
   hz.classList.toggle('backs', !faceUp);
   const bigHand = W.mode === 'play' && pi === 0 && parseFloat(hz.style.getPropertyValue('--cardw')) >= 70;
   const handTiles = !!pp && pi === 0;
-  const hnodes = ps.hand.filter(([id]) => !spotIds.has(id)).map(([id, d]) => { const el = cardFor(id, d, !faceUp); used.add(id); el.classList.remove('tapped', 'att', 'blk', 'sick', 'incmd'); if (bigHand) delete el.dataset.small; else el.dataset.small = '1'; tile(el, handTiles && faceUp); setBadges(el, ''); return el; });
+  const hnodes = ps.hand.filter(([id]) => !spotIds.has(id)).map(([id, d]) => { const el = cardFor(id, d, !faceUp); used.add(id); el.classList.remove('tapped', 'att', 'blk', 'sick', 'incmd', 'cmdr'); if (bigHand) delete el.dataset.small; else el.dataset.small = '1'; tile(el, handTiles && faceUp); setBadges(el, ''); return el; });
   // The command zone: your commander waits at the left of your hand; anyone else's sits in its own pile
   const cmdCards = (ps.cmd || []).filter(([id]) => !spotIds.has(id)).map(([id, d]) => {
     const el = cardFor(id, d);
     used.add(id);
-    el.classList.remove('tapped', 'att', 'blk', 'sick');
+    el.classList.remove('tapped', 'att', 'blk', 'sick', 'cmdr');
     el.classList.add('incmd');
     return el;
   });
   const myCmd = W.mode === 'play' && pi === 0;
-  if (myCmd) cmdCards.forEach((el) => { if (bigHand) delete el.dataset.small; else el.dataset.small = '1'; tile(el, handTiles); setBadges(el, `<span class="badge cmdb" title="Commander">★</span>${ps.tax ? `<span class="badge taxb" title="Commander tax">+${ps.tax}</span>` : ''}`); });
+  if (myCmd) cmdCards.forEach((el) => { if (bigHand) delete el.dataset.small; else el.dataset.small = '1'; tile(el, handTiles); setBadges(el, `<span class="badge cmdb" title="Commander">${icon('crown')}</span>${ps.tax ? `<span class="badge taxb" title="Commander tax">+${ps.tax}</span>` : ''}`); });
   const xcards = myCmd ? (ps.xh || []).filter(([id]) => !spotIds.has(id)) : [];
   const xnodes = xcards.map(([id, d, zone]) => {
     const el = cardFor(id, d);
     used.add(id);
-    el.classList.remove('tapped', 'att', 'blk', 'sick', 'incmd');
+    el.classList.remove('tapped', 'att', 'blk', 'sick', 'incmd', 'cmdr');
     if (bigHand) delete el.dataset.small; else el.dataset.small = '1';
     tile(el, handTiles);
     setBadges(el, `<span class="badge zoneb">${ZONE_LABEL[zone] || zone}</span>`);
@@ -2600,7 +2669,7 @@ function renderSide(pi, ps, f, used) {
   const gz = side.querySelector('.stack.gy');
   const shownX = new Set(xcards.map(([id]) => id));
   const top = ps.gy.filter(([id]) => !spotIds.has(id) && !shownX.has(id)).slice(-1)[0];
-  if (top) { const el = cardFor(top[0], top[1]); used.add(top[0]); el.classList.remove('tapped', 'att', 'blk', 'sick'); el.dataset.small = '1'; tile(el, false); setBadges(el, ''); placeChildren(gz, [el]); }
+  if (top) { const el = cardFor(top[0], top[1]); used.add(top[0]); el.classList.remove('tapped', 'att', 'blk', 'sick', 'cmdr'); el.dataset.small = '1'; tile(el, false); setBadges(el, ''); placeChildren(gz, [el]); }
   else gz.innerHTML = '<span class="ph"></span>';
 }
 const shortKw = (k) => ({ flying: 'Fly', trample: 'Trm', 'first strike': 'FS', 'double strike': 'DS', lifelink: 'Life', deathtouch: 'DT', vigilance: 'Vig', haste: 'Hst', menace: 'Men', indestructible: 'Ind', hexproof: 'Hex', reach: 'Rch' }[k] || k);
@@ -2623,7 +2692,7 @@ function renderSpot(f, used) {
     const d = findDefOfId(f, f.res);
     if (d) ids.push([f.res, d]);
   }
-  const nodes = ids.map(([id, d]) => { const el = cardFor(id, d); used.add(id); el.classList.remove('tapped', 'att', 'blk', 'sick'); delete el.dataset.small; delete el.dataset.tile; setBadges(el, ''); return el; });
+  const nodes = ids.map(([id, d]) => { const el = cardFor(id, d); used.add(id); el.classList.remove('tapped', 'att', 'blk', 'sick', 'cmdr'); delete el.dataset.small; delete el.dataset.tile; setBadges(el, ''); return el; });
   placeChildren(T.spot, nodes);
   if (f.k === 'countered' && nodes.length === 0) {
     // the countered spell already went to the graveyard: show it with a stamp for a moment
@@ -2873,8 +2942,8 @@ function whyNot(def, tax = 0) {
   return "You can't cast it right now: it needs other colors of mana or a legal target.";
 }
 // The other side of a double-faced card, an adventure, a melded card
-function otherFacesHTML(def) {
-  const part = (f, head) => `<div class="oface"><div class="ohead">${head}</div><b>${esc(f.name)}</b>${f.manaCost ? ` ${manaHTML(f.manaCost)}` : ''}<div class="type">${esc(f.typeLine)}</div>${textHTML(f.text)}${isCre(f) ? `<div class="ipt">${f.ptText || `${f.power}/${f.toughness}`}</div>` : ''}</div>`;
+function otherFacesHTML(def, gl) {
+  const part = (f, head) => `<div class="oface"><div class="ohead">${head}</div><b>${esc(f.name)}</b>${f.manaCost ? ` ${manaHTML(f.manaCost)}` : ''}<div class="type">${esc(f.typeLine)}</div>${textHTML(f.text, gl)}${isCre(f) ? `<div class="ipt">${f.ptText || `${f.power}/${f.toughness}`}</div>` : ''}</div>`;
   const out = [];
   if (def.back) out.push(part(def.back, def.mdfc ? 'Other face: cast either face, or transform it with its ability' : 'Transforms into'));
   if (def.front) out.push(part(def.front, 'Front face'));
@@ -2883,12 +2952,34 @@ function otherFacesHTML(def) {
   if (def.faceBase && def.faceBase !== def) out.push(part(def.faceBase, 'Melded from'));
   return out.join('');
 }
+// Every face of a card, for finding its terms
+const facesOf = (def) => [def, def.back, def.front, def.adv, def.meldInto, def.faceBase !== def ? def.faceBase : null].filter(Boolean);
+// What the keywords on a card mean, under its text; basic game words wait behind "More terms"
+function glossHTML(found) {
+  if (!found.length) return '';
+  const main = found.filter((t) => !t.more), more = found.filter((t) => t.more);
+  const row = (t) => `<div class="gl" data-gl="${esc(t.id)}"><dt>${esc(t.k)}</dt><dd>${esc(t.d).replace(/\{([^}]+)\}/g, (m, c) => sym(c))}</dd></div>`;
+  return `<div class="gloss">${main.length ? `<p class="gl-h">${main.length > 1 ? 'Keywords' : 'Keyword'}</p><dl>${main.map(row).join('')}</dl>` : ''}`
+    + `${more.length ? `<details class="gl-more"><summary>${main.length ? 'More terms' : 'Terms'} on this card <span>${more.map((t) => esc(t.k)).join(', ')}</span></summary><dl>${more.map(row).join('')}</dl></details>` : ''}</div>`;
+}
+// A tapped term: open its meaning and point at it
+function showGloss(id) {
+  const row = $(`#insp .gl[data-gl="${CSS.escape(id)}"]`);
+  if (!row) return;
+  const det = row.closest('details');
+  if (det) det.open = true;
+  row.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  row.classList.remove('hit');
+  void row.offsetWidth;
+  row.classList.add('hit');
+}
 function openInspector(el, actions) {
   const def = el._def;
   if (!def || el.classList.contains('is-back')) return;
   W.inspActs = actions || [];
   const id = +el.dataset.id;
   let stateLine = '';
+  const extra = [];
   if (W.replay && S.view === 'watch') {
     const f = W.replay.frames[W.i];
     for (const [pi, p] of f.s.p.entries()) {
@@ -2905,7 +2996,9 @@ function openInspector(el, actions) {
           if (b.dmg) bits.push(`${b.dmg} damage marked`); if (b.cnt) bits.push(`${plural(b.cnt, '+1/+1 counter')}`);
           const kws = [...new Set((b.kw || []).concat((b.skw || []).filter((k) => !def.kw.includes(k))))];
           if (kws.length) bits.push(`has ${kws.join(' and ')}`);
+          extra.push(...kws);
         } else if (b.tap) bits.push('tapped');
+        if (b.cmdr) extra.push('commander');
         bits.push(...ctrWords(b.ctr));
         const ons = all.filter((x) => x.on === b.id);
         if (ons.length) bits.push(`with ${ons.map((x) => esc(defOf(x.d).name)).join(' and ')} attached`);
@@ -2919,12 +3012,16 @@ function openInspector(el, actions) {
       } else if (xh) stateLine = xh[2] === 'gy' ? 'In your graveyard. You can use its ability from there.' : xh[2] === 'top' ? 'The top card of your library. You can play it from there.' : 'In exile. You can play it from there for now.';
       else if (p.hand.some(([h]) => h === id)) stateLine = whose === 'Yours' ? `In your hand. ${whyNot(def)}` : `In ${whose} hand.`;
       else if ((p.cmd || []).some(([h]) => h === id)) {
+        extra.push('commander');
         stateLine = `${whose === 'Yours' ? 'Your commander, waiting' : `${whose} commander, waiting`} in the command zone.${p.tax ? ` Commander tax: ${sym(String(p.tax))} more each cast.` : ' Cast it from here like a card in hand.'}`;
         if (whose === 'Yours') stateLine += ` ${whyNot(def, p.tax || 0)}`;
       } else if (b && b.cmdr && whose === 'Yours') stateLine += ' Your commander.';
     }
   }
   if (def.stub) stateLine = "The rules engine can't play this card yet, so decks with it are for browsing.";
+  const faces = facesOf(def);
+  const found = window.Gloss ? Gloss.find(faces.map((f) => f.text || '').join('\n'), faces.map((f) => f.typeLine || '').join(' '), extra.concat(def.kw || []), def.name) : [];
+  const gl = found.length ? { found, used: new Set() } : null;
   const big = makeCard(def, `insp-${id}`);
   big.disabled = true;
   big.removeAttribute('aria-label');
@@ -2937,10 +3034,11 @@ function openInspector(el, actions) {
       <h2 id="inspName">${esc(def.name)}</h2>
       ${def.manaCost ? `<div class="cost">${manaHTML(def.manaCost)}</div>` : ''}
       <div class="type">${esc(def.typeLine)}</div>
-      <div class="otext">${def.token ? `<p>${esc(def.text || 'A token with no abilities.')}</p>` : textHTML(def.text)}</div>
+      <div class="otext">${def.token && !def.text ? '<p>A token with no abilities.</p>' : textHTML(def.text, gl)}</div>
       ${isCre(def) ? `<div class="ipt">${def.ptText || `${def.power}/${def.toughness}`}</div>` : ''}
-      ${otherFacesHTML(def)}
+      ${otherFacesHTML(def, gl)}
     </div>
+    ${glossHTML(found)}
     ${stateLine ? `<div class="state">${stateLine}</div>` : ''}
     ${W.inspActs.length ? `<div class="acts">${W.inspActs.map((a, k) => `<button type="button" class="pill${k === 0 ? ' pill-solid' : ''}" data-actk="${k}">${esc(a.label).replace(/\{([^}]+)\}/g, (m, c) => sym(c))}${a.kind === 'cast' ? ` <span style="margin-left:auto">${manaHTML(a.cost != null ? a.cost : def.manaCost)}</span>` : ''}</button>`).join('')}${W.inspActs.some((a) => a.specs && a.specs.length) ? '<span class="note">You will choose targets next.</span>' : ''}</div>` : ''}
     ${def.token ? '' : `<div class="links"><a class="btn-ghost" href="${esc(tutor)}">${icon('ext')}Open in Tutor</a></div>`}
@@ -3055,7 +3153,9 @@ function runFrames(i, end, done) {
 /* The opponent's spells: shown big, with what they target, until you tap OK (or briefly, if you'd rather not stop) */
 const SPOT = { wait: store.get('arena.spotwait.v1', true) !== false, go: null, timer: 0 };
 function wantSpotlight(f, i, end) {
-  if (W.mode !== 'play' || f.k !== 'cast' || f.who !== 1) return false;
+  if (W.mode !== 'play' || f.k !== 'cast') return false;
+  // Your own spells play out on the board, except your commander, which gets its moment
+  if (f.who === 0) return / from the command zone/.test(f.text);
   // A spell you could counter comes with its own question instead
   const nx = W.replay.frames[i + 1];
   return !(i + 1 === end && nx && nx.k === 'ask' && PL.req && PL.req.type === 'counter' && PL.req.spell === f.card);
@@ -3078,24 +3178,38 @@ function openSpotlight(f, go) {
   if (dId == null) { go(); return; }
   const def = defOf(dId);
   const fromCmd = / from the command zone/.test(f.text);
+  const mine = f.who === 0;
   const what = isCre(def) ? `A ${def.power}/${def.toughness} creature${def.kw.length ? ` with ${def.kw.length > 1 ? `${def.kw.slice(0, -1).join(', ')} and ${def.kw[def.kw.length - 1]}` : def.kw[0]}` : ''}.` : '';
+  // What its keywords mean, in a line each (the short ones only)
+  const kws = window.Gloss ? Gloss.find(def.text, '', def.kw, def.name).filter((t) => t.s).slice(0, 2) : [];
+  const opp = esc(W.decks[1].name);
   const box = T.spotlight;
   SPOT.go = go;
-  box.innerHTML = `<div class="sl-scrim" data-sl="ok"></div><div class="sl-box" role="dialog" aria-label="${esc(W.decks[1].name)} casts ${esc(def.name)}">
-    <p class="sl-kick">${esc(W.decks[1].name)} casts${fromCmd ? ' its commander' : ''}</p>
+  box.classList.toggle('cmdr', fromCmd);
+  box.innerHTML = `<div class="sl-scrim" data-sl="ok"></div><div class="sl-box${fromCmd ? ' sl-cmdr' : ''}" role="dialog" aria-label="${mine ? 'You cast your commander' : `${opp} casts${fromCmd ? ' its commander' : ''}`}, ${esc(def.name)}">
+    <p class="sl-kick">${fromCmd ? `${icon('crown')}<span>${mine ? 'You cast your commander' : `${opp} casts its commander`}</span>` : `${opp} casts`}</p>
     <div class="sl-card"></div>
     <p class="sl-name">${esc(def.name)}</p>
     ${what || f.targets && f.targets.length ? `<p class="sl-what">${esc(what)}${what ? ' ' : ''}${spotTargets(f)}</p>` : ''}
+    ${kws.length ? `<div class="sl-kws">${kws.map((t) => `<p><b>${esc(t.k)}</b> ${esc(t.s)}</p>`).join('')}</div>` : ''}
     <div class="sl-acts"><button type="button" class="pill pill-solid" data-sl="ok">OK</button></div>
-    <div class="sl-foot"><span>Tap the card to read it</span><button type="button" class="link-btn" data-sl="mode"></button></div>
+    ${mine ? '' : '<div class="sl-foot"><span>Tap the card to read it</span><button type="button" class="link-btn" data-sl="mode"></button></div>'}
   </div>`;
   const card = makeCard(def, `sl${f.card}`);
   box.querySelector('.sl-card').appendChild(card);
   // As big as the board allows, leaving room for the words and the button
   const bw = T.board.clientWidth, bh = T.board.clientHeight;
-  box.style.setProperty('--slw', `${Math.round(clamp(Math.min(bw < 640 ? 250 : 280, bw * 0.62, (bh - 215) / 1.3968), 110, 280))}px`);
+  const room = (mine ? 190 : 215) + kws.length * 24 + (fromCmd ? 12 : 0);
+  box.style.setProperty('--slw', `${Math.round(clamp(Math.min(bw < 640 ? 250 : 280, bw * 0.62, (bh - room) / 1.3968), 110, 280))}px`);
   box.hidden = false;
-  spotMode();
+  // Your commander's moment passes by itself; the opponent's spells wait for you, unless you've said not to
+  if (mine) {
+    clearTimeout(SPOT.timer);
+    const ms = Math.round(2400 / W.speed);
+    box.style.setProperty('--sl-ms', `${ms}ms`);
+    box.querySelector('.sl-box').insertAdjacentHTML('beforeend', '<i class="sl-bar"></i>');
+    SPOT.timer = setTimeout(() => closeSpotlight(true), ms);
+  } else spotMode();
 }
 function spotMode() {
   const box = T.spotlight;
@@ -4031,6 +4145,8 @@ function wire() {
     if (rc) { nudge(rc.title); return; }
     const ak = e.target.closest('#insp [data-actk]');
     if (ak) { startAction(W.inspActs[+ak.dataset.actk]); return; }
+    const kt = e.target.closest('#insp .kwt');
+    if (kt) { showGloss(kt.dataset.gl); return; }
     if (S.view === 'watch' && W.mode === 'play' && e.target.closest('#board') && onPlayClick(e.target)) return;
     const c = e.target.closest('.card');
     if (c && !c.disabled && (c.closest('#watch') || c.closest('#lobby'))) { openInspector(c); return; }
