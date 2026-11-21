@@ -45,7 +45,7 @@
 
   --card-r: 4.76% / 3.41%;           /* a real card's corner: 3mm on 63 x 88mm */
   --ease: cubic-bezier(.2, .75, .15, 1);
-  --header-h: 71px;
+  --header-h: 63px;
   --rail-w: 252px;
   --safe-t: env(safe-area-inset-top, 0px);
   --safe-b: env(safe-area-inset-bottom, 0px);
@@ -188,19 +188,21 @@ svg.i .dot { fill: currentColor; stroke: none; }
    Header
    ============================================================ */
 .top {
-  position: sticky; top: 0; z-index: 30;
-  display: grid; grid-template-columns: var(--rail-w) minmax(0, 1fr) auto; align-items: center; gap: 28px;
-  padding: calc(12px + var(--safe-t)) calc(24px + var(--safe-r)) 12px calc(24px + var(--safe-l));
+  position: sticky; top: 0; z-index: 30; height: calc(var(--header-h) + var(--safe-t));
+  display: flex; align-items: center; gap: 22px;
+  padding: var(--safe-t) calc(22px + var(--safe-r)) 0 calc(22px + var(--safe-l));
   background: rgba(32, 29, 39, .9);
   -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1);
   border-bottom: 1px solid var(--line);
 }
-.brand {
-  justify-self: start; text-decoration: none; color: var(--text);
-  font: 900 29px/1 var(--serif); letter-spacing: -.012em;
-  padding: 4px 2px 6px; border-radius: 6px;
-}
-.search { position: relative; max-width: 780px; width: 100%; margin: 0; }
+/* Name and tabs: the same on every page (the Arena's header has the same rules) */
+.brand { flex: none; text-decoration: none; color: var(--text); font: 900 27px/1 var(--serif); letter-spacing: -.012em; padding: 4px 2px 6px; border-radius: 6px; }
+.nav { display: flex; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.nav::-webkit-scrollbar { display: none; }
+.nav a { flex: none; text-decoration: none; color: var(--muted); font: 500 15.5px/1 var(--sans); padding: 10px 13px; border-radius: 10px; }
+.nav a:hover { color: var(--text); background: var(--hover); }
+.nav a[aria-current="page"] { color: var(--text); background: var(--raised); }
+.search { position: relative; flex: 1 1 auto; min-width: 0; max-width: 780px; margin: 0 0 0 auto; }
 .search .search-ico { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--faint); display: flex; pointer-events: none; }
 .search input {
   -webkit-appearance: none; appearance: none; width: 100%; height: 46px;
@@ -214,7 +216,7 @@ svg.i .dot { fill: currentColor; stroke: none; }
 .search input:focus { outline: none; border-color: rgba(236, 229, 216, .5); background: var(--raised); }
 .search-clear { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); display: grid; place-items: center; }
 .search-clear:hover { color: var(--text); background: var(--hover); }
-.actions { display: flex; gap: 8px; }
+.actions { flex: none; display: flex; gap: 8px; }
 a.btn-ghost { text-decoration: none; }
 .actions .btn-ghost[aria-pressed="true"] { background: var(--raised); border-color: var(--line-strong); }
 #savedBtn[aria-pressed="true"] svg path { fill: currentColor; }
@@ -618,21 +620,24 @@ main { min-width: 0; padding: 22px 0 40px; outline: none; }
    ============================================================ */
 @media (max-width: 1100px) {
   :root { --rail-w: 228px; }
-  .top { gap: 20px; }
+  .top { gap: 16px; }
   .btn-ghost.collapse .lbl { display: none; }
   .btn-ghost.collapse { padding: 0 11px; }
 }
 @media (max-width: 900px) {
   :root { --header-h: 0px; }
+  /* Two rows: the name and tabs as on every page, then the search with its buttons */
   .top {
-    grid-template-columns: 1fr auto; grid-template-areas: "brand actions" "search search";
-    gap: 8px 10px; padding: calc(8px + var(--safe-t)) calc(14px + var(--safe-r)) 10px calc(14px + var(--safe-l));
+    display: grid; height: auto; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: 63px auto;
+    grid-template-areas: "brand nav nav" "search search actions";
+    gap: 0 22px; padding: var(--safe-t) calc(22px + var(--safe-r)) 10px calc(22px + var(--safe-l));
   }
-  .brand { grid-area: brand; font-size: 26px; }
+  .brand { grid-area: brand; }
+  .nav { grid-area: nav; }
   .actions { grid-area: actions; }
-  .search { grid-area: search; max-width: none; }
+  .search { grid-area: search; max-width: none; margin: 0; }
   .search input { height: 44px; font-size: 16.5px; }
-  .actions .btn-ghost, .actions .icon-btn { height: 38px; }
+  .actions .btn-ghost, .actions .icon-btn { height: 44px; }
   .layout { display: block; padding: 0 calc(14px + var(--safe-r)) 0 calc(14px + var(--safe-l)); }
   main { padding-top: 16px; }
 
@@ -702,6 +707,13 @@ main { min-width: 0; padding: 22px 0 40px; outline: none; }
   .f-text p { font-size: 18px; }
   .legal { column-gap: 18px; }
 }
+@media (max-width: 640px) {
+  .top { grid-template-rows: 56px auto; column-gap: 8px; padding-left: calc(14px + var(--safe-l)); padding-right: calc(14px + var(--safe-r)); }
+  .brand { font-size: 22px; }
+  .nav { gap: 2px; }
+  .nav a { padding: 9px 8px; font-size: 15px; }
+  .actions { gap: 6px; }
+}
 @media (max-width: 420px) {
   .actions .btn-ghost .lbl { display: none; }
   .actions .btn-ghost { padding: 0 10px; }
@@ -730,6 +742,13 @@ main { min-width: 0; padding: 22px 0 40px; outline: none; }
 
 <header class="top" id="top">
   <a class="brand" href="#" id="brand">Tutor</a>
+  <nav class="nav" aria-label="Sections">
+    <a href="./" id="navCards" aria-current="page">Cards</a>
+    <a href="arena/">Arena</a>
+    <a href="arena/#decks">Decks</a>
+    <a href="arena/#career">Career</a>
+    <a href="arena/#journal">Journal</a>
+  </nav>
   <form class="search" id="search" role="search" autocomplete="off" novalidate>
     <span class="search-ico" data-icon="search"></span>
     <input id="q" type="search" name="q" aria-label="Search cards" placeholder="Search by name, rules text, or Scryfall syntax"
@@ -739,7 +758,6 @@ main { min-width: 0; padding: 22px 0 40px; outline: none; }
     <ul class="ac" id="ac" role="listbox" aria-label="Card name suggestions" hidden></ul>
   </form>
   <div class="actions">
-    <a class="btn-ghost collapse" id="arenaLink" href="arena/" title="Watch AI players battle with these cards"><span data-icon="swords"></span><span class="lbl">Arena</span></a>
     <button type="button" class="btn-ghost collapse" id="random" title="Open a random card that matches your filters"><span data-icon="die"></span><span class="lbl">Random</span></button>
     <button type="button" class="btn-ghost collapse" id="savedBtn" aria-pressed="false"><span data-icon="bookmark"></span><span class="lbl">Saved</span><span class="count-badge" id="savedCount">0</span></button>
   </div>
@@ -2553,6 +2571,7 @@ function boot() {
   E.scrim.addEventListener('click', closeSheet);
   E.random.addEventListener('click', randomCard);
   E.savedBtn.addEventListener('click', () => setMode(mode === 'saved' ? 'search' : 'saved'));
+  $('#navCards').addEventListener('click', (e) => { if (e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return; e.preventDefault(); E.brand.click(); });
   E.brand.addEventListener('click', (e) => {
     e.preventDefault();
     S = { ...clone(DEFAULTS), view: S.view };
