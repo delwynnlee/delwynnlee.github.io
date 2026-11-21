@@ -697,5 +697,8 @@ S['Slimefoot, the Stowaway'] = (d) => {
   return d;
 };
 
+// Shared with the later product files (arena23.js)
+A.lib.coreKit = { tok, kicker, lookFor, sacCost, explore, borrow, borrowVal, chooseColor, attackers, dieGrant, pwAi, raid, historic, hasArt, controls };
+
 return S;
 });

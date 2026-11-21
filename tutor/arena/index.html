@@ -1266,19 +1266,20 @@ svg.i .fill { fill: currentColor; }
 <div class="insp" id="insp" role="dialog" aria-modal="true" aria-labelledby="inspName" hidden></div>
 <div class="sheet" id="sheet" hidden></div>
 
-<script src="engine.js?v=13"></script>
+<script src="engine.js?v=14"></script>
 <script src="ltr.js?v=1"></script>
 <script src="fin.js?v=1"></script>
 <script src="msh.js?v=2"></script>
 <script src="mshjmp.js?v=1"></script>
 <script src="precon.js?v=1"></script>
-<script src="core.js?v=1"></script>
+<script src="core.js?v=2"></script>
 <script src="classic.js?v=1"></script>
+<script src="arena23.js?v=1"></script>
 <script src="decks.js?v=3"></script>
 <script src="commanders.js?v=3"></script>
 <script src="sets.js?v=4"></script>
 <script src="tutorial.js?v=4"></script>
-<script src="glossary.js?v=4"></script>
+<script src="glossary.js?v=5"></script>
 <script src="career.js?v=1"></script>
 <script src="journal.js?v=1"></script>
 <script>
@@ -1386,7 +1387,7 @@ const ARCH_LABEL = { aggro: 'Aggro', midrange: 'Midrange', control: 'Control' };
 const COLOR_NAME = { W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green' };
 const COLOR_VAR = { W: 'var(--w)', U: 'var(--u)', B: 'var(--b)', R: 'var(--r)', G: 'var(--g)' };
 async function loadData() {
-  const res = await fetch('cards.json?v=6');
+  const res = await fetch('cards.json?v=7');
   if (!res.ok) throw new Error(`cards.json: HTTP ${res.status}`);
   const j = await res.json();
   // Double-faced, adventurer and meld cards carry their other faces: { b: back, a: adventure, m: melded card, mdfc: either face can be cast }
@@ -1400,6 +1401,8 @@ async function loadData() {
     for (const f of [def.back, def.adv]) if (f) IMG.alias[f.name] = name;
   }
   DATA.count = DATA.pool.length;
+  // Conjured cards (Alchemy) come from outside the game: the engine finds them by name here
+  Arena.lib.setLookup((n) => DATA.byName.get(n) || null);
 }
 const DECKS = new Map();
 function finishDeck(d, extra) {
@@ -1560,7 +1563,7 @@ let READY = false;
 const OFF = { decks: [], byId: new Map(), cards: {}, err: false };
 async function loadOfficial() {
   try {
-    const res = await fetch('official.json?v=3');
+    const res = await fetch('official.json?v=4');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const j = await res.json();
     OFF.decks = j.decks || [];
@@ -2616,7 +2619,7 @@ const isCre = (d) => d.types.includes('Creature');
 // On the battlefield, a creature is whatever is one right now: a crewed vehicle is, a creature that stopped being one isn't
 const isCreNow = (b) => b.p != null;
 // Everything else shares the lands row, grouped by card, tapped state, what it's attached to and its counters
-const permKey = (b) => `${b.d}|${b.tap ? 1 : 0}|${b.on != null ? b.on : ''}|${b.ctr ? Object.keys(b.ctr).sort().map((k) => `${k}${b.ctr[k]}`).join(',') : ''}|${b.stolen ? 1 : 0}|${b.harn ? 1 : 0}`;
+const permKey = (b) => `${b.d}|${b.tap ? 1 : 0}|${b.on != null ? b.on : ''}|${b.ctr ? Object.keys(b.ctr).sort().map((k) => `${k}${b.ctr[k]}`).join(',') : ''}|${b.cnt || 0}|${b.stolen ? 1 : 0}|${b.harn ? 1 : 0}`;
 const CTR_SHORT = { lore: 'Lore', stun: 'Stun', verse: 'Verse', burden: 'Burden', influence: 'Infl', lifelink: 'Lifelink', indestructible: 'Indestr', shield: 'Shield', oil: 'Oil', plan: 'Plan', invasion: 'Invasion', 'double strike': 'Dbl strike', 'first strike': 'First str', deathtouch: 'Deathtch', flying: 'Flying', haste: 'Haste', menace: 'Menace', reach: 'Reach', trample: 'Trample', vigilance: 'Vigil' };
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
 function ctrBadge(ctr, def) {
@@ -2824,7 +2827,7 @@ function renderSide(pi, ps, f, used) {
     const words = [...ctrWords(b0.ctr), host ? `attached to ${defOf(host.d).name}` : '', b0.rb ? 'Ring-bearer' : '', b0.stolen ? 'stolen' : '', b0.harn ? 'harnessed' : ''].filter(Boolean);
     const els = shown.map((b) => { const el = cardFor(b.id, b.d); used.add(b.id); el.classList.toggle('tapped', !!b.tap); el.classList.remove('att', 'blk', 'sick', 'incmd', 'cmdr'); el.dataset.small = '1'; tile(el, tiles); setBadges(el, ''); el.setAttribute('aria-label', `${d0.name}${b.tap ? ', tapped' : ''}${words.length ? `, ${words.join(', ')}` : ''}`); return el; });
     list.slice(3).forEach((b) => used.add(b.id));
-    const last = `${list.length > 1 ? `<span class="badge xn">${list.length}</span>` : ''}${ctrBadge(b0.ctr, d0)}${host ? `<span class="badge attb" title="Attached to ${esc(defOf(host.d).name)}">On ${esc(defOf(host.d).name.split(/[ ,]/)[0])}</span>` : ''}${b0.stolen ? '<span class="badge stolb">Stolen</span>' : ''}${b0.harn ? '<span class="badge harnb" title="Harnessed: its ∞ ability is active">∞</span>' : ''}`;
+    const last = `${list.length > 1 ? `<span class="badge xn">${list.length}</span>` : ''}${b0.cnt ? `<span class="badge cnt" title="+1/+1 counters">+${b0.cnt}</span>` : ''}${ctrBadge(b0.ctr, d0)}${host ? `<span class="badge attb" title="Attached to ${esc(defOf(host.d).name)}">On ${esc(defOf(host.d).name.split(/[ ,]/)[0])}</span>` : ''}${b0.stolen ? '<span class="badge stolb">Stolen</span>' : ''}${b0.harn ? '<span class="badge harnb" title="Harnessed: its ∞ ability is active">∞</span>' : ''}`;
     if (last) setBadges(els[els.length - 1], last);
     placeChildren(g, els);
     return g;

@@ -316,6 +316,9 @@ function parseStructural(def, l) {
   if ((m = /^equip ([a-z]+) ((?:\{[\dwubrg]\})+)$/.exec(l))) { const c = parseCost(m[2].toUpperCase()); if (!c) return false; def.acts.push({ equip: true, only: { sub: cap1(m[1]) }, cost: { m: c }, sorcery: true, label: `Equip ${cap1(m[1])} ${costText(c)}` }); return true; }
   if ((m = /^crew (\d+)$/.exec(l))) { def.crew = +m[1]; return true; }
   if (l === 'job select') { def.jobSelect = true; def.etb.unshift({ k: 'jobSelect' }); return true; }
+  if (l === 'for mirrodin!') { def.forMirrodin = true; def.etb.unshift({ k: 'forMirrodin' }); return true; }
+  if ((m = /^unearth ((?:\{[\dwubrg]\})+)$/.exec(l))) { const c = parseCost(m[1].toUpperCase()); if (!c) return false; def.unearth = c; return true; }
+  if ((m = /^affinity for (artifacts|equipment)$/.exec(l))) { const eq = m[1] === 'equipment'; def.affinity = eq ? 'Equipment' : 'Artifact'; def.costMod = (G, P) => P.bf.filter((x) => (eq ? hasSub(x, 'Equipment') : isArtifact(x))).length; return true; }
   if ((m = /^flashback ((?:\{[\dwubrgx]\})+)$/.exec(l))) { const c = parseCost(m[1].toUpperCase()); if (!c) return false; def.flashback = c; return true; }
   if (l === "~ can't be countered.") { def.uncounterable = true; return true; }
   if (l === 'you may look at the top card of your library any time.') { def.peekTop = true; return true; }
@@ -731,8 +734,8 @@ const basePow = (c) => { if (c.base) return c.base.p; if (c.sbase) return c.sbas
 const baseTou = (c) => (c.base ? c.base.t : c.sbase ? c.sbase.t : c.def.toughness);
 // Bonuses that last past the end of the turn ("until your next turn"): [{ p, t, until }] while the turn number is below until
 const timed = (c, k) => { let v = 0; if (c.g) for (const x of c.timedPT) if (c.g.turn < x.until) v += x[k]; return v; };
-const rawPow = (c) => basePow(c) + c.cnt + c.tp + (c.sp || 0) + (c.timedPT ? timed(c, 'p') : 0);
-const rawTou = (c) => baseTou(c) + c.cnt + c.tt + (c.st || 0) + (c.timedPT ? timed(c, 't') : 0);
+const rawPow = (c) => basePow(c) + c.cnt + c.tp + (c.sp || 0) + (c.timedPT ? timed(c, 'p') : 0) + (c.perp ? c.perp.p || 0 : 0);
+const rawTou = (c) => baseTou(c) + c.cnt + c.tt + (c.st || 0) + (c.timedPT ? timed(c, 't') : 0) + (c.perp ? c.perp.t || 0 : 0);
 // Flatman: power and toughness switched until end of turn (c.tf.swapPT)
 const pow = (c) => { fresh(c); return c.tf && c.tf.swapPT ? rawTou(c) : rawPow(c); };
 const tou = (c) => { fresh(c); return c.tf && c.tf.swapPT ? rawPow(c) : rawTou(c); };
@@ -742,7 +745,7 @@ const has = (c, k) => {
   if (c.sfl && c.sfl.noAbil) return c.tkw.includes(k);
   if (k === 'indestructible' && c.tf && c.tf.loseInd) return false;
   if (c.timedKw && c.g && c.timedKw.some((x) => x.kw === k && c.g.turn < x.until)) return true;
-  return c.def.kw.includes(k) || c.tkw.includes(k) || (!!c.skw && c.skw.includes(k)) || (!!c.ctr && c.ctr[k] > 0);
+  return c.def.kw.includes(k) || c.tkw.includes(k) || (!!c.skw && c.skw.includes(k)) || (!!c.ctr && c.ctr[k] > 0) || (!!c.perp && !!c.perp.kw && c.perp.kw.includes(k));
 };
 const other = (G, P) => G.players[1 - P.i];
 const onBf = (G, c) => G.players.some((P) => P.bf.includes(c));
@@ -888,7 +891,7 @@ function resetCard(c) {
   c.blocking = 0; c.blockedBy = []; c.pumps = 0; c.stun = false; c.ctrl = c.owner; c.noBlock = false; c.exileDead = false;
   c.ctr = {}; c.att = null; c.tf = {}; c.base = null; c.crewed = false; c.ctrlFx = null; c.sp = 0; c.st = 0; c.skw = []; c.ani = false; c.leg = false; c.subX = null; c.orc = false;
   c.addSubs = null;
-  c.onceT = null; c.resN = null; c.manaTurn = 0; c.goad = 0; c.phased = false; c.xtrig = null; c.mem = {}; c.timedKw = null; c.timedPT = null; c.onceA = null;
+  c.onceT = null; c.resN = null; c.manaTurn = 0; c.goad = 0; c.phased = false; c.xtrig = null; c.mem = {}; c.timedKw = null; c.timedPT = null; c.onceA = null; c.unearthed = false;
 }
 function leaveBattlefield(G, c, to) {
   const P = ctrlOf(G, c);
@@ -1385,6 +1388,7 @@ function damageCreature(G, c, n, src, opts) {
   if ((G.players[c.ctrl].shieldTurn === G.turn || G.players[c.ctrl].safeTurn === G.turn) && !G.noPrevent) return 0;
   if (c.ctr && c.ctr.shield) { shieldSave(G, c); return 0; }
   if (c.def.preventAll && !G.noPrevent && (c.def.preventAll === true || c.def.preventAll(G, c, n))) return 0;
+  if (c.sfl && c.sfl.noDamage && !G.noPrevent) return 0;
   if (c.def.healOnHit && c.dmg > 0) { c.dmg = 0; c.dt = false; }
   if (c.tf && c.tf.prevent > 0 && !G.noPrevent) { const k = Math.min(n, c.tf.prevent); c.tf.prevent -= k; n -= k; if (k && c.tf.redirect) redirectDmg(G, c.tf.redirect, k); if (n <= 0) return 0; }
   if (!(opts && opts.soaked)) { const ad = ctrlOf(G, c).bf.find((x) => x.def.soak && x !== c && isCreature(x)); n = dmgMod(G, src, c.ctrl, n); if (ad) return damageCreature(G, ad, n, src, Object.assign({}, opts, { soaked: true })); }
@@ -1409,6 +1413,7 @@ function damagePlayer(G, Q, n, srcCard, from) {
   const par = Q.bf.find((x) => x.def.pariah && x.att != null && byId(G, x.att) && isCreature(byId(G, x.att)));
   if (par) { const h = byId(G, par.att); emit(G, 'info', `${par.def.name}: the damage is dealt to ${h.def.name} instead.`, { who: Q.i, cards: [par.id, h.id] }); damageCreature(G, h, n, srcCard, { soaked: true, combat: !!G.combatDmg }); return 0; }
   n = dmgMod(G, srcCard, Q.i, n);
+  if (G.dmgBonus && G.dmgBonus.turn === G.turn) n += G.dmgBonus.n; // Rankle and Torbran
   if (G.combatDmg && srcCard && srcCard.def && srcCard.def.doubleToPlayer) n *= 2;
   if (n > 1 && Q.bf.some((x) => x.def.capOne)) n = 1; // Hyperion
   const ad = Q.bf.find((x) => x.def.soak && isCreature(x));
@@ -1572,8 +1577,9 @@ function resolveInner(G, P, effects, source, targets, ctx, X) {
       }
       case 'fog': if (e.mine) { P.safeTurn = G.turn; emit(G, 'fog', `All damage that would be dealt to ${P.name} and their creatures this turn will be prevented.`, { who: P.i }); break; } G.fog = true; emit(G, 'fog', 'All combat damage this turn will be prevented.', { who: P.i }); break;
       case 'fight': case 'bite': {
-        if (e.ctr && onBf(G, t.c)) addCounters(G, t.c, e.ctr);
+        { const nc = typeof e.ctr === 'function' ? e.ctr(G, P) : e.ctr; if (nc && onBf(G, t.c)) addCounters(G, t.c, nc); }
         if (e.pump && onBf(G, t.c)) { t.c.tp += e.pump; emit(G, 'pump', `${t.c.def.name} gets +${e.pump}/+0 until end of turn.`, { who: P.i, cards: [t.c.id] }); }
+        if (e.pt && onBf(G, t.c)) { t.c.tp += e.pt[0]; t.c.tt += e.pt[1]; emit(G, 'pump', `${t.c.def.name} gets ${sgn(e.pt[0])}/${sgn(e.pt[1])} until end of turn.`, { who: P.i, cards: [t.c.id] }); }
         const m = t.c, o = t.c2, pm = Math.max(0, pow(m)) * (e.mult || 1), po = Math.max(0, pow(o));
         X.excess = Math.max(0, pm - (has(m, 'deathtouch') ? 1 : lethalTo(o)));
         let toO = pm, excess = 0;
@@ -1679,7 +1685,7 @@ function aiScry(G, P, n) {
    Counters, attachments, continuous effects, mana abilities, triggered and activated abilities.
    ============================================================ */
 const isLegendary = (c) => c.def.supertypes.includes('Legendary') || !!c.leg;
-const isArtifact = (c) => c.def.types.includes('Artifact') || !!(c.tf && c.tf.artifact);
+const isArtifact = (c) => c.def.types.includes('Artifact') || !!(c.tf && c.tf.artifact) || !!(c.perp && c.perp.artifact);
 const isEnchantment = (c) => c.def.types.includes('Enchantment');
 const subOf = (c) => { if (c.g && c.g.dirty) layers(c.g); return c.subX || c.def.sub; };
 const NONCREATURE_SUBS = new Set(['Equipment', 'Aura', 'Saga', 'Plan', 'Vehicle', 'Treasure', 'Food', 'Clue', 'Infinity', 'Stone', 'Town', 'Forest', 'Island', 'Swamp', 'Mountain', 'Plains']);
@@ -1763,18 +1769,22 @@ function layers(G) {
 // +1/+1 counters live in c.cnt (as before); every other kind (stun, lore, burden, keyword counters...) in c.ctr.
 function addCounters(G, c, n, kind = '+1/+1', quiet) {
   if (!c || n <= 0 || !onBf(G, c)) return 0;
+  let first = false;
   n += G.players[c.ctrl].bf.filter((x) => x.def.ctrPlus).length;
   if (kind === '+1/+1') {
     const P = G.players[c.ctrl];
+    for (const x of P.bf) if (x.def.plusOnePlus && x.def.plusOnePlus(G, x, c)) n += 1;
     // Mauhúr: Armies, Goblins and Orcs you control get one more
     if (isCreature(c) && (hasSub(c, 'Army') || orcish(c))) n += P.bf.filter((x) => x.def.plusOne).length;
     if (isCreature(c)) for (const x of P.bf) if (x.def.ctrDouble) n *= 2; // The Earth Crystal
     c.cnt += n;
+    first = c.plusTurn !== G.turn;
     c.plusTurn = G.turn;
+    P.plusCtrTurn = G.turn;
   } else c.ctr[kind] = (c.ctr[kind] || 0) + n;
   dirty(G);
   if (!quiet) emit(G, 'pump', kind === '+1/+1' ? `${c.def.name} gets ${n === 1 ? 'a +1/+1 counter' : `${n} +1/+1 counters`}.` : `${c.def.name} gets ${n === 1 ? `a ${kind} counter` : `${n} ${kind} counters`}.`, { who: c.ctrl, cards: [c.id] });
-  fire(G, 'counters', { c, kind, n });
+  fire(G, 'counters', { c, kind, n, first });
   return n;
 }
 function removeCounters(G, c, kind, n) {
@@ -1834,8 +1844,8 @@ function manaSources(P, purpose) {
         if (!colors.length) continue;
         const amt = ab.amountFn ? ab.amountFn(G, c, P) : ab.amount || 1;
         if (amt <= 0) continue;
-        const src = { c, colors, amount: amt, conv: ab.conv || 0, life: ab.life || 0, sac: !!ab.sac, once: !!ab.once, tap: ab.tap !== false, unc: !!ab.unc };
-        const rank = (x) => x.colors.length * 2 + x.amount * 3 - x.conv * 3 - x.life - (x.sac ? 4 : 0);
+        const src = { c, colors, amount: amt, conv: ab.conv || 0, life: ab.life || 0, sac: !!ab.sac, once: !!ab.once, tap: ab.tap !== false, unc: !!ab.unc, painOnColor: !!ab.painOnColor };
+        const rank = (x) => x.colors.length * 2 + x.amount * 3 - x.conv * 3 - (x.painOnColor ? 0 : x.life) - (x.sac ? 4 : 0);
         if (!best || rank(src) > rank(best)) best = src;
       }
       if (best) {
@@ -1851,7 +1861,7 @@ function manaSources(P, purpose) {
   }
   return out;
 }
-const srcRank = (x) => (x.pool || x.rpool ? 0 : x.sac ? 9 : x.conv ? 8 : x.life ? 7 : x.c && isLand(x.c) ? 1 : x.c && isCreature(x.c) ? 3 : 2);
+const srcRank = (x) => (x.pool || x.rpool ? 0 : x.sac ? 9 : x.conv ? 8 : x.life && !x.painOnColor ? 7 : x.c && isLand(x.c) ? 1 : x.c && isCreature(x.c) ? 3 : 2);
 function planPayment(sources, cost, purpose) {
   const anyType = purpose && purpose.anyType;
   const pips = [];
@@ -1875,9 +1885,10 @@ function planPayment(sources, cost, purpose) {
     for (const a of cands) {
       const first = a.left === a.s.amount;
       if (viaFree(a, pips[i])) { const was = a.left; a.left = 0; if (assign(i + 1)) return true; a.left = was; continue; }
-      a.left--; if (first) conv += a.s.conv || 0;
+      const colored = pips[i][0] !== 'C';
+      a.left--; if (first) conv += a.s.conv || 0; if (colored) a.col = (a.col || 0) + 1;
       if (assign(i + 1)) return true;
-      a.left++; if (first) conv -= a.s.conv || 0;
+      a.left++; if (first) conv -= a.s.conv || 0; if (colored) a.col--;
     }
     return false;
   };
@@ -1894,7 +1905,7 @@ function planPayment(sources, cost, purpose) {
     const take = Math.min(a.left, need); a.left -= take; need -= take;
   }
   if (need > 0) return null;
-  return avail.filter((a) => a.left < a.s.amount).map((a) => ({ s: a.s, n: a.s.amount - a.left }));
+  return avail.filter((a) => a.left < a.s.amount).map((a) => ({ s: a.s, n: a.s.amount - a.left, col: (a.col || 0) > 0 }));
 }
 // Phyrexian mana: pay each symbol with its color while the mana is there, otherwise with 2 life
 function phyPlan(P, cost, purpose) {
@@ -1919,18 +1930,22 @@ function pay(P, cost, purpose) {
   const plan = planPayment(manaSources(P, purpose), cost, purpose);
   if (!plan) return false;
   const G = P.g;
-  const sacs = [];
+  const sacs = [], pains = [];
   const watched = G && G.pending && G.players.some((q) => q.bf.some((x) => x.def.watchMana));
-  for (const { s, n } of plan) {
+  for (const { s, n, col } of plan) {
     if (s.pool) { P.pool[s.pool] -= n; continue; }
+    // Painlands (Shivan Reef): colored mana deals 1 damage to you, colorless is free
+    if (s.painOnColor && col && G) pains.push(s.c);
     if (s.rpool) { P.rpool.m[s.rpool] -= n; continue; }
     if (s.tap) { s.c.tapped = true; if (watched && isLand(s.c)) fire(G, 'manaTap', { P, c: s.c }); if (G && s.c.def.onManaTap && !s.convoke && !s.impro) s.c.def.onManaTap(G, P, s.c); }
     if (s.once && G) s.c.manaTurn = G.turn;
-    if (s.life) { P.life -= s.life; if (G) emit(G, 'life', `${P.name} pays ${s.life} life for mana.`, { who: P.i, target: `p${P.i}`, amount: s.life }); }
+    if (s.life && !s.painOnColor) { P.life -= s.life; if (G) emit(G, 'life', `${P.name} pays ${s.life} life for mana.`, { who: P.i, target: `p${P.i}`, amount: s.life }); }
     if (s.unc && purpose && purpose.item) purpose.item.unc = true;
+    if (purpose && purpose.item && s.colors && s.colors.length === 1) { const sc = purpose.item.spentCols = purpose.item.spentCols || {}; sc[s.colors[0]] = (sc[s.colors[0]] || 0) + n; }
     if (s.sac) sacs.push(s.c);
   }
   if (sacs.length && G) for (const c of sacs) sacrifice(G, P, c, true);
+  for (const c of pains) { const d = damagePlayer(G, P, 1, c, P); if (d) emit(G, 'hit', `${c.def.name} deals ${d} damage to ${P.name}.`, { who: P.i, card: c.id, target: `p${P.i}`, amount: d }); }
   return true;
 }
 function canPayBoth(P, a, b) {
@@ -2452,6 +2467,111 @@ const refFor = (x) => (x.p != null && !x.def ? { p: x.p } : { c: x });
 const hexP = (G, Q, P) => !!(Q && P && Q !== P && Q.bf.some((c) => c.def.playerHex && c.def.playerHex(G, c)));
 function protectedPlayer(G, Q, by) { return !!(by && by !== Q && ((Q.protUntil && G.turn < Q.protUntil) || Q.bf.some((c) => c.def.playerPro))); }
 
+/* ---------- Mechanics from Phyrexia: All Will Be One, The Brothers' War, March of the Machine and Alchemy ---------- */
+// Unearth: back from the graveyard with haste; exiled at the next end step, or instead of dying
+const UNEARTH = new Map();
+function unearthAb(cost) {
+  const key = costText(cost);
+  if (!UNEARTH.has(key)) UNEARTH.set(key, { cost: { m: cost }, sorcery: true, label: `Unearth ${key}`, run: (G, X) => unearth(G, X.P, X.src),
+    ai: (G, P, c, when) => (when === 'main1' && G.active === P.i ? { score: 0.4 + Math.max(0, pow(c)) * 0.45 } : null) });
+  return UNEARTH.get(key);
+}
+function unearth(G, P, c) {
+  if (!P.gy.includes(c)) return;
+  P.gy.splice(P.gy.indexOf(c), 1);
+  emit(G, 'raise', `${P.name} unearths ${c.def.name}.`, { who: P.i, cards: [c.id] });
+  enterBattlefield(G, P, c, null, { from: 'gy' });
+  if (!onBf(G, c)) return;
+  c.unearthed = true; c.exileDead = true;
+  if (!c.tkw.includes('haste')) c.tkw.push('haste');
+  dirty(G);
+  G.delayed.push({ when: 'end', run: (GG) => { if (onBf(GG, c) && c.unearthed) { emit(GG, 'exile', `${c.def.name} is exiled (unearth).`, { who: c.ctrl, cards: [c.id] }); exilePermanent(GG, GG.players[c.ctrl], c); } } });
+}
+// Conjure (Alchemy): a new card from outside the game. The host page tells the engine how to find a card by name.
+let LOOKUP = null;
+const setLookup = (fn) => { LOOKUP = fn; };
+const lookupDef = (name) => (LOOKUP ? LOOKUP(name) || null : null);
+function conjure(G, P, what, zone, opts = {}) {
+  const def = typeof what === 'string' ? lookupDef(what) : what;
+  if (!def) return null;
+  for (const f of facesOf(def)) G.defs[f.id] = f;
+  const c = newCard(G, def, P.i);
+  if (opts.perp) c.perp = JSON.parse(JSON.stringify(opts.perp, (k, v) => v));
+  if (!opts.quiet) emit(G, 'conjure', `${P.name} conjures ${def.name} ${zone === 'bf' ? 'onto the battlefield' : zone === 'gy' ? 'into their graveyard' : zone === 'library' ? 'into their library' : 'into their hand'}.`, { who: P.i, cards: [c.id] });
+  if (zone === 'bf') enterBattlefield(G, P, c, null, { tapped: !!opts.tapped });
+  else if (zone === 'gy') { P.gy.push(c); if (G.pending) fire(G, 'gyAdded', { P, cards: [c] }); }
+  else if (zone === 'library') { P.library.splice(G.rng.int(P.library.length + 1), 0, c); }
+  else if (zone !== 'none') P.hand.push(c);
+  dirty(G);
+  return c;
+}
+// Draft from a spellbook: see three of its cards at random, conjure the one you pick into your hand
+function draft(G, P, src, names) {
+  const pool = G.rng.shuffle(names.filter((n) => lookupDef(n)).slice()).slice(0, 3);
+  if (!pool.length) return null;
+  const offer = pool.map((n) => conjure(G, P, n, 'none', { quiet: true }));
+  const pick = isHuman(G, P) ? pickCards(G, { type: 'choose', reason: 'draft', n: 1, min: 1, max: 1, zone: 'library', cards: offer.map((c) => c.id), label: `Draft a card from ${src.def.name}'s spellbook` }, offer, 1)[0]
+    : offer.slice().sort((a, b) => handValue(G, P, b) - handValue(G, P, a))[0];
+  P.hand.push(pick); dirty(G);
+  emit(G, 'conjure', `${P.name} drafts ${pick.def.name} from ${src.def.name}'s spellbook.`, { who: P.i, cards: [pick.id] });
+  return pick;
+}
+// Seek: a random card from your library that matches, into your hand (or exile)
+function seek(G, P, pred, to = 'hand') {
+  const cs = P.library.filter(pred);
+  if (!cs.length) return null;
+  const c = cs[G.rng.int(cs.length)];
+  P.library.splice(P.library.indexOf(c), 1);
+  if (to === 'exile') P.exile.push(c); else P.hand.push(c);
+  dirty(G);
+  emit(G, to === 'exile' ? 'exile' : 'draw', `${P.name} seeks ${to === 'exile' ? `and exiles ${c.def.name}` : 'a card'}.`, { who: P.i, cards: to === 'exile' ? [c.id] : [] });
+  return c;
+}
+// Incubate N: an Incubator artifact token with N +1/+1 counters and "{2}: Transform this artifact" into a 0/0 Phyrexian artifact creature
+const INCUBATOR = { id: 'token-incubator', name: 'Incubator', art: true, sub: ['Incubator'], colors: [], text: '{2}: Transform this artifact.',
+  acts: [{ cost: { m: { g: 2, W: 0, U: 0, B: 0, R: 0, G: 0 } }, label: 'Transform into a Phyrexian artifact creature', when: ['main1', 'main2', 'end'],
+    run: (G, X) => transform(G, X.src), ai: (G, P, c, when) => (c.cnt > 0 && (when === 'main1' || when === 'end') ? { score: 0.8 + c.cnt * 0.6 } : null) }] };
+function incubatorDef(G) {
+  const d = tokenDef(G, INCUBATOR);
+  if (!d.back) {
+    const phy = tokenDef(G, { id: 'token-phyrexian-incubated', name: 'Phyrexian Token', p: 0, t: 0, colors: [], sub: ['Phyrexian'], artifact: true, text: '' });
+    d.back = phy; phy.front = d; phy.isBack = true;
+  }
+  return d;
+}
+function incubate(G, P, n) {
+  if (n <= 0) n = 0;
+  const [c] = makeTokens(G, P, incubatorDef(G), 1, { quiet: true });
+  if (!c) return null;
+  if (n) addCounters(G, c, n, '+1/+1', true);
+  emit(G, 'token', `${P.name} incubates ${n}: an Incubator with ${n === 1 ? 'a +1/+1 counter' : `${n} +1/+1 counters`}.`, { who: P.i, cards: [c.id] });
+  return c;
+}
+// Proliferate: one more of each kind of counter already on any number of permanents (the AI picks its own good ones and the opponent's stun counters)
+const GOOD_CTR = (k) => !['stun', '-1/-1', 'blight', 'finality'].includes(k);
+function proliferate(G, P) {
+  const cands = allPerms(G).filter((c) => c.cnt > 0 || Object.keys(c.ctr).some((k) => c.ctr[k] > 0));
+  const worth = (c) => (c.ctrl === P.i ? (c.cnt > 0 ? 1 : 0) + Object.keys(c.ctr).filter((k) => c.ctr[k] > 0 && GOOD_CTR(k)).length : (c.cnt > 0 ? -1 : 0) + Object.keys(c.ctr).filter((k) => c.ctr[k] > 0 && !GOOD_CTR(k)).length - Object.keys(c.ctr).filter((k) => c.ctr[k] > 0 && GOOD_CTR(k)).length);
+  const picks = isHuman(G, P) ? (cands.length ? pickCards(G, { type: 'choose', reason: 'proliferate', n: cands.length, min: 0, max: cands.length, zone: 'battlefield', cards: cands.map((c) => c.id), label: 'Proliferate: choose permanents' }, cands, null) : []) : cands.filter((c) => worth(c) > 0);
+  for (const c of picks) {
+    if (c.cnt > 0) addCounters(G, c, 1, '+1/+1', true);
+    for (const k of Object.keys(c.ctr)) if (c.ctr[k] > 0) addCounters(G, c, 1, k, true);
+  }
+  emit(G, 'pump', `${P.name} proliferates${picks.length ? `: ${nameList(picks)}` : ''}.`, { who: P.i, cards: picks.map((c) => c.id) });
+  if (G.pending) fire(G, 'proliferate', { P });
+}
+// A one-time boon: like an emblem, but it goes away once it has done its thing
+function addBoon(G, P, name, trig) {
+  const def = { id: `boon-${slug(name)}`, name: `Boon: ${name}`, types: [], sub: [], supertypes: [], kw: [], colors: [], trig: [Object.assign({}, trig, { run: (GG, X) => { const k = (X.P.emblems || []).indexOf(X.src); if (k < 0) return; X.P.emblems.splice(k, 1); trig.run(GG, X); } })], etb: [], dies: [], acts: [], statics: [], mv: 0, value: 0 };
+  const em = { id: -(G.nextId++), def, owner: P.i, ctrl: P.i, mem: {}, tkw: [], cnt: 0, tp: 0, tt: 0, ctr: {}, tf: {}, emblem: true, boon: true };
+  (P.emblems = P.emblems || []).push(em);
+  emit(G, 'info', `${P.name} gets a boon: ${name}.`, { who: P.i });
+  return em;
+}
+const POWERSTONE = { id: 'token-powerstone', name: 'Powerstone', art: true, sub: ['Powerstone'], colors: [], text: "{T}: Add {C}. This mana can't be spent to cast a nonartifact spell.",
+  manaAbs: [{ colors: ['C'], only: (purpose) => !purpose.def || purpose.def.types.includes('Artifact') }] };
+const REBEL = { name: 'Rebel', p: 2, t: 2, colors: ['R'], sub: ['Rebel'], kw: [] };
+
 /* ---------- New effect kinds ----------
    EFF[k] = { res(G, X, e, t), val(G, P, e, target, X, ctx) (per target, for the AI), score(G, P, e, X, ctx) (untargeted),
               value(e) (deck building), label(e) (what a human is asked to target) }
@@ -2553,6 +2673,12 @@ const EFF = {
     val: (G, P, e, x) => preventVal(G, P, e.n || 1, x), value: (e) => 0.5 + (e.n || 1) * 0.15, label: () => 'Choose what to protect',
   },
   // Job select: a 1/1 colorless Hero token, then this Equipment is attached to it
+  forMirrodin: {
+    res: (G, X) => { const [h] = makeTokens(G, X.P, REBEL, 1, { quiet: true }); if (!h) return; emit(G, 'token', `For Mirrodin!: ${X.P.name} creates a 2/2 Rebel and attaches ${X.src.def.name} to it.`, { who: X.P.i, cards: [h.id] }); if (onBf(G, X.src) && onBf(G, h)) attach(G, X.src, h, true); },
+    score: () => 2, value: () => 2,
+  },
+  incubate: { res: (G, X, e) => incubate(G, X.P, e.nFn ? e.nFn(G, X) : e.n), score: (G, P, e) => (e.n || 1) * 0.9 + 0.3, value: (e) => (e.n || 1) * 0.9 + 0.3, label: () => 'Incubate' },
+  proliferate: { res: (G, X) => proliferate(G, X.P), score: (G, P) => P.bf.filter((c) => c.cnt > 0).length * 0.8 + 0.1, value: () => 1 },
   jobSelect: {
     res: (G, X) => { const [h] = makeTokens(G, X.P, HERO_TOKEN, 1, { quiet: true }); if (!h) return; emit(G, 'token', `${X.P.name} creates a 1/1 Hero token.`, { who: X.P.i, cards: [h.id] }); if (onBf(G, X.src) && onBf(G, h)) attach(G, X.src, h); },
     score: () => 1.6, value: () => 1.4,
@@ -2940,7 +3066,7 @@ function castZone(G, P, card) {
     if (card.def.flashback) return 'flashback';
     if (card.def.escape && P.gy.filter((x) => x !== card).length >= card.def.escape.exile) return 'escape';
     if (card.def.mayhem && card.discTurn === G.turn) return 'mayhem';
-    if (card.def.gyDiscard && P.hand.length) return 'gydiscard';
+    if (card.def.gyDiscard && P.hand.length >= (card.def.gyDiscard === true ? 1 : card.def.gyDiscard)) return 'gydiscard';
     if (gyPermit(G, P, card)) return 'gycast';
   }
   return null;
@@ -3163,7 +3289,7 @@ function castSpell(G, P, card, targets, etbTargets, opts = {}) {
   if (zone === 'flashback' || (xc && xc.exileAfter)) card.fbExile = true;
   if (zone === 'flashback') item.flashback = true;
   if (zone === 'escape') { item.escaped = true; escapeExile(G, P, card); }
-  if (zone === 'gydiscard') discardChoice(G, P, 1, 'discard-cost');
+  if (zone === 'gydiscard') discardChoice(G, P, def.gyDiscard === true ? 1 : def.gyDiscard, 'discard-cost');
   item.zone = zone;
   if (!opts.free && P.freeNext && P.freeNext.turn === G.turn && P.freeNext.f(def)) { P.freeNext = null; item.free = true; }
   if (xc && xc.free) item.free = true;
@@ -3393,6 +3519,7 @@ function enterBattlefield(G, P, card, etbTargets, opts = {}) {
   if (thirst) card.cnt += thirst;
   if (opts.item && opts.item.finality) card.ctr.finality = 1;
   if (card.finCtr) { card.cnt += card.finCtr; card.finCtr = 0; }
+  if (card.etbAdd) { for (const [k, n] of Object.entries(card.etbAdd)) { if (k === '+1/+1') card.cnt += n; else card.ctr[k] = (card.ctr[k] || 0) + n; } card.etbAdd = null; }
   if (card.finHaste === G.turn) { card.tkw.push('haste'); card.finHaste = 0; }
   if (opts.ctr) for (const [k, n] of Object.entries(opts.ctr)) { if (k === '+1/+1') card.cnt += n; else card.ctr[k] = (card.ctr[k] || 0) + n; }
   if (isCreature(card) && P.noteBonus) { const b = P.noteBonus.filter((nb) => nb.turn === G.turn && card.def.sub.includes(nb.type)); if (b.length) { card.cnt += b.length; P.noteBonus = P.noteBonus.filter((nb) => !b.includes(nb)); } }
@@ -3413,7 +3540,7 @@ function enterBattlefield(G, P, card, etbTargets, opts = {}) {
     for (let i = 0; i < n && !G.over; i++) resolveEffects(G, P, card.def.etb, card, i ? null : tg, 'etb', { item: opts.item });
   }
   if (isLand(card) && !G.over) for (const x of P.bf.slice()) if (isCreature(x) && x.def.landfall && x.def.landfall.length && !G.over) resolveEffects(G, P, x.def.landfall, x, null, 'trigger');
-  if (G.pending) { fire(G, 'enter', { c: card, P, cast: opts.item ? opts.item.zone || 'hand' : null }); if (isLand(card)) fire(G, 'landfall', { c: card, P }); sba(G); }
+  if (G.pending) { fire(G, 'enter', { c: card, P, cast: opts.item ? opts.item.zone || 'hand' : null, from: opts.from || null }); if (isLand(card)) fire(G, 'landfall', { c: card, P }); sba(G); }
 }
 // Sagas: a lore counter as it enters and after your draw step; each new counter's chapter triggers.
 function addLore(G, P, saga, n) {
@@ -3456,7 +3583,12 @@ function pwAb(def, ab, k) {
 }
 function abilitiesOf(G, P, c, zone) {
   const out = [];
-  if (zone === 'gy') { (c.def.gyActs || []).forEach((ab, k) => out.push({ c, ab, k: `g${k}`, zone })); return out; }
+  if (zone === 'gy') {
+    (c.def.gyActs || []).forEach((ab, k) => out.push({ c, ab, k: `g${k}`, zone }));
+    const ue = c.def.unearth || (c.perp && c.perp.unearth);
+    if (ue && isCreature(c)) out.push({ c, ab: unearthAb(ue), k: 'unearth', zone });
+    return out;
+  }
   if (zone === 'ex') { (c.def.exActs || []).forEach((ab, k) => out.push({ c, ab, k: `x${k}`, zone })); return out; }
   if (zone === 'hand') { (c.def.handActs || []).forEach((ab, k) => out.push({ c, ab, k: `h${k}`, zone })); return out; }
   if ((c.tf && c.tf.noAbil) || (c.sfl && c.sfl.noAbil)) return out;
@@ -3464,6 +3596,7 @@ function abilitiesOf(G, P, c, zone) {
   (c.def.acts || []).forEach((ab, k) => out.push({ c, ab, k: `${k}`, zone: 'bf' }));
   if (c.def.pw) c.def.pw.forEach((ab, k) => out.push({ c, ab: pwAb(c.def, ab, k), k: `pw${k}`, zone: 'bf' }));
   if (c.def.crew) out.push({ c, ab: CREW_AB, k: 'crew', zone: 'bf' });
+  if (c.perp && c.perp.equip && hasSub(c, 'Equipment')) out.push({ c, ab: { equip: true, cost: { m: c.perp.equip }, sorcery: true, label: `Equip ${costText(c.perp.equip)}` }, k: 'pequip', zone: 'bf' });
   // Sharkey borrows the activated abilities (not mana abilities) of the opponents' lands
   if (c.def.sharkey) for (const land of other(G, P).bf.filter(isLand)) (land.def.acts || []).forEach((ab, k) => { if (!ab.cost.sacSelf) out.push({ c, ab, k: `s${land.id}.${k}`, zone: 'bf', borrowed: land }); });
   return out;
@@ -3491,6 +3624,7 @@ function abilityCost(G, P, c, ab, targets) {
     const host = targets && targets[0] && targets[0].c;
     if (host && host.def.equipCheaper) m.g = Math.max(0, m.g - host.def.equipCheaper);
     if (G.active === P.i && P.bf.some((x) => x.def.equipFree) && P.freeEquipTurn !== G.turn) return genericCost(0);
+    if (P.bf.some((x) => x.def.equipOne) && costMV(m) > 1) return genericCost(1);
   }
   if (ab.costMod) m.g = Math.max(0, m.g - ab.costMod(G, P, c));
   if (ab.powerUp) {
@@ -5781,6 +5915,6 @@ return {
     targetList, allTargets, findCard, protectedFrom, historicDef, isPermanentSpell, spellEffects, effsValue, effectValue, castZone, aiScry, pickBasicFrom, putInGraveyard, defMatches, lethalTo,
     canBlock, kills, dmgOut, combatPow, minBlockers, phaseIn, ctrlOf, onBfC: onBf, equipGain, uniqueByName, discardWorst, emptyPool, refFor, tgtOk, castCost, maxX,
     EFF, abilitiesOf, readyAbilities, activate, aiAbilities, parseEffects, parseKwLine, parseStructural, parseStatic, parseActivated, normalizeText,
-    surveil, transform, blink, meld, castAdventure, addEmblem, castNow, evalCast, modeChoices, auraHost, auraOk, shieldFor, combatDoom, preventVal, redirectDmg, redirectFor, allIslands, isIsland, regenSave, abilityCost, sneakWindow, teamworkPay, discardsThisTurn, noteDiscard, finishCountered, enteredThisTurn, attackedThisTurn, investigate, connive, shieldSave, CLUE, altFace, reduceCost, twPick, twPower, hexP, landChoices, landLimit, gyPermit, acOf, addCostInto, facesOf, sagaFinal, dmgMod, isInstantSpeed, playLandChoice },
+    surveil, transform, blink, meld, castAdventure, addEmblem, castNow, evalCast, modeChoices, auraHost, auraOk, shieldFor, combatDoom, preventVal, redirectDmg, redirectFor, setLookup, lookupDef, conjure, draft, seek, incubate, proliferate, addBoon, unearth, POWERSTONE, REBEL, INCUBATOR, allIslands, isIsland, regenSave, abilityCost, sneakWindow, teamworkPay, discardsThisTurn, noteDiscard, finishCountered, enteredThisTurn, attackedThisTurn, investigate, connive, shieldSave, CLUE, altFace, reduceCost, twPick, twPower, hexP, landChoices, landLimit, gyPermit, acOf, addCostInto, facesOf, sagaFinal, dmgMod, isInstantSpeed, playLandChoice },
 };
 });
