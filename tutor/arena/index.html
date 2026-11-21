@@ -384,6 +384,7 @@ svg.i .fill { fill: currentColor; }
 .card .rbb { left: 50%; top: -7px; transform: translateX(-50%); background: #d9b23a; color: #231a03; border: 1px solid rgba(0, 0, 0, .35); font-size: max(9px, 10cqw); }
 .card .attb { left: -4px; top: -5px; background: rgba(21, 19, 26, .92); color: #e2d6ff; border: 1px solid rgba(201, 194, 255, .45); font-size: max(9px, 10cqw); }
 .card .stolb { right: -4px; bottom: 34%; background: #5a2340; color: #ffc4dd; border: 1px solid rgba(255, 196, 221, .4); font-size: max(9px, 10cqw); }
+.card .harnb { left: -4px; bottom: 34%; background: #3a2a63; color: #ffe08a; border: 1px solid rgba(255, 224, 138, .5); font-size: max(10px, 12cqw); }
 .card .zoneb { left: 50%; bottom: -6px; transform: translateX(-50%); background: rgba(21, 19, 26, .94); color: #e9dfc9; border: 1px solid var(--line-strong); font-size: max(9px, 10cqw); }
 .ringc { flex: none; display: inline-flex; align-items: center; gap: 5px; font: 700 12.5px/1 var(--sans); color: #ecd27a; padding: 5px 9px; border-radius: 999px; border: 1px solid rgba(236, 210, 122, .45); background: rgba(236, 210, 122, .08); white-space: nowrap; cursor: help; }
 .ringc i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid currentColor; }
@@ -881,7 +882,7 @@ svg.i .fill { fill: currentColor; }
       <div id="pickBody"></div>
     </section>
     <footer class="credits">
-      Card data and images from <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>. The rules engine plays a simplified game with <span id="poolCount">4,093</span> cards whose text it can read, including every card in The Lord of the Rings: Tales of Middle-earth and Magic: The Gathering FINAL FANTASY. There are no planeswalkers, and a spell can be answered once but not fought over on the stack.
+      Card data and images from <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>. The rules engine plays a simplified game with <span id="poolCount">4,093</span> cards whose text it can read, including every card in The Lord of the Rings: Tales of Middle-earth, Magic: The Gathering FINAL FANTASY and Marvel Super Heroes. There are no planeswalkers, and a spell can be answered once but not fought over on the stack.
       Arena is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. &copy;Wizards of the Coast LLC.
     </footer>
   </div>
@@ -937,12 +938,13 @@ svg.i .fill { fill: currentColor; }
 <div class="insp" id="insp" role="dialog" aria-modal="true" aria-labelledby="inspName" hidden></div>
 <div class="sheet" id="sheet" hidden></div>
 
-<script src="engine.js?v=7"></script>
+<script src="engine.js?v=8"></script>
 <script src="ltr.js?v=1"></script>
 <script src="fin.js?v=1"></script>
+<script src="msh.js?v=1"></script>
 <script src="decks.js?v=3"></script>
 <script src="commanders.js?v=3"></script>
-<script src="sets.js?v=3"></script>
+<script src="sets.js?v=4"></script>
 <script src="tutorial.js?v=4"></script>
 <script>
 'use strict';
@@ -1045,14 +1047,14 @@ const ARCH_LABEL = { aggro: 'Aggro', midrange: 'Midrange', control: 'Control' };
 const COLOR_NAME = { W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green' };
 const COLOR_VAR = { W: 'var(--w)', U: 'var(--u)', B: 'var(--b)', R: 'var(--r)', G: 'var(--g)' };
 async function loadData() {
-  const res = await fetch('cards.json?v=2');
+  const res = await fetch('cards.json?v=3');
   if (!res.ok) throw new Error(`cards.json: HTTP ${res.status}`);
   const j = await res.json();
-  // Double-faced, adventurer and meld cards carry their other faces: { b: back, a: adventure, m: melded card }
+  // Double-faced, adventurer and meld cards carry their other faces: { b: back, a: adventure, m: melded card, mdfc: either face can be cast }
   const face = (x) => (x ? { name: x[0], manaCost: x[1], type: x[2], text: x[3], power: x[4], toughness: x[5], colors: x[6] } : undefined);
   for (const [name, manaCost, type, text, power, toughness, fx] of j.cards) {
     const raw = { name, manaCost, type, text, power, toughness };
-    if (fx) { if (fx.b) raw.back = face(fx.b); if (fx.a) raw.adventure = face(fx.a); if (fx.m) raw.meld = face(fx.m); }
+    if (fx) { if (fx.b) raw.back = face(fx.b); if (fx.a) raw.adventure = face(fx.a); if (fx.m) raw.meld = face(fx.m); if (fx.mdfc) raw.mdfc = true; }
     const def = Arena.compileCard(raw);
     if (!def) continue;
     DATA.pool.push(def); DATA.byName.set(name, def);
@@ -1988,8 +1990,8 @@ const isCre = (d) => d.types.includes('Creature');
 // On the battlefield, a creature is whatever is one right now: a crewed vehicle is, a creature that stopped being one isn't
 const isCreNow = (b) => b.p != null;
 // Everything else shares the lands row, grouped by card, tapped state, what it's attached to and its counters
-const permKey = (b) => `${b.d}|${b.tap ? 1 : 0}|${b.on != null ? b.on : ''}|${b.ctr ? Object.keys(b.ctr).sort().map((k) => `${k}${b.ctr[k]}`).join(',') : ''}|${b.stolen ? 1 : 0}`;
-const CTR_SHORT = { lore: 'Lore', stun: 'Stun', verse: 'Verse', burden: 'Burden', influence: 'Infl', lifelink: 'Lifelink', indestructible: 'Indestr', shield: 'Shield', oil: 'Oil' };
+const permKey = (b) => `${b.d}|${b.tap ? 1 : 0}|${b.on != null ? b.on : ''}|${b.ctr ? Object.keys(b.ctr).sort().map((k) => `${k}${b.ctr[k]}`).join(',') : ''}|${b.stolen ? 1 : 0}|${b.harn ? 1 : 0}`;
+const CTR_SHORT = { lore: 'Lore', stun: 'Stun', verse: 'Verse', burden: 'Burden', influence: 'Infl', lifelink: 'Lifelink', indestructible: 'Indestr', shield: 'Shield', oil: 'Oil', plan: 'Plan', invasion: 'Invasion', 'double strike': 'Dbl strike', 'first strike': 'First str', deathtouch: 'Deathtch', flying: 'Flying', haste: 'Haste', menace: 'Menace', reach: 'Reach', trample: 'Trample', vigilance: 'Vigil' };
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
 function ctrBadge(ctr, def) {
   if (!ctr) return '';
@@ -2124,6 +2126,7 @@ function renderSide(pi, ps, f, used) {
   const mull = pl.mulligans ? (pl.kept === 7 ? ', free mulligan' : `, mulliganed to ${pl.kept != null ? pl.kept : 7 - pl.mulligans}`) : '';
   const compact = W.mode === 'play' && pi === 1 && document.body.classList.contains('in-game') && matchMedia('(max-width: 640px)').matches;
   side.querySelector('.who .sub').textContent = compact ? `AI · ${ps.mana != null ? ps.mana : 0} mana` : `${W.mode === 'play' ? (pi === 0 ? 'You' : `AI, ${ARCH_LABEL[pl.persona].toLowerCase()}`) : ARCH_LABEL[pl.persona]}${mull}`;
+  if (ps.poison) side.querySelector('.who .sub').textContent += ` · ${ps.poison} poison`;
   side.querySelector('.gyn').textContent = ps.gyN;
   const rc = side.querySelector('.ringc');
   if (rc) {
@@ -2190,10 +2193,10 @@ function renderSide(pi, ps, f, used) {
     const shown = list.slice(0, 3);
     const b0 = list[0], d0 = defOf(b0.d);
     const host = b0.on != null ? f.s.p.flatMap((q) => q.bf).find((x) => x.id === b0.on) : null;
-    const words = [...ctrWords(b0.ctr), host ? `attached to ${defOf(host.d).name}` : '', b0.rb ? 'Ring-bearer' : '', b0.stolen ? 'stolen' : ''].filter(Boolean);
+    const words = [...ctrWords(b0.ctr), host ? `attached to ${defOf(host.d).name}` : '', b0.rb ? 'Ring-bearer' : '', b0.stolen ? 'stolen' : '', b0.harn ? 'harnessed' : ''].filter(Boolean);
     const els = shown.map((b) => { const el = cardFor(b.id, b.d); used.add(b.id); el.classList.toggle('tapped', !!b.tap); el.classList.remove('att', 'blk', 'sick', 'incmd'); el.dataset.small = '1'; tile(el, tiles); setBadges(el, ''); el.setAttribute('aria-label', `${d0.name}${b.tap ? ', tapped' : ''}${words.length ? `, ${words.join(', ')}` : ''}`); return el; });
     list.slice(3).forEach((b) => used.add(b.id));
-    const last = `${list.length > 1 ? `<span class="badge xn">${list.length}</span>` : ''}${ctrBadge(b0.ctr, d0)}${host ? `<span class="badge attb" title="Attached to ${esc(defOf(host.d).name)}">On ${esc(defOf(host.d).name.split(/[ ,]/)[0])}</span>` : ''}${b0.stolen ? '<span class="badge stolb">Stolen</span>' : ''}`;
+    const last = `${list.length > 1 ? `<span class="badge xn">${list.length}</span>` : ''}${ctrBadge(b0.ctr, d0)}${host ? `<span class="badge attb" title="Attached to ${esc(defOf(host.d).name)}">On ${esc(defOf(host.d).name.split(/[ ,]/)[0])}</span>` : ''}${b0.stolen ? '<span class="badge stolb">Stolen</span>' : ''}${b0.harn ? '<span class="badge harnb" title="Harnessed: its ∞ ability is active">∞</span>' : ''}`;
     if (last) setBadges(els[els.length - 1], last);
     placeChildren(g, els);
     return g;
@@ -2516,7 +2519,7 @@ function whyNot(def, tax = 0) {
 function otherFacesHTML(def) {
   const part = (f, head) => `<div class="oface"><div class="ohead">${head}</div><b>${esc(f.name)}</b>${f.manaCost ? ` ${manaHTML(f.manaCost)}` : ''}<div class="type">${esc(f.typeLine)}</div>${textHTML(f.text)}${isCre(f) ? `<div class="ipt">${f.ptText || `${f.power}/${f.toughness}`}</div>` : ''}</div>`;
   const out = [];
-  if (def.back) out.push(part(def.back, 'Transforms into'));
+  if (def.back) out.push(part(def.back, def.mdfc ? 'Other face: cast either face, or transform it with its ability' : 'Transforms into'));
   if (def.front) out.push(part(def.front, 'Front face'));
   if (def.adv) out.push(part(def.adv, 'Adventure: cast it from your hand, then play the land later from exile'));
   if (def.meldInto) out.push(part(def.meldInto, 'Melds into'));
@@ -3131,6 +3134,9 @@ const CHOOSE_TEXT = {
   'exile-cost': (n, r) => [`Exile ${n === 1 ? 'a card' : `${n} cards`} from your graveyard`, r.label ? `To pay for ${r.label}.` : 'To pay the cost.'],
   'discard-cost': (n, r) => ['Discard a card', r.label === 'Ward' ? 'To pay the ward cost.' : 'To pay the cost.'],
   crew: (n, r) => [`Crew ${r.label || 'the vehicle'}`, `Tap creatures with total power ${r.need} or more. It becomes a creature until end of turn.`],
+  teamwork: (n, r) => [`Teamwork ${r.need}`, `Tap creatures with total power ${r.need} or more to cast ${r.label || 'the spell'} with teamwork.`],
+  connive: () => ['Connive: discard a card', 'If it is a nonland card, the creature that connived gets a +1/+1 counter.'],
+  loot: (n) => [`Discard ${n === 1 ? 'a card' : `${n} cards`}`, 'You choose which.'],
   'exile-hand': (n) => [`Exile ${n === 1 ? 'a card' : `${n} cards`} from your hand`, 'Your opponent made you. You choose which.'],
   take: (n, r) => [r.label || 'Choose a card', 'From their hand.'],
   put: (n, r) => [r.label || 'Put cards onto the battlefield', n > 1 ? 'Pick any of them, or none.' : 'Pick one, or none.'],
@@ -3151,7 +3157,7 @@ const CONFIRM = {
   scry: (sel) => (sel.length ? `Put ${sel.length} on the bottom` : 'Keep them all on top'), sacrifice: () => 'Sacrifice', 'sacrifice-cost': () => 'Sacrifice',
   putback: () => 'Confirm', bottom: () => 'Confirm', bearer: () => 'Make it the Ring-bearer', search: (sel) => (sel.length ? 'Take it' : 'Find nothing'),
   tuck: () => 'Put on the bottom', reveal: (sel) => (sel.length ? 'Take' : 'Take nothing'), freecast: (sel) => (sel.length ? 'Cast it' : 'Skip'), 'tap-cost': () => 'Tap',
-  crew: () => 'Crew', 'exile-cost': () => 'Exile', 'exile-hand': () => 'Exile', 'discard-cost': () => 'Discard', take: () => 'Choose', put: (sel) => (sel.length ? 'Put onto the battlefield' : 'None'),
+  crew: () => 'Crew', teamwork: () => 'Tap them', connive: () => 'Discard', loot: () => 'Discard', 'exile-cost': () => 'Exile', 'exile-hand': () => 'Exile', 'discard-cost': () => 'Discard', take: () => 'Choose', put: (sel) => (sel.length ? 'Put onto the battlefield' : 'None'),
   return: (sel) => (sel.length ? 'Return it' : 'None'), copy: () => 'Copy it', pile: (sel) => `${sel.length} face down`, keep: (sel) => (sel.length ? `Keep ${sel.length}` : 'Keep none'),
   shuffle: (sel) => (sel.length ? `Shuffle ${sel.length} in` : 'None'), give: () => 'Give it away', gypick: (sel) => (sel.length ? 'Choose' : 'None'),
   surveil: (sel) => (sel.length ? `Put ${sel.length} in the graveyard` : 'Keep them all on top'), look: (sel) => (sel.length ? 'Take' : 'None'), 'bounce-cost': () => 'Return it',
@@ -3237,7 +3243,7 @@ function updateChoice() {
   });
   const btn = $('#sheet [data-sh="confirm"]');
   let ok = sel.length >= req.min && sel.length <= req.max;
-  if (req.reason === 'crew') { const me = W.replay.frames[W.i].s.p[0]; ok = ok && sel.reduce((t, id) => { const b = me.bf.find((x) => x.id === id); return t + (b ? Math.max(0, b.p || 0) : 0); }, 0) >= req.need; }
+  if (req.reason === 'crew' || req.reason === 'teamwork') { const me = W.replay.frames[W.i].s.p[0]; ok = ok && sel.reduce((t, id) => { const b = me.bf.find((x) => x.id === id); return t + (b ? Math.max(0, b.p || 0) : 0); }, 0) >= req.need; }
   btn.disabled = !ok;
   const how = CONFIRM[req.type === 'gypick' ? 'gypick' : req.reason];
   btn.textContent = how ? how(sel) : `Discard${sel.length ? ` ${sel.length}` : ''}`;
