@@ -1294,6 +1294,9 @@ const plainClick = (e) => !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || 
 /* ============================================================
    Wizards' preconstructed decks (lists from MTGJSON, strategy notes by Claude)
    ============================================================ */
+// True once the card pool and the official decks are in. Until then a tap on a tab only changes the address,
+// and boot opens whatever the address asks for (a deck built before the cards arrive would be empty)
+let READY = false;
 const OFF = { decks: [], byId: new Map(), cards: {}, err: false };
 async function loadOfficial() {
   try {
@@ -1923,6 +1926,7 @@ const KIND_ORDER = ['60-card deck', 'Commander deck', 'Starter Kit', 'Welcome De
 let libAll = null;
 function libEntries() {
   if (libAll) return libAll;
+  if (!READY) return [];
   const out = [];
   const add = (d, src, group, kind) => {
     if (!d) return;
@@ -3854,8 +3858,8 @@ function wire() {
   $('#toLobby').addEventListener('click', () => { if (S.view === 'watch' && TU.on) { goLessons(); return; } if (S.view === 'watch' && S.backTo === 'decks') { openLibrary(true); return; } setView('lobby', true); renderSeats(); });
   $('.lib-search-ic').innerHTML = icon('search');
   // The header's tabs switch views in place once the cards are in
-  $('#navArena').addEventListener('click', (e) => { if (!plainClick(e) || !DATA.count) return; e.preventDefault(); if (S.view !== 'lobby') { setView('lobby', true); renderSeats(); renderPick(); } });
-  $('#navDecks').addEventListener('click', (e) => { if (!plainClick(e) || !DATA.count) return; e.preventDefault(); if (S.view !== 'decks') openLibrary(true); });
+  $('#navArena').addEventListener('click', (e) => { if (!plainClick(e) || !READY) return; e.preventDefault(); if (S.view !== 'lobby') { setView('lobby', true); renderSeats(); renderPick(); } });
+  $('#navDecks').addEventListener('click', (e) => { if (!plainClick(e) || !READY) return; e.preventDefault(); if (S.view !== 'decks') openLibrary(true); });
   // The library's filters and tiles
   $('#libSrc').addEventListener('click', (e) => { const b = e.target.closest('button[data-src]'); if (!b) return; LIB.src = b.dataset.src; libSave(); renderLibrary(); });
   $('#libPlay').addEventListener('click', () => { LIB.playable = !LIB.playable; libSave(); renderLibrary(); });
@@ -4059,6 +4063,7 @@ function wire() {
     rz = setTimeout(() => { if (S.view === 'watch' && W.replay) render(W.i, false); }, 60);
   }).observe(T.board);
   window.addEventListener('popstate', () => {
+    if (!READY) return;
     const h = readHash();
     if (h.lesson && lessonById(h.lesson)) { if (!(TU.on && TU.lesson.id === h.lesson && S.view === 'watch')) lessonStart(h.lesson, true); return; }
     if (h.learn) { if (S.view !== 'learn') { setView('learn', false); renderLessons(); } return; }
@@ -4088,6 +4093,7 @@ async function boot() {
     L.boot.classList.add('err');
     return;
   }
+  READY = true;
   for (const spec of window.ARENA_DECKS) claudeDeck(spec);
   CMDR.legends = DATA.pool.filter(Arena.canCommand).sort((a, b) => a.name.localeCompare(b.name));
   const h = readHash();
