@@ -1266,10 +1266,11 @@ svg.i .fill { fill: currentColor; }
 <div class="insp" id="insp" role="dialog" aria-modal="true" aria-labelledby="inspName" hidden></div>
 <div class="sheet" id="sheet" hidden></div>
 
-<script src="engine.js?v=11"></script>
+<script src="engine.js?v=12"></script>
 <script src="ltr.js?v=1"></script>
 <script src="fin.js?v=1"></script>
-<script src="msh.js?v=1"></script>
+<script src="msh.js?v=2"></script>
+<script src="mshjmp.js?v=1"></script>
 <script src="precon.js?v=1"></script>
 <script src="decks.js?v=3"></script>
 <script src="commanders.js?v=3"></script>
@@ -1383,7 +1384,7 @@ const ARCH_LABEL = { aggro: 'Aggro', midrange: 'Midrange', control: 'Control' };
 const COLOR_NAME = { W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green' };
 const COLOR_VAR = { W: 'var(--w)', U: 'var(--u)', B: 'var(--b)', R: 'var(--r)', G: 'var(--g)' };
 async function loadData() {
-  const res = await fetch('cards.json?v=4');
+  const res = await fetch('cards.json?v=5');
   if (!res.ok) throw new Error(`cards.json: HTTP ${res.status}`);
   const j = await res.json();
   // Double-faced, adventurer and meld cards carry their other faces: { b: back, a: adventure, m: melded card, mdfc: either face can be cast }
@@ -1557,7 +1558,7 @@ let READY = false;
 const OFF = { decks: [], byId: new Map(), cards: {}, err: false };
 async function loadOfficial() {
   try {
-    const res = await fetch('official.json?v=1');
+    const res = await fetch('official.json?v=2');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const j = await res.json();
     OFF.decks = j.decks || [];
@@ -3066,6 +3067,7 @@ function showBanner() {
     : r.reason === 'decked' ? `${r.players[1 - won].name} ran out of cards on turn ${r.turns}.`
     : r.reason === 'commander' ? `${cmdName} dealt 21 commander damage on turn ${r.turns}, with ${r.players[1 - won].life} life still on the board.`
     : r.reason === 'ring' ? `The Ring found ${r.players[1 - won].name} on turn ${r.turns}, with ${r.players[1 - won].life} life still on the board.`
+    : r.reason === 'alt' ? `${r.altWhy ? `${r.altWhy.charAt(0).toUpperCase()}${r.altWhy.slice(1)}` : 'An alternate win'} on turn ${r.turns}.`
     : `On turn ${r.turns}, with ${r.players[won].life} life left.`;
   const st = (k) => r.players.map((p) => p.stats[k]);
   const row = (label, vals) => `<tr><td>${label}</td><td>${vals[0]}</td><td>${vals[1]}</td></tr>`;

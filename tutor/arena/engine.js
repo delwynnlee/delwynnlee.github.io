@@ -723,8 +723,13 @@ const isInstantSpeed = (def) => def.types.includes('Instant') || def.kw.includes
 // A card can work out its own base power as it goes (Namor: the number of Merfolk you control)
 const basePow = (c) => { if (c.base) return c.base.p; if (c.sbase) return c.sbase.p; if (c.def.powFn && c.g) { const v = c.def.powFn(c.g, c); if (v != null) return v; } return c.def.power; };
 const baseTou = (c) => (c.base ? c.base.t : c.sbase ? c.sbase.t : c.def.toughness);
-const pow = (c) => { fresh(c); return basePow(c) + c.cnt + c.tp + (c.sp || 0); };
-const tou = (c) => { fresh(c); return baseTou(c) + c.cnt + c.tt + (c.st || 0); };
+// Bonuses that last past the end of the turn ("until your next turn"): [{ p, t, until }] while the turn number is below until
+const timed = (c, k) => { let v = 0; if (c.g) for (const x of c.timedPT) if (c.g.turn < x.until) v += x[k]; return v; };
+const rawPow = (c) => basePow(c) + c.cnt + c.tp + (c.sp || 0) + (c.timedPT ? timed(c, 'p') : 0);
+const rawTou = (c) => baseTou(c) + c.cnt + c.tt + (c.st || 0) + (c.timedPT ? timed(c, 't') : 0);
+// Flatman: power and toughness switched until end of turn (c.tf.swapPT)
+const pow = (c) => { fresh(c); return c.tf && c.tf.swapPT ? rawTou(c) : rawPow(c); };
+const tou = (c) => { fresh(c); return c.tf && c.tf.swapPT ? rawPow(c) : rawTou(c); };
 const has = (c, k) => {
   fresh(c);
   if (c.tf && c.tf.noAbil) return c.tkw.includes(k) && !!c.tf.kwAfter;
@@ -767,7 +772,7 @@ function createGame({ decks, seed, first = null, record = true, human = null, an
     stack: [], defs: {}, nextId: 1, phase: 'setup', human, answers, qi: 0, format, setup, stopEmpty, memo, searchN: 0,
     pending: [], delayed: [], depth: 0, dirty: true, combat: null, died: [], extraTurns: [] };
   decks.forEach((d, i) => {
-    const P = { i, name: d.name, persona: PERSONAS[d.archetype] ? d.archetype : 'midrange', hard: d.ai === 'hard', colors: d.colors || [], life: d.life || (format === 'commander' ? CMD.life : 20),
+    const P = { i, name: d.name, persona: PERSONAS[d.archetype] ? d.archetype : 'midrange', hard: d.ai === 'hard', colors: d.colors || [], life: d.life || (format === 'commander' ? CMD.life : 20), life0: d.life || (format === 'commander' ? CMD.life : 20),
       library: [], hand: [], bf: [], gy: [], exile: [], landsPlayed: 0, lost: false, decked: false, mulligans: 0, bottomed: 0,
       command: [], cmd: null, cmdCasts: 0, cmdDmg: {}, g: G, ring: { n: 0, bearer: null }, pool: { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 },
       drawn: 0, cast: 0, died: 0, left: 0, attackedWith: 0, xcast: [],
@@ -834,13 +839,16 @@ function snap(G) {
   };
 }
 // Cards outside the hand that a player can use right now: cast from exile, abilities in the graveyard, the top of the library (Elven Chorus)
+// A permission to play a card from exile (or a graveyard): still in time, and its condition holds
+const xLive = (G, P, x) => x.until >= G.turn && (!x.cond || x.cond(G, P, x));
 function extraHand(G, P) {
   if (!P.g) return [];
   const out = [];
-  for (const x of P.xcast || []) if (x.until >= G.turn && P.g && G.players.some((Q) => Q.exile.includes(x.card))) out.push([x.card.id, x.card.def.id, 'exile']);
-  for (const x of P.xcast || []) if (x.until >= G.turn && G.players.some((Q) => Q.gy.includes(x.card)) && !out.some((o) => o[0] === x.card.id)) out.push([x.card.id, x.card.def.id, 'gy']);
+  for (const x of P.xcast || []) if (xLive(G, P, x) && G.players.some((Q) => Q.exile.includes(x.card))) out.push([x.card.id, x.card.def.id, 'exile']);
+  for (const x of P.xcast || []) if (xLive(G, P, x) && G.players.some((Q) => Q.gy.includes(x.card)) && !out.some((o) => o[0] === x.card.id)) out.push([x.card.id, x.card.def.id, 'gy']);
+  for (const c of P.exile) if (c.def.exActs && !out.some((o) => o[0] === c.id)) out.push([c.id, c.def.id, 'exile']);
   const gyOk = P.bf.some((c) => c.def.gyCast || c.def.gyLand);
-  for (const c of P.gy) if ((c.def.gyActs || c.def.flashback || (gyOk && (castZone(G, P, c) || landChoices(G, P).some((x) => x.c === c)))) && !out.some((o) => o[0] === c.id)) out.push([c.id, c.def.id, 'gy']);
+  for (const c of P.gy) if ((c.def.gyActs || c.def.flashback || c.def.escape || (c.def.mayhem && c.discTurn === G.turn) || c.def.gyDiscard || (gyOk && (castZone(G, P, c) || landChoices(G, P).some((x) => x.c === c)))) && !out.some((o) => o[0] === c.id)) out.push([c.id, c.def.id, 'gy']);
   const top = P.library[P.library.length - 1];
   if (top && P.bf.some((c) => c.def.chorus || c.def.peekTop || c.def.topCast)) out.push([top.id, top.def.id, 'top']);
   return out;
@@ -856,7 +864,9 @@ const nameList = (cs) => (cs.length <= 2 ? cs.map((c) => c.def.name).join(' and 
 function drawCards(G, P, n, step) {
   for (let k = 0; k < n; k++) {
     // Phial of Galadriel: drawing with an empty hand draws two instead
-    const times = !P.hand.length && P.bf.some((c) => c.def.drawTwo) ? 2 : 1;
+    let times = !P.hand.length && P.bf.some((c) => c.def.drawTwo) ? 2 : 1;
+    // Reed Richards: the first card you'd draw each turn, other than the first one in your draw step, is four cards instead
+    if (!(step && k === 0) && P.reedTurn !== G.turn && P.bf.some((c) => c.def.drawFour)) { P.reedTurn = G.turn; times = 4; }
     for (let j = 0; j < times; j++) {
       if (!P.library.length) { P.decked = true; return; }
       P.hand.push(P.library.pop());
@@ -872,10 +882,11 @@ function resetCard(c) {
   c.blocking = 0; c.blockedBy = []; c.pumps = 0; c.stun = false; c.ctrl = c.owner; c.noBlock = false; c.exileDead = false;
   c.ctr = {}; c.att = null; c.tf = {}; c.base = null; c.crewed = false; c.ctrlFx = null; c.sp = 0; c.st = 0; c.skw = []; c.ani = false; c.leg = false; c.subX = null; c.orc = false;
   c.addSubs = null;
-  c.onceT = null; c.resN = null; c.manaTurn = 0; c.goad = 0; c.phased = false; c.xtrig = null; c.mem = {}; c.timedKw = null; c.onceA = null;
+  c.onceT = null; c.resN = null; c.manaTurn = 0; c.goad = 0; c.phased = false; c.xtrig = null; c.mem = {}; c.timedKw = null; c.timedPT = null; c.onceA = null;
 }
-function leaveBattlefield(G, c) {
+function leaveBattlefield(G, c, to) {
   const P = ctrlOf(G, c);
+  const attached = G.pending ? allPerms(G).filter((x) => x.att === c.id).length : 0;
   const k = P.bf.indexOf(c);
   if (k >= 0) P.bf.splice(k, 1);
   for (const Q of G.players) for (const x of Q.bf) {
@@ -886,15 +897,15 @@ function leaveBattlefield(G, c) {
   if (k < 0) return;
   if (P.ring && P.ring.bearer === c.id) P.ring.bearer = null;
   P.leftTurn = G.turn;
-  if (G.pending) { dirty(G); fire(G, 'leave', { c, P, ctrl: P.i, leg: c.def.supertypes.includes('Legendary'), art: isArtifact(c), mem: c.mem, lki: trigsOf(G, c), cnt: c.cnt, ctr: Object.assign({}, c.ctr) }); }
+  if (G.pending) { dirty(G); const cre = isCreature(c); fire(G, 'leave', { c, P, ctrl: P.i, leg: c.def.supertypes.includes('Legendary'), art: isArtifact(c), mem: c.mem, lki: trigsOf(G, c), cnt: c.cnt, ctr: Object.assign({}, c.ctr), to, cre, pow: cre ? pow(c) : 0, attached }); }
 }
 // "When this leaves the battlefield" triggers, once the creatures are gone
 function leaves(G, list) {
   for (const { c, P, def } of list) { const d = def || c.def; if (d.leaves && d.leaves.length && !G.over) resolveEffects(G, P, d.leaves, c, null, 'dies'); }
 }
 function meldOut(G, c, zone) { if (!c.meldParts) return; for (const p of c.meldParts) G.players[p.owner][zone].push(p); c.meldParts = null; }
-function toGraveyard(G, c) { leaveBattlefield(G, c); resetCard(c); if (!c.token) G.players[c.owner].gy.push(c); meldOut(G, c, 'gy'); }
-function exileCard(G, c) { leaveBattlefield(G, c); resetCard(c); if (!c.token) G.players[c.owner].exile.push(c); meldOut(G, c, 'exile'); }
+function toGraveyard(G, c) { leaveBattlefield(G, c, 'gy'); resetCard(c); if (!c.token) { G.players[c.owner].gy.push(c); (G.bfGy || (G.bfGy = [])).push(c); } meldOut(G, c, 'gy'); }
+function exileCard(G, c) { leaveBattlefield(G, c, 'exile'); resetCard(c); if (!c.token) G.players[c.owner].exile.push(c); meldOut(G, c, 'exile'); }
 // An emblem: a player-level source of triggered abilities (Sephiroth, One-Winged Angel)
 function addEmblem(G, P, name, trig) {
   const def = { id: `emblem-${slug(name)}`, name: `${name} emblem`, types: [], sub: [], supertypes: [], kw: [], colors: [], trig, etb: [], dies: [], acts: [], statics: [], mv: 0, value: 0 };
@@ -1024,7 +1035,29 @@ function sbaCore(G) {
 const sagaFinal = (d) => Math.max(...d.saga.flatMap((ch) => ch.ch));
 function sba(G) {
   sbaCore(G);
-  if (!G.over && !G.depth && !G.flushing && G.pending && G.pending.length) flush(G);
+  // Between resolutions: note what left the graveyards (one batch per resolution), then resolve waiting triggers
+  for (let k = 0; k < 4 && !G.over && !G.depth && !G.flushing; k++) {
+    gyWatch(G);
+    if (!G.pending || !G.pending.length) break;
+    flush(G);
+  }
+}
+// "Whenever one or more cards leave (or are put into) your graveyard": what left and what arrived in each graveyard since the
+// last look, as one event each ('gyLeft' / 'gyAdded', { P, cards }). Graveyards mostly grow at the end, so the usual check is
+// a quick prefix comparison.
+function gyWatch(G) {
+  for (const Q of G.players) {
+    const seen = Q.gySeen;
+    if (!seen) { Q.gySeen = Q.gy.slice(); continue; }
+    let same = seen.length <= Q.gy.length;
+    for (let k = 0; same && k < seen.length; k++) if (seen[k] !== Q.gy[k]) same = false;
+    if (same) { if (seen.length !== Q.gy.length) { const added = Q.gy.slice(seen.length); Q.gySeen = Q.gy.slice(); if (G.pending) fire(G, 'gyAdded', { P: Q, cards: added, fromBf: added.filter((c) => (G.bfGy || []).includes(c)) }); } continue; }
+    const left = seen.filter((c) => !Q.gy.includes(c)), added = Q.gy.filter((c) => !seen.includes(c));
+    Q.gySeen = Q.gy.slice();
+    if (left.length && G.pending) fire(G, 'gyLeft', { P: Q, cards: left });
+    if (added.length && G.pending) fire(G, 'gyAdded', { P: Q, cards: added, fromBf: added.filter((c) => (G.bfGy || []).includes(c)) });
+  }
+  if (G.bfGy && G.bfGy.length) G.bfGy = [];
 }
 function endGame(G, why) {
   if (G.over) return;
@@ -1034,8 +1067,9 @@ function endGame(G, why) {
   if (alive.length === 1) {
     const W = alive[0], L = other(G, W);
     G.winner = W.i;
-    G.reason = L.loseNow && L.life > 0 ? 'ring' : L.life > 0 && cmdKO(G, L) ? 'commander' : L.decked && L.life > 0 ? 'decked' : 'life';
-    const why = G.reason === 'ring' ? ': the Ring has claimed its prize' : G.reason === 'decked' ? `, as ${L.name} can't draw a card` : G.reason === 'commander' ? ` with ${CMD.lethal} commander damage from ${W.cmd ? W.cmd.def.name : 'their commander'}` : '';
+    if (L.loseNow && L.life > 0 && L.loseWhy) G.altWhy = L.loseWhy;
+    G.reason = L.loseNow && L.life > 0 && L.loseWhy ? 'alt' : L.loseNow && L.life > 0 ? 'ring' : L.life > 0 && cmdKO(G, L) ? 'commander' : L.decked && L.life > 0 ? 'decked' : 'life';
+    const why = G.reason === 'alt' ? ` (${L.loseWhy})` : G.reason === 'ring' ? ': the Ring has claimed its prize' : G.reason === 'decked' ? `, as ${L.name} can't draw a card` : G.reason === 'commander' ? ` with ${CMD.lethal} commander damage from ${W.cmd ? W.cmd.def.name : 'their commander'}` : '';
     emit(G, 'end', `${W.name} wins on turn ${G.turn}${why}.`, { who: W.i });
   } else { G.winner = null; G.reason = 'both'; emit(G, 'end', 'Both players fall at once. The game is a draw.'); }
 }
@@ -1202,7 +1236,7 @@ function evalEffect(G, P, e, ctx, source, lastT, X) {
     case 'fight': case 'bite': {
       let bestF = null;
       for (const m of ownTargets({})) for (const o of oppTargets({})) {
-        const pm = pow(m) + (e.ctr || 0);
+        const pm = pow(m) + (e.ctr || 0) + (e.pump || 0);
         const killsIt = !has(o, 'indestructible') && !protectedFrom(o, m) && pm > 0 && (has(m, 'deathtouch') || pm * (e.mult || 1) >= lethalTo(o));
         const dies = e.k === 'fight' && !has(m, 'indestructible') && !protectedFrom(m, o) && pow(o) > 0 && (has(o, 'deathtouch') || pow(o) >= lethalTo(m) + (e.ctr || 0));
         let sc = (killsIt ? cv(o) : 0) - (dies ? cv(m) : 0);
@@ -1327,6 +1361,7 @@ function dmgMod(G, src, victim, n) {
     // Hawkeye, Young Avenger: noncombat damage to an opponent or their permanents gets +X (his power)
     const sc = src.ctrl != null ? src.ctrl : src.owner;
     if (!G.combatDmg && sc != null && victim !== sc && G.players[sc]) for (const h of G.players[sc].bf) if (h.def.noncombatPlus && isCreature(h)) n += Math.max(0, pow(h));
+    if (sc != null && victim !== sc && G.players[sc]) for (const h of G.players[sc].bf) if (h.def.dmgPlusOne && h !== src) n += 1;
   }
   return n;
 }
@@ -1339,6 +1374,7 @@ function damageCreature(G, c, n, src, opts) {
   if (c.def.preventAll && !G.noPrevent && (c.def.preventAll === true || c.def.preventAll(G, c))) return 0;
   if (c.def.healOnHit && c.dmg > 0) { c.dmg = 0; c.dt = false; }
   if (!(opts && opts.soaked)) { const ad = ctrlOf(G, c).bf.find((x) => x.def.soak && x !== c && isCreature(x)); n = dmgMod(G, src, c.ctrl, n); if (ad) return damageCreature(G, ad, n, src, Object.assign({}, opts, { soaked: true })); }
+  if (n > 1 && hasSub(c, 'Hero') && ctrlOf(G, c).bf.some((x) => x.def.capOne)) n = 1; // Hyperion
   const lethalBefore = Math.max(0, tou(c) - c.dmg);
   c.dmg += n;
   c.dmgTurn = G.turn;
@@ -1350,14 +1386,17 @@ function damageCreature(G, c, n, src, opts) {
   return n;
 }
 function damagePlayer(G, Q, n, srcCard, from) {
-  if (n <= 0) return;
-  if (protectedPlayer(G, Q, from || (srcCard && G.players[srcCard.ctrl]))) return;
+  if (n <= 0) return 0;
+  if (protectedPlayer(G, Q, from || (srcCard && G.players[srcCard.ctrl]))) return 0;
   n = dmgMod(G, srcCard, Q.i, n);
+  if (n > 1 && Q.bf.some((x) => x.def.capOne)) n = 1; // Hyperion
   const ad = Q.bf.find((x) => x.def.soak && isCreature(x));
-  if (ad) { damageCreature(G, ad, n, srcCard, { soaked: true }); return; }
+  if (ad) { damageCreature(G, ad, n, srcCard, { soaked: true }); return 0; }
   if (srcCard && srcCard.def) srcCard.dealtTurn = G.turn;
   Q.life -= n;
   if (from && from !== Q) from.stats.damage += n;
+  if (G.pending) fire(G, 'dmgPlayer', { P: Q, n, src: srcCard, by: srcCard && srcCard.def ? (srcCard.ctrl != null ? srcCard.ctrl : srcCard.owner) : from ? from.i : null, combat: !!G.combatDmg });
+  return n;
 }
 function gainLife(G, P, n) {
   if (n <= 0) return;
@@ -1498,7 +1537,9 @@ function resolveInner(G, P, effects, source, targets, ctx, X) {
       case 'fog': G.fog = true; emit(G, 'fog', 'All combat damage this turn will be prevented.', { who: P.i }); break;
       case 'fight': case 'bite': {
         if (e.ctr && onBf(G, t.c)) addCounters(G, t.c, e.ctr);
+        if (e.pump && onBf(G, t.c)) { t.c.tp += e.pump; emit(G, 'pump', `${t.c.def.name} gets +${e.pump}/+0 until end of turn.`, { who: P.i, cards: [t.c.id] }); }
         const m = t.c, o = t.c2, pm = Math.max(0, pow(m)) * (e.mult || 1), po = Math.max(0, pow(o));
+        X.excess = Math.max(0, pm - (has(m, 'deathtouch') ? 1 : lethalTo(o)));
         let toO = pm, excess = 0;
         if (e.trampleExcess && has(m, 'trample')) { const lethal = has(m, 'deathtouch') ? 1 : lethalTo(o); if (pm > lethal) { toO = lethal; excess = pm - lethal; } }
         const d1 = damageCreature(G, o, toO, m);
@@ -1579,6 +1620,7 @@ function discardWorst(G, P, n) {
 }
 function noteDiscard(G, P, c) {
   if (P.discT !== G.turn) { P.discT = G.turn; P.discN = 0; }
+  if (c) c.discTurn = G.turn;
   P.discN++;
   if (G.pending) fire(G, 'discard', { P, card: c });
 }
@@ -1651,6 +1693,7 @@ function layers(G) {
   for (const c of perms) if ((c.def.animate && c.def.animate(G, c)) || (c.tf && c.tf.animated)) c.ani = true;
   for (const P of G.players) { const rb = P.ring && P.ring.n && P.ring.bearer ? P.bf.find((c) => c.id === P.ring.bearer) : null; if (rb) rb.leg = true; }
   for (const c of perms) if (c.def.subFn) c.subX = c.def.subFn(G, c);
+  for (const c of perms) if (c.ctr && c.ctr.saurian > 0) { c.subX = ['Dinosaur']; c.sbase = { p: 5, t: 5 }; }
   for (const src of perms) {
     if ((src.tf && src.tf.noAbil) || (src.sfl && src.sfl.noAbil)) continue;
     const P = G.players[src.ctrl];
@@ -1712,8 +1755,10 @@ function manaSources(P, purpose) {
   const G = P.g;
   const out = [];
   if (P.pool) for (const col of ANY.concat('C')) if (P.pool[col] > 0) out.push({ pool: col, colors: [col], amount: P.pool[col] });
+  if (P.rpool && P.rpool.ok(P, purpose)) for (const col of ANY) if (P.rpool.m[col] > 0) out.push({ rpool: col, colors: [col], amount: P.rpool.m[col] });
   const chorus = P.bf.some((x) => x.def.name === 'Elven Chorus');
   const impro = !!(purpose && purpose.def && !purpose.count && (purpose.def.improvise || P.bf.some((x) => x.def.improviseFor && x.def.improviseFor(purpose.def))));
+  const convoke = !!(purpose && purpose.def && !purpose.count && purpose.def.convoke);
   for (const c of P.bf) {
     const sick = isCreature(c) && c.sick && !has(c, 'haste') && !P.bf.some((x) => x.def.hasteAbilities);
     if (c.sfl && (c.sfl.noActs || c.sfl.noAbil)) continue;
@@ -1724,7 +1769,8 @@ function manaSources(P, purpose) {
     if (c.def.mana && !c.tapped && !sick) {
       const two = c.def.mana.length === 2 && c.def.mana[0] === 'C' && c.def.mana[1] === 'C';
       const onlyC = two || (c.def.mana.length === 1 && c.def.mana[0] === 'C');
-      out.push({ c, colors: two ? ['C'] : c.def.mana, amount: (two ? 2 : 1) + (onlyC ? boostC : 0), tap: true });
+      const plus = c.def.manaPlus ? c.def.manaPlus(G, c, P).filter((col) => !c.def.mana.includes(col)) : [];
+      out.push({ c, colors: two ? ['C'] : plus.length ? c.def.mana.concat(plus) : c.def.mana, amount: (two ? 2 : 1) + (onlyC ? boostC : 0), tap: true });
       continue;
     }
     if (c.def.manaAbs) {
@@ -1750,11 +1796,13 @@ function manaSources(P, purpose) {
       }
     }
     if (impro && isArtifact(c) && !c.tapped) { out.push({ c, colors: ['C'], amount: 1, tap: true, impro: true }); continue; }
+    // Convoke: each untapped creature can pay {1} or one mana of its color
+    if (convoke && isCreature(c) && !c.tapped) { out.push({ c, colors: c.def.colors.length ? c.def.colors.slice() : ['C'], amount: 1, tap: true, convoke: true }); continue; }
     if (chorus && isCreature(c) && !c.tapped && !sick && !c.def.mana) out.push({ c, colors: ANY, amount: 1, tap: true });
   }
   return out;
 }
-const srcRank = (x) => (x.pool ? 0 : x.sac ? 9 : x.conv ? 8 : x.life ? 7 : x.c && isLand(x.c) ? 1 : x.c && isCreature(x.c) ? 3 : 2);
+const srcRank = (x) => (x.pool || x.rpool ? 0 : x.sac ? 9 : x.conv ? 8 : x.life ? 7 : x.c && isLand(x.c) ? 1 : x.c && isCreature(x.c) ? 3 : 2);
 function planPayment(sources, cost, purpose) {
   const anyType = purpose && purpose.anyType;
   const pips = [];
@@ -1807,7 +1855,8 @@ function pay(P, cost, purpose) {
   const watched = G && G.pending && G.players.some((q) => q.bf.some((x) => x.def.watchMana));
   for (const { s, n } of plan) {
     if (s.pool) { P.pool[s.pool] -= n; continue; }
-    if (s.tap) { s.c.tapped = true; if (watched && isLand(s.c)) fire(G, 'manaTap', { P, c: s.c }); }
+    if (s.rpool) { P.rpool.m[s.rpool] -= n; continue; }
+    if (s.tap) { s.c.tapped = true; if (watched && isLand(s.c)) fire(G, 'manaTap', { P, c: s.c }); if (G && s.c.def.onManaTap && !s.convoke && !s.impro) s.c.def.onManaTap(G, P, s.c); }
     if (s.once && G) s.c.manaTurn = G.turn;
     if (s.life) { P.life -= s.life; if (G) emit(G, 'life', `${P.name} pays ${s.life} life for mana.`, { who: P.i, target: `p${P.i}`, amount: s.life }); }
     if (s.unc && purpose && purpose.item) purpose.item.unc = true;
@@ -1826,7 +1875,7 @@ function canPayBoth(P, a, b) {
 const manaCount = (P) => manaSources(P, { count: true }).reduce((s, x) => s + Math.max(0, x.amount - (x.conv || 0)), 0);
 // Mana added outside of a payment (The Bath Song, Fangorn) waits in the pool until the phase ends.
 function addPool(G, P, cols) { for (const col of cols) P.pool[col] = (P.pool[col] || 0) + 1; }
-function emptyPool(G, P) { const keepG = P.bf.some((c) => c.def.keepGreen); for (const col of Object.keys(P.pool)) if (!(keepG && col === 'G')) P.pool[col] = 0; }
+function emptyPool(G, P) { const keepG = P.bf.some((c) => c.def.keepGreen); for (const col of Object.keys(P.pool)) if (!(keepG && col === 'G')) P.pool[col] = 0; P.rpool = null; }
 
 /* ---------- Events and triggered abilities ----------
    fire() queues every ability that triggers; they resolve one at a time once whatever caused them has finished
@@ -1840,6 +1889,7 @@ function fire(G, ev, data) {
     for (const src of Q.bf.slice()) scanTriggers(G, Q, src, ev, data, trigsOf(G, src), 'bf');
     for (const src of Q.gy.slice()) if (src.def.gyTrig) scanTriggers(G, Q, src, ev, data, src.def.gyTrig, 'gy');
     for (const em of Q.emblems || []) scanTriggers(G, Q, em, ev, data, em.def.trig, 'emblem');
+    if (Q.turnTrigs) for (const tt of Q.turnTrigs) if (tt.turn === G.turn) scanTriggers(G, Q, tt.src, ev, data, [tt.t], 'turn');
     ringTriggers(G, Q, ev, data);
   }
   // "Leaves" and "dies" abilities of the card that just left look back at it
@@ -2065,7 +2115,7 @@ function makeTokens(G, P, spec, n, opts = {}) {
   }
   if (!opts.noExtra && n > 0) {
     const took = P.bf.filter((c) => c.def.tokenFood).length;
-    if (took) { const extra = makeTokens(G, P, FOOD, took, { noExtra: true, quiet: true }); made.push(...extra); if (!opts.quiet) emit(G, 'token', `${P.name} also creates ${took === 1 ? 'a Food token' : `${took} Food tokens`} (Peregrin Took).`, { who: P.i, cards: extra.map((c) => c.id) }); }
+    if (took) { const extra = makeTokens(G, P, FOOD, took, { noExtra: true, quiet: true }); made.push(...extra); if (!opts.quiet) emit(G, 'token', `${P.name} also creates ${took === 1 ? 'a Food token' : `${took} Food tokens`} (${P.bf.find((c) => c.def.tokenFood).def.name}).`, { who: P.i, cards: extra.map((c) => c.id) }); }
     for (const src of P.bf.slice()) if (src.def.tokenExtra && !made.includes(src)) { const extra = makeTokens(G, P, src.def.tokenExtra, 1, { noExtra: true, quiet: true }); made.push(...extra); emit(G, 'token', `${P.name} also creates a ${extra[0].def.name} token (${src.def.name}).`, { who: P.i, cards: extra.map((c) => c.id) }); }
   }
   dirty(G);
@@ -2079,6 +2129,7 @@ function makeTokens(G, P, spec, n, opts = {}) {
 function sacrifice(G, P, c, quiet) {
   if (!onBf(G, c)) return;
   G.sacThisTurn = (G.sacThisTurn || 0) + 1;
+  P.sacTurn = G.turn;
   if (c.token) P.tokenSacs = (P.tokenSacs || 0) + 1;
   if (hasSub(c, 'Food')) P.foodSacTurn = G.turn;
   fire(G, 'sac', { P, c, token: c.token });
@@ -2610,7 +2661,7 @@ function castNow(G, P, card, opts = {}) {
   const d = card.def;
   if (isLand(card)) return false;
   const free = !!opts.free;
-  if (!free && !canPay(P, castCost(P, card, [], 0), { def: d, anyType: !!opts.anyType })) return false;
+  if (!free && !canPay(P, castCost(P, card, [], 0), { def: d, card, anyType: !!opts.anyType })) return false;
   let mode = null, targets = [], x = 0;
   if (isHuman(G, P)) {
     if (opts.ask !== false && !yesNo(G, P, card, `Cast ${d.name}${free ? ' without paying its mana cost' : ''}?`, true)) return false;
@@ -2720,9 +2771,12 @@ function addCostInto(c, m) {
 function castCost(P, card, targets, x, mode) {
   const d = card.def;
   const fb = d.flashback && P.gy.includes(card) && !P.xcast.some((y) => y.card === card);
+  const esc = !fb && d.escape && P.gy.includes(card) && !P.xcast.some((y) => y.card === card);
+  const may = !fb && !esc && d.mayhem && P.g && card.discTurn === P.g.turn && P.gy.includes(card) && !P.xcast.some((y) => y.card === card);
   if (P.g && P.xcast.some((y) => y.card === card && y.free && y.until >= P.g.turn)) return genericCost(0); // Triple Triad
   if (P.g && P.freeNext && P.freeNext.turn === P.g.turn && P.freeNext.f(card.def)) return genericCost(0); // World War Hulk
-  const c = Object.assign({}, fb ? d.flashback : d.cost);
+  if (P.g && P.bf.some((src) => src.def.freeCastIf && src.def.freeCastIf(P.g, P, card, src))) return genericCost(0); // Vision
+  const c = Object.assign({}, fb ? d.flashback : esc ? d.escape.cost : may ? d.mayhem : d.cost);
   if (c.hy) c.hy = c.hy.slice();
   if (P.command.includes(card)) c.g += CMD.tax * P.cmdCasts;
   if (d.modes && mode) for (const k of mode) { const mc = d.modes[k] && d.modes[k].cost; if (mc) addCostInto(c, mc); }
@@ -2745,15 +2799,27 @@ function castZone(G, P, card) {
   if (silenced(G, P)) return null;
   if (P.hand.includes(card)) return 'hand';
   if (P.command.includes(card)) return 'command';
-  if (P.xcast.some((x) => x.card === card && x.until >= G.turn)) return 'xcast';
+  if (P.xcast.some((x) => x.card === card && xLive(G, P, x))) return 'xcast';
   const top = P.library[P.library.length - 1] === card;
   if (top && card.def.types.includes('Creature') && P.bf.some((c) => c.def.chorus)) return 'top';
   if (top && P.bf.some((c) => c.def.topCast && c.def.topCast(G, P, card, c))) return 'top';
   if (P.gy.includes(card)) {
     if (card.def.flashback) return 'flashback';
+    if (card.def.escape && P.gy.filter((x) => x !== card).length >= card.def.escape.exile) return 'escape';
+    if (card.def.mayhem && card.discTurn === G.turn) return 'mayhem';
+    if (card.def.gyDiscard && P.hand.length) return 'gydiscard';
     if (gyPermit(G, P, card)) return 'gycast';
   }
   return null;
+}
+// Escape's other cost: exile other cards from your graveyard (a human picks them; the AI gives up its least useful)
+function escapeExile(G, P, card) {
+  const n = card.def.escape.exile, cs = P.gy.filter((x) => x !== card);
+  const pick = isHuman(G, P) && cs.length > n ? pickCards(G, { type: 'choose', reason: 'exile-cost', n, min: n, max: n, zone: 'graveyard', cards: cs.map((x) => x.id), label: `${card.def.name}: escape` }, cs, n)
+    : cs.slice().sort((a, b) => a.def.value - b.def.value || a.id - b.id).slice(0, n);
+  for (const x of pick) { P.gy.splice(P.gy.indexOf(x), 1); P.exile.push(x); }
+  dirty(G);
+  emit(G, 'exile', `${P.name} exiles ${nameList(pick)} from their graveyard to escape ${card.def.name}.`, { who: P.i, cards: pick.map((x) => x.id) });
 }
 // A permanent letting P cast this card from their graveyard (Noctis, Hades)
 const gyPermit = (G, P, card) => P.bf.find((c) => c.def.gyCast && c.def.gyCast(G, P, card, c)) || null;
@@ -2762,10 +2828,11 @@ function acOf(def, mode) {
   if (def.modes && mode) for (const k of mode) if (def.modes[k] && def.modes[k].addCost) return def.modes[k].addCost;
   return def.addCost;
 }
-const xcastOf = (G, P, card) => P.xcast.find((x) => x.card === card && x.until >= G.turn);
+const xcastOf = (G, P, card) => P.xcast.find((x) => x.card === card && xLive(G, P, x));
 // Instant speed: instants, flash, and permissions (Gandalf the White, Gandalf, Friend of the Shire, Borne Upon a Wind)
 function fastFor(G, P, def) {
   if (isInstantSpeed(def)) return true;
+  if (def.twFlash && P.bf && twPower(P) >= def.twFlash) return true;
   if (P.flashAll === G.turn) return true;
   for (const c of P.bf) {
     const f = c.def.flashFor;
@@ -2821,8 +2888,8 @@ function humanTwPick(G, P, card, n) {
   for (const x of cs.slice().sort((a, b) => pow(b) - pow(a))) { if (total >= n) break; if (!pick.includes(x)) { pick.push(x); total += Math.max(0, pow(x)); } }
   return total >= n ? pick : null;
 }
-function addCostOptions(G, P, card, mode) {
-  const a = acOf(card.def, mode);
+function addCostOptions(G, P, card, mode, over) {
+  const a = over || acOf(card.def, mode);
   if (!a) return { ok: true, opts: [] };
   const out = [];
   if (a.bounceLand) for (const c of P.bf) if (isLand(c)) out.push({ bounce: c });
@@ -2830,12 +2897,13 @@ function addCostOptions(G, P, card, mode) {
   if (a.discard) { if (P.hand.filter((c) => c !== card).length >= a.discard) out.push({ discard: a.discard }); }
   if (a.orPay) out.push({ pay: a.orPay });
   if (a.teamwork && twPower(P) >= a.teamwork) out.push({ teamwork: a.teamwork });
+  if (a.behold) { const c = P.bf.find((x) => isCreature(x) && hasSub(x, a.behold)) || P.hand.find((x) => x !== card && x.def.types.includes('Creature') && x.def.sub.includes(a.behold)); if (c) out.push({ behold: c }); }
   return { ok: out.length > 0, opts: out };
 }
-function aiAddCost(G, P, card, mode) {
-  const { ok, opts } = addCostOptions(G, P, card, mode);
+function aiAddCost(G, P, card, mode, over) {
+  const { ok, opts } = addCostOptions(G, P, card, mode, over);
   if (!ok) return null;
-  const a = acOf(card.def, mode);
+  const a = over || acOf(card.def, mode);
   if (!a) return {};
   let best = null, bs = Infinity;
   for (const o of opts) {
@@ -2845,12 +2913,13 @@ function aiAddCost(G, P, card, mode) {
     else if (o.discard) s = Math.min(...P.hand.filter((c) => c !== card).map((c) => handValue(G, P, c))) * o.discard;
     else if (o.pay) s = canPayBoth(P, card.def.cost, o.pay) ? costMV(o.pay) * 0.45 : Infinity;
     else if (o.teamwork) { const tp = twPick(G, P, o.teamwork); if (tp) { o.tw = tp.cs; s = Math.max(0, tp.pain); } else s = Infinity; }
+    else if (o.behold) s = 0;
     if (s < bs) { bs = s; best = o; }
   }
   return bs === Infinity ? null : Object.assign({ pain: bs }, best);
 }
-function payAddCost(G, P, card, choice, item, mode) {
-  if (!acOf(card.def, mode) || !choice) return true;
+function payAddCost(G, P, card, choice, item, mode, over) {
+  if (!(over || acOf(card.def, mode)) || !choice) return true;
   if (choice.bounce) {
     if (!onBf(G, choice.bounce)) return false;
     item.kicked = true;
@@ -2868,19 +2937,24 @@ function payAddCost(G, P, card, choice, item, mode) {
   } else if (choice.teamwork) {
     if (!teamworkPay(G, P, card, choice.teamwork, choice.tw)) return false;
     item.teamwork = true;
+  } else if (choice.behold) {
+    item.kicked = true;
+    emit(G, 'info', `${P.name} beholds ${choice.behold.def.name}.`, { who: P.i, cards: [choice.behold.id] });
   }
   return true;
 }
 // A human pays an extra cost: choose what to sacrifice or discard (asked after choosing the spell)
-function humanAddCost(G, P, card, mode) {
-  const { ok, opts } = addCostOptions(G, P, card, mode);
+function humanAddCost(G, P, card, mode, over) {
+  const { ok, opts } = addCostOptions(G, P, card, mode, over);
   if (!ok) return null;
   const bounces = opts.filter((o) => o.bounce);
   if (bounces.length) { const ls = bounces.map((o) => o.bounce); return { bounce: ls.length === 1 ? ls[0] : pickCards(G, { type: 'choose', reason: 'bounce-cost', n: 1, min: 1, max: 1, zone: 'battlefield', cards: ls.map((c) => c.id), label: card.def.name }, ls, 1)[0] }; }
   const sacs = opts.filter((o) => o.sac), pays = opts.filter((o) => o.pay), discards = opts.filter((o) => o.discard);
   const tws = opts.filter((o) => o.teamwork);
   if (tws.length) { const cs = humanTwPick(G, P, card, tws[0].teamwork); return cs ? { teamwork: tws[0].teamwork, tw: cs } : null; }
-  if (discards.length) return discards[0];
+  if (opts.some((o) => o.behold)) return opts.find((o) => o.behold);
+  if (discards.length && pays.length && !sacs.length) return chooseMode(G, P, card, `${card.def.name}: pay the extra cost`, ['Discard a card', `Pay ${costText(pays[0].pay)}`], 0) === 1 ? pays[0] : discards[0];
+  if (discards.length && (!sacs.length || chooseMode(G, P, card, `${card.def.name}: pay the extra cost`, [`Sacrifice ${(over || acOf(card.def, mode)).sacWord || 'a creature'}`, 'Discard a card'], 0) === 1)) return discards[0];
   if (sacs.length && pays.length) {
     const k = chooseMode(G, P, card, `${card.def.name}: pay the extra cost`, ['Sacrifice a creature', `Pay ${costText(pays[0].pay)}`], 0);
     if (k === 1) return pays[0];
@@ -2899,26 +2973,34 @@ function castSpell(G, P, card, targets, etbTargets, opts = {}) {
   const x = opts.x || 0;
   const mode = opts.mode || null;
   const item = { card, P, targets: targets || [], x, mode, free: !!opts.free, copyable: !def.noCopy, sneak: !!opts.sneak };
+  const web = opts.web && def.webSling && onBf(G, opts.web) && opts.web.tapped && opts.web.ctrl === P.i ? opts.web : null;
+  if (opts.web && !web) return false;
+  const costNow = () => (web ? Object.assign(genericCost(0), def.webSling) : castCost(P, card, item.targets, x, mode));
   // Extra costs come first so their choices (a sacrifice) can't be paid for with the same creature's mana
-  const ac = acOf(def, mode);
+  // Quantum Reduction: cast as though it had flash only by using teamwork, which then has to be paid
+  const twf = def.twFlash && !(G.active === P.i && (G.phase === 'main1' || G.phase === 'main2') && !G.stack.length) ? { teamwork: def.twFlash } : null;
+  const ac = twf || acOf(def, mode);
   let add = opts.add;
-  if (ac && add === undefined) add = isHuman(G, P) ? humanAddCost(G, P, card, mode) : aiAddCost(G, P, card, mode);
+  if (ac && add === undefined) add = isHuman(G, P) ? humanAddCost(G, P, card, mode, twf) : aiAddCost(G, P, card, mode, twf);
   if (ac && !add) return false;
   const xc = xcastOf(G, P, card);
   const purpose = { def, item, anyType: !!(xc && xc.anyType) };
   const gperm = zone === 'gycast' ? gyPermit(G, P, card) : null;
   if (gperm && gperm.def.gyCastLife && P.life < gperm.def.gyCastLife) return false;
-  const cost = castCost(P, card, item.targets, x, mode);
+  const cost = costNow();
   if (!opts.free && !canPay(P, cost, purpose)) return false;
   if (add && add.teamwork && add.tw && !opts.free) {
     const was = add.tw.map((c) => c.tapped);
     add.tw.forEach((c) => { c.tapped = true; });
-    const ok = canPay(P, castCost(P, card, item.targets, x, mode), purpose);
+    const ok = canPay(P, costNow(), purpose);
     add.tw.forEach((c, k) => { c.tapped = was[k]; });
     if (!ok) return false;
   }
-  if (ac && !payAddCost(G, P, card, add, item, mode)) return false;
-  if (!opts.free && !pay(P, castCost(P, card, item.targets, x, mode), purpose)) return false;
+  if (ac && !payAddCost(G, P, card, add, item, mode, twf)) return false;
+  const freeBy = opts.free ? null : P.bf.find((src) => src.def.freeCastIf && src.def.freeCastIf(G, P, card, src));
+  if (!opts.free && !pay(P, costNow(), purpose)) return false;
+  if (freeBy) freeBy.def.onFreeCast(G, P, card, freeBy);
+  if (web) { emit(G, 'bounce', `${P.name} returns ${web.def.name} to hand to web-sling ${def.name}.`, { who: P.i, cards: [web.id] }); bounceCard(G, P, web); item.web = true; }
   item.spent = opts.free ? 0 : costMV(cost) + (add && add.pay ? costMV(add.pay) : 0);
   item.fromGy = G.players.some((Q) => Q.gy.includes(card));
   if (gperm) {
@@ -2927,6 +3009,9 @@ function castSpell(G, P, card, targets, etbTargets, opts = {}) {
   }
   if (zone === 'flashback' || (xc && xc.exileAfter)) card.fbExile = true;
   if (zone === 'flashback') item.flashback = true;
+  if (zone === 'escape') { item.escaped = true; escapeExile(G, P, card); }
+  if (zone === 'gydiscard') discardChoice(G, P, 1, 'discard-cost');
+  item.zone = zone;
   if (!opts.free && P.freeNext && P.freeNext.turn === G.turn && P.freeNext.f(def)) { P.freeNext = null; item.free = true; }
   if (xc && xc.free) item.free = true;
   if (xc && xc.onPlay) xc.onPlay(G, P, card);
@@ -2945,7 +3030,7 @@ function castSpell(G, P, card, targets, etbTargets, opts = {}) {
   P.stats.cast++;
   P.cast = (P.cast || 0) + 1;
   item.nth = P.cast;
-  emit(G, 'cast', `${P.name} casts ${def.name}${fromCmd ? ' from the command zone' : zone === 'xcast' ? (item.fromGy ? ' from a graveyard' : ' from exile') : zone === 'top' ? ' from the top of their library' : zone === 'flashback' ? ' with flashback' : zone === 'gycast' ? ' from their graveyard' : ''}${modeText(def, mode)}${x ? ` with X = ${x}` : ''}${targetText(G, item.targets)}.`, { who: P.i, card: card.id, targets: targetIds(item.targets) });
+  emit(G, 'cast', `${P.name} casts ${def.name}${fromCmd ? ' from the command zone' : zone === 'xcast' ? (item.fromGy ? ' from a graveyard' : ' from exile') : zone === 'top' ? ' from the top of their library' : zone === 'flashback' ? ' with flashback' : zone === 'escape' ? ' with escape' : zone === 'mayhem' ? ' with mayhem' : zone === 'gydiscard' ? ' from their graveyard' : zone === 'gycast' ? ' from their graveyard' : ''}${modeText(def, mode)}${x ? ` with X = ${x}` : ''}${targetText(G, item.targets)}.`, { who: P.i, card: card.id, targets: targetIds(item.targets) });
   if (!def.types.includes('Creature')) for (const c of P.bf) if (isCreature(c) && has(c, 'prowess')) { c.tp++; c.tt++; }
   // Abilities that trigger on casting resolve before the spell does
   if (isIS(def) && item.copyable && !opts.noSelfCopy && !G.over) offerSelfCopy(G, P, item);
@@ -3143,7 +3228,7 @@ function enterBattlefield(G, P, card, etbTargets, opts = {}) {
     for (let i = 0; i < n && !G.over; i++) resolveEffects(G, P, card.def.etb, card, i ? null : tg, 'etb', { item: opts.item });
   }
   if (isLand(card) && !G.over) for (const x of P.bf.slice()) if (isCreature(x) && x.def.landfall && x.def.landfall.length && !G.over) resolveEffects(G, P, x.def.landfall, x, null, 'trigger');
-  if (G.pending) { fire(G, 'enter', { c: card, P }); if (isLand(card)) fire(G, 'landfall', { c: card, P }); sba(G); }
+  if (G.pending) { fire(G, 'enter', { c: card, P, cast: opts.item ? opts.item.zone || 'hand' : null }); if (isLand(card)) fire(G, 'landfall', { c: card, P }); sba(G); }
 }
 // Sagas: a lore counter as it enters and after your draw step; each new counter's chapter triggers.
 function addLore(G, P, saga, n) {
@@ -3181,6 +3266,8 @@ const CREW_AB = { crew: true, label: 'Crew', cost: {} };
 function abilitiesOf(G, P, c, zone) {
   const out = [];
   if (zone === 'gy') { (c.def.gyActs || []).forEach((ab, k) => out.push({ c, ab, k: `g${k}`, zone })); return out; }
+  if (zone === 'ex') { (c.def.exActs || []).forEach((ab, k) => out.push({ c, ab, k: `x${k}`, zone })); return out; }
+  if (zone === 'hand') { (c.def.handActs || []).forEach((ab, k) => out.push({ c, ab, k: `h${k}`, zone })); return out; }
   if ((c.tf && c.tf.noAbil) || (c.sfl && c.sfl.noAbil)) return out;
   if (c.sfl && c.sfl.noActs) return out;
   (c.def.acts || []).forEach((ab, k) => out.push({ c, ab, k: `${k}`, zone: 'bf' }));
@@ -3215,6 +3302,7 @@ function abilityCost(G, P, c, ab, targets) {
   }
   if (ab.costMod) m.g = Math.max(0, m.g - ab.costMod(G, P, c));
   if (ab.powerUp) {
+    if (G.active === P.i && P.freePuTurn !== G.turn && P.bf.some((x) => x.def.freePowerUp)) return genericCost(0);
     if (c.inTurn === G.turn && c.def.cost) reduceCost(m, c.def.cost);
     const off = P.bf.filter((x) => x !== c && x.def.puDiscount).reduce((t, x) => t + x.def.puDiscount, 0);
     if (off) m.g = Math.max(0, m.g - off);
@@ -3222,11 +3310,11 @@ function abilityCost(G, P, c, ab, targets) {
   if (ab.costFn) return ab.costFn(G, P, c, m) || m;
   return m;
 }
-const abilityPurpose = (G, P, c, e) => ({ ability: true, src: c, equip: !!(e && e.ab && e.ab.equip), anyType: !!(e && e.borrowed) });
+const abilityPurpose = (G, P, c, e) => ({ ability: true, src: c, equip: !!(e && e.ab && e.ab.equip), anyType: !!(e && e.borrowed), pu: !!(e && e.ab && e.ab.powerUp) });
 // Is this ability usable right now? when: 'main1' | 'main2' | 'attackers' | 'blocks' | 'end' | 'any'
 function canActivate(G, P, e, when) {
   const { c, ab } = e;
-  if (e.zone === 'gy' ? !P.gy.includes(c) : !P.bf.includes(c)) return false;
+  if (e.zone === 'gy' ? !P.gy.includes(c) : e.zone === 'ex' ? !P.exile.includes(c) : e.zone === 'hand' ? !P.hand.includes(c) : !P.bf.includes(c)) return false;
   const sorceryTime = G.active === P.i && (when === 'main1' || when === 'main2') && !G.stack.length;
   if (ab.sorcery && !sorceryTime && !(ab.equip && G.active === P.i && P.bf.some((x) => x.def.equipFast))) return false;
   if (ab.crew && (c.crewed || c.ani)) return false;
@@ -3272,6 +3360,7 @@ function payOtherCosts(G, P, e, X) {
   }
   if (k.discard) { X.discarded = P.hand.slice(); discardChoice(G, P, k.discard, 'discard-cost'); X.discarded = X.discarded.filter((x) => P.gy.includes(x)); }
   if (k.exileSelf) { P.gy.splice(P.gy.indexOf(c), 1); P.exile.push(c); dirty(G); }
+  if (k.discardSelf && P.hand.includes(c)) { P.hand.splice(P.hand.indexOf(c), 1); P.gy.push(c); dirty(G); emit(G, 'discard', `${P.name} discards ${c.def.name}.`, { who: P.i, cards: [c.id] }); noteDiscard(G, P, c); }
   if (k.exileSelfBf && onBf(G, c)) { X.selfCtr = Object.assign({}, c.ctr); exilePermanent(G, P, c); }
   if (k.sac) {
     const n = k.sac.n || 1;
@@ -3300,7 +3389,7 @@ function activate(G, P, e, targets, opts = {}) {
   if (!pay(P, m, abilityPurpose(G, P, c, e))) return false;
   if (ab.equip && G.active === P.i && P.bf.some((x) => x.def.equipFree) && P.freeEquipTurn !== G.turn) P.freeEquipTurn = G.turn;
   if (ab.once) { c.onceA = c.onceA || {}; c.onceA[e.k] = G.turn; }
-  if (ab.powerUp) { c.mem = c.mem || {}; c.mem.pu = c.mem.pu || {}; c.mem.pu[e.k] = puUsed(c, e.k) + 1; }
+  if (ab.powerUp) { c.mem = c.mem || {}; c.mem.pu = c.mem.pu || {}; c.mem.pu[e.k] = puUsed(c, e.k) + 1; if (G.active === P.i) P.freePuTurn = G.turn; if (G.pending) fire(G, 'powerUp', { c, P }); }
   const here = onBf(G, c);
   const untappedBefore = P.bf.filter((x) => isCreature(x) && !x.tapped);
   payOtherCosts(G, P, e, X);
@@ -3370,6 +3459,8 @@ function readyAbilities(G, P, when) {
   const out = [];
   for (const c of P.bf.slice()) for (const e of abilitiesOf(G, P, c, 'bf')) if (canActivate(G, P, e, when)) out.push(e);
   for (const c of P.gy.slice()) for (const e of abilitiesOf(G, P, c, 'gy')) if (canActivate(G, P, e, when)) out.push(e);
+  for (const c of P.exile.slice()) if (c.def.exActs) for (const e of abilitiesOf(G, P, c, 'ex')) if (canActivate(G, P, e, when)) out.push(e);
+  for (const c of P.hand.slice()) if (c.def.handActs) for (const e of abilitiesOf(G, P, c, 'hand')) if (canActivate(G, P, e, when)) out.push(e);
   return out;
 }
 // AI: what an ability costs it, beyond the mana
@@ -3477,7 +3568,7 @@ function evalCast(G, P, card, ctx) {
   const zone = castZone(G, P, card);
   if (!zone || def.respondOnly) return null;
   const xc = zone === 'xcast' ? xcastOf(G, P, card) : null;
-  const purpose = { def, anyType: !!(xc && xc.anyType) };
+  const purpose = { def, card, anyType: !!(xc && xc.anyType) };
   let x = 0;
   if (def.cost.x) { x = maxX(G, P, card, purpose); if (def.aiX) x = def.aiX(G, P, card, x); if (x == null || x < (def.minX || 0)) return null; }
   if (!def.costMod && !canPay(P, castCost(P, card, [], x), purpose)) return null;
@@ -3571,11 +3662,11 @@ function auraHost(G, P, card) {
 // Every card P could cast from somewhere: hand, command zone, exile (Shadow of the Enemy, Moria Marauder), the top of the library (Elven Chorus)
 function castables(G, P) {
   const out = P.hand.concat(P.command);
-  for (const x of P.xcast) if (x.until >= G.turn && !out.includes(x.card) && !isLand(x.card)) out.push(x.card);
+  for (const x of P.xcast) if (xLive(G, P, x) && !out.includes(x.card) && !isLand(x.card)) out.push(x.card);
   const top = P.library[P.library.length - 1];
   if (top && !isLand(top) && !out.includes(top) && castZone(G, P, top) === 'top') out.push(top);
   const anyGy = P.bf.some((c) => c.def.gyCast);
-  for (const c of P.gy) if (!isLand(c) && (c.def.flashback || anyGy) && !out.includes(c) && castZone(G, P, c)) out.push(c);
+  for (const c of P.gy) if (!isLand(c) && (c.def.flashback || c.def.escape || c.def.mayhem || c.def.gyDiscard || anyGy) && !out.includes(c) && castZone(G, P, c)) out.push(c);
   return out;
 }
 // How many lands P may play this turn (Zell Dincht: one more)
@@ -3583,7 +3674,7 @@ const landLimit = (G, P) => 1 + P.bf.filter((c) => c.def.extraLand).length;
 // Every land P could play now: from hand, from exile (adventures, effects), the top of the library or the graveyard
 function landChoices(G, P) {
   const out = P.hand.filter(isLand).map((c) => ({ c, from: 'hand' }));
-  for (const x of P.xcast) if (x.until >= G.turn && isLand(x.card) && G.players.some((Q) => Q.exile.includes(x.card))) out.push({ c: x.card, from: 'exile', x });
+  for (const x of P.xcast) if (xLive(G, P, x) && isLand(x.card) && G.players.some((Q) => Q.exile.includes(x.card))) out.push({ c: x.card, from: 'exile', x });
   const top = P.library[P.library.length - 1];
   if (top && isLand(top) && P.bf.some((c) => c.def.topLand && c.def.topLand(G, P, top, c))) out.push({ c: top, from: 'top' });
   if (P.bf.some((c) => c.def.gyLand && c.def.gyLand(G, P, c))) for (const c of P.gy) if (isLand(c)) out.push({ c, from: 'gy' });
@@ -3599,10 +3690,23 @@ function playLandChoice(G, P, ch) {
 function cheapestCounter(P) {
   return P.hand.filter((c) => c.def.spell && c.def.spell.some((e) => e.k === 'counter')).sort((a, b) => a.def.mv - b.def.mv)[0];
 }
+// Web-slinging: when the full price is out of reach, return the least useful tapped creature to cast a Spider cheaply
+function aiWebSling(G, P) {
+  for (let guard = 0; guard < 3 && !G.over; guard++) {
+    const tapped = P.bf.filter((c) => isCreature(c) && c.tapped && !c.token);
+    if (!tapped.length || silenced(G, P)) return;
+    const keep = (c) => cv(c) - (c.def.etb.length ? 1.2 : 0) - (c.def.mv <= 2 ? 0.6 : 0);
+    const back = tapped.slice().sort((a, b) => keep(a) - keep(b) || a.id - b.id)[0];
+    const card = P.hand.filter((c) => c.def.webSling && canPay(P, c.def.webSling, { def: c.def, card: c }) && !canPay(P, castCost(P, c), { def: c.def, card: c }) && c.def.value > keep(back) * 0.7 + 0.5)
+      .sort((a, b) => b.def.value - a.def.value)[0];
+    if (!card || !castSpell(G, P, card, [], null, { web: back })) return;
+  }
+}
 function aiMain(G, P, which) {
   const ctx = which === 1 ? 'main1' : 'main2';
   G.phase = ctx;
   for (let k = 0; k < 3 && P.landsPlayed < landLimit(G, P) && !G.endTurn && !G.over; k++) { const land = chooseLand(G, P); if (!land) break; playLandChoice(G, P, land); }
+  if (P.hand.some((c) => c.def.webSling)) aiWebSling(G, P);
   for (let guard = 0; guard < 14 && !G.over; guard++) {
     let best = null;
     for (const c of castables(G, P)) {
@@ -3644,6 +3748,7 @@ function canBlock(G, b, a) {
   if (b.def.blockIf && !b.def.blockIf(G, b)) return false;
   if (G.noBlockNoFly === G.turn && !has(b, 'flying')) return false;
   if ((a.tf && a.tf.unblockable) || (a.sfl && a.sfl.unblockable)) return false;
+  if (a.tf && a.tf.bigOnly && (pow(b) <= 2 || hasSub(b, 'Wall'))) return false;
   if (a.tf && a.tf.hasteOnly && !has(b, 'haste')) return false;
   if (has(b, 'flying') && G.players[a.ctrl] && G.players[a.ctrl].bf.some((x) => x.def.noFlyers)) return false;
   if (a.def.blockOnlyBy && !a.def.blockOnlyBy(G, b, a)) return false;
@@ -4101,22 +4206,23 @@ function combatDamage(G, A, D, attackers, step) {
   G.combatDmg = true;
   for (const ev of events) {
     const P = ctrlOf(G, ev.src);
-    let dealt = ev.n;
+    let dealt;
     if (ev.toC) dealt = damageCreature(G, ev.toC, ev.n, ev.src, { combat: true });
     else {
-      damagePlayer(G, ev.to, ev.n, ev.src, P); hitPlayer.set(ev.src, (hitPlayer.get(ev.src) || 0) + ev.n);
-      if (ev.src.cmdr) ev.to.cmdDmg[ev.src.id] = (ev.to.cmdDmg[ev.src.id] || 0) + ev.n;
+      dealt = damagePlayer(G, ev.to, ev.n, ev.src, P);
+      if (dealt) { hitPlayer.set(ev.src, (hitPlayer.get(ev.src) || 0) + dealt); if (ev.src.cmdr) ev.to.cmdDmg[ev.src.id] = (ev.to.cmdDmg[ev.src.id] || 0) + dealt; }
     }
+    ev.dealt = dealt || 0;
     if (dealt && has(ev.src, 'lifelink')) gainLife(G, P, dealt);
   }
   G.combatDmg = false;
   const toPlayer = events.filter((e) => e.to);
   if (toPlayer.length) {
-    const total = toPlayer.reduce((x, e) => x + e.n, 0);
-    lines.push(`${D.name} takes ${total} from ${nameList([...new Set(toPlayer.map((e) => e.src))])}`);
+    const total = toPlayer.reduce((x, e) => x + e.dealt, 0);
+    lines.push(total > 0 ? `${D.name} takes ${total} from ${nameList([...new Set(toPlayer.map((e) => e.src))])}` : `${D.name} takes no damage from ${nameList([...new Set(toPlayer.map((e) => e.src))])}`);
   }
-  for (const e of events.filter((x) => x.toC)) lines.push(`${e.src.def.name} deals ${e.n} to ${e.toC.def.name}`);
-  emit(G, 'damage', `${step === 'first' ? 'First strike. ' : ''}${lines.join('. ')}.`, { who: A.i, cards: events.map((e) => e.src.id), hits: events.map((e) => ({ src: e.src.id, to: e.toC ? e.toC.id : `p${e.to.i}`, n: e.n })) });
+  for (const e of events.filter((x) => x.toC)) lines.push(`${e.src.def.name} deals ${e.dealt} to ${e.toC.def.name}`);
+  emit(G, 'damage', `${step === 'first' ? 'First strike. ' : ''}${lines.join('. ')}.`, { who: A.i, cards: events.map((e) => e.src.id), hits: events.map((e) => ({ src: e.src.id, to: e.toC ? e.toC.id : `p${e.to.i}`, n: e.dealt })) });
   for (const [src] of hitPlayer) if (src.def.hit.length && onBf(G, src)) resolveEffects(G, ctrlOf(G, src), src.def.hit, src, null, 'trigger');
   if (G.pending && hitPlayer.size && !G.over) {
     for (const [src, n] of hitPlayer) fire(G, 'hitPlayer', { c: src, Q: D, n, ctrl: src.ctrl, P: G.players[src.ctrl] });
@@ -4455,7 +4561,7 @@ function aiInstantWindow(G, P, when) {
     let best = null;
     for (const card of castables(G, P)) {
       const d = card.def;
-      if (!fastFor(G, P, d) || !castZone(G, P, card) || !canPay(P, castCost(P, card), { def: d })) continue;
+      if (!fastFor(G, P, d) || !castZone(G, P, card) || !canPay(P, castCost(P, card), { def: d, card })) continue;
       if (d.spell && d.spell.some((e) => e.k === 'counter')) continue;
       let r = null;
       if (!d.types.includes('Creature') && isPermanentSpell(d)) {
@@ -4686,10 +4792,10 @@ function humanActions(G, P, when) {
     if (d.castIf && !d.castIf(G, P, c)) continue;
     const zone = castZone(G, P, c);
     const xc = zone === 'xcast' ? xcastOf(G, P, c) : null;
-    const purpose = { def: d, anyType: !!(xc && xc.anyType) };
+    const purpose = { def: d, card: c, anyType: !!(xc && xc.anyType) };
     if (d.addCost && !addCostOptions(G, P, c).ok) continue;
     const full = canPay(P, castCost(P, c), purpose);
-    const fromGyZone = zone === 'flashback' || zone === 'gycast';
+    const fromGyZone = zone === 'flashback' || zone === 'gycast' || zone === 'escape' || zone === 'mayhem' || zone === 'gydiscard';
     // Cheaper with the right target (Banish from Edoras): only those targets are offered when the full cost is too much
     // (only when the reduction depends on the targets: costMod(G, P, card, targets))
     if (!full && !(d.costMod && d.costMod.length >= 4 && canPay(P, Object.assign({}, castCost(P, c), { g: Math.max(0, castCost(P, c).g - 3) }), purpose))) continue;
@@ -4697,7 +4803,7 @@ function humanActions(G, P, when) {
     const perm = isPermanentSpell(d);
     const cre = d.types.includes('Creature');
     const fromCmd = zone === 'command';
-    const where = fromCmd ? ' from the command zone' : zone === 'xcast' ? (P.gy.includes(c) ? ' from your graveyard' : ' from exile') : zone === 'top' ? ' from the top of your library' : zone === 'flashback' ? ` with flashback (${costText(castCost(P, c))})` : zone === 'gycast' ? ' from your graveyard' : '';
+    const where = fromCmd ? ' from the command zone' : zone === 'xcast' ? (P.gy.includes(c) ? ' from your graveyard' : ' from exile') : zone === 'top' ? ' from the top of your library' : zone === 'flashback' ? ` with flashback (${costText(castCost(P, c))})` : zone === 'escape' ? ` with escape (${costText(castCost(P, c))}, exile ${c.def.escape.exile} other cards)` : zone === 'mayhem' ? ` with mayhem (${costText(castCost(P, c))})` : zone === 'gydiscard' ? ' from your graveyard (discard a card)' : zone === 'gycast' ? ' from your graveyard' : '';
     const modes = d.modes ? modeChoices(G, P, d) : [null];
     for (const mode of modes) {
       if (mode && d.modes.some((m) => m.cost || m.addCost)) {
@@ -4729,6 +4835,13 @@ function humanActions(G, P, when) {
   };
   castLoop(castables(G, P));
   advs.forEach((c) => { c.def = c.advLand; c.advLand = null; });
+  // Web-slinging: the same creature for its web-slinging cost, returning a tapped creature you control to hand
+  for (const c of P.hand) {
+    const d = c.def;
+    if (!d.webSling || !(sorcery || fastFor(G, P, d)) || silenced(G, P) || !P.bf.some((x) => isCreature(x) && x.tapped) || !canPay(P, d.webSling, { def: d, card: c })) continue;
+    const base = acts.find((a) => a.card === c.id && a.kind === 'cast');
+    acts.push({ act: `web:${c.id}`, kind: 'cast', card: c.id, label: `Cast ${d.name} with web-slinging (return a tapped creature you control)`, specs: base ? base.specs : [], etb: true, cost: costText(d.webSling) });
+  }
   for (const a of acts.slice(nAct)) { const ac = advs.find((c) => c.id === a.card); if (ac && a.kind === 'cast') { a.act = a.act.replace(/^cast:/, 'adv:'); a.label = a.label.replace(/^Cast /, 'Cast the adventure '); } }
   // Modal double-faced cards: the back face can be cast from hand too
   const mdfcs = P.hand.filter((c) => c.def.mdfc && c.def.back && (sorcery || isInstantSpeed(c.def.back)));
@@ -4793,12 +4906,13 @@ function humanActions(G, P, when) {
     if (k.discard) parts.push('discard a card');
     if (k.life) parts.push(`pay ${k.life} life`);
     if (k.exileSelf) parts.push('exile it from your graveyard');
+    if (k.discardSelf) parts.push('discard it');
     if (k.exileSelfBf) parts.push('exile it');
     if (k.exileGy) parts.push(`exile ${k.exileGy} cards from your graveyard`);
     if (k.tapCre) parts.push('tap a creature');
     if (k.ctr) parts.push(`remove a ${k.ctr.kind} counter`);
     const label = ab.crew ? `Crew ${c.def.crew}: tap creatures with total power ${c.def.crew}` : ab.equip ? `Equip${ab.only ? ` ${ab.only.sub}` : ''} ${costText(cost)}` : `${parts.length ? `${parts.join(', ')}: ` : ''}${ab.label || 'Activate'}`;
-    acts.push(Object.assign({ act: `ab:${c.id}:${e.k}`, kind: 'ab', card: c.id, label: label.charAt(0).toUpperCase() + label.slice(1), specs }, e.zone === 'gy' ? { zone: 'gy' } : null, ab.cost.m && ab.cost.m.x ? { x: true } : null));
+    acts.push(Object.assign({ act: `ab:${c.id}:${e.k}`, kind: 'ab', card: c.id, label: label.charAt(0).toUpperCase() + label.slice(1), specs }, e.zone === 'gy' ? { zone: 'gy' } : e.zone === 'ex' ? { zone: 'exile' } : null, ab.cost.m && ab.cost.m.x ? { x: true } : null));
   }
   for (const c of P.hand) if (c.def.cycling && canPay(P, c.def.cycling) && P.library.length) acts.push({ act: `cycle:${c.id}`, kind: 'cycle', card: c.id, label: `${c.def.cycleLabel ? c.def.cycleLabel : c.def.cycleFind === 'basic' ? 'Basic landcycling' : c.def.cycleFind ? `${c.def.cycleFind}cycling` : 'Cycle'} for ${costText(c.def.cycling)}` });
   return acts;
@@ -4854,10 +4968,18 @@ function applyAction(G, P, a) {
       if (land && toCast.def === altFace(land) && P.hand.includes(toCast)) toCast.def = land;
       break;
     }
+    case 'web': {
+      if (!inHand || !inHand.def.webSling) break;
+      const cs = P.bf.filter((c) => isCreature(c) && c.tapped);
+      if (!cs.length) break;
+      const back = cs.length === 1 ? cs[0] : pickCards(G, { type: 'choose', reason: 'bounce-cost', n: 1, min: 1, max: 1, zone: 'battlefield', cards: cs.map((c) => c.id), label: `${inHand.def.name}: web-slinging` }, cs, 1)[0];
+      castSpell(G, P, inHand, [], inHand.def.etb.map((e, k) => fromRef(G, (a.etb || [])[k])), { web: back });
+      break;
+    }
     case 'ab': {
-      const src = P.bf.find((c) => c.id === id) || P.gy.find((c) => c.id === id);
+      const src = P.bf.find((c) => c.id === id) || P.gy.find((c) => c.id === id) || P.exile.find((c) => c.id === id && c.def.exActs) || P.hand.find((c) => c.id === id && c.def.handActs);
       if (!src) break;
-      const e = abilitiesOf(G, P, src, P.gy.includes(src) ? 'gy' : 'bf').find((y) => y.k === extra);
+      const e = abilitiesOf(G, P, src, P.bf.includes(src) ? 'bf' : P.gy.includes(src) ? 'gy' : P.exile.includes(src) ? 'ex' : 'hand').find((y) => y.k === extra);
       if (!e || !canActivate(G, P, e, G.phase === 'main1' || G.phase === 'main2' ? G.phase : 'any')) break;
       const targets = e.ab.equip ? [t0[0] || null] : (e.ab.eff || []).map((ef, k) => t0[k] || null);
       activate(G, P, e, targets);
@@ -5145,7 +5267,7 @@ function replayOf(G) {
   const used = {};
   for (const id of Object.keys(G.defs)) used[id] = G.defs[id];
   return {
-    seed: G.seed, first: G.first, winner: G.winner, reason: G.reason, turns: G.turn, format: G.format,
+    seed: G.seed, first: G.first, winner: G.winner, reason: G.reason, altWhy: G.altWhy, turns: G.turn, format: G.format,
     players: G.players.map((P) => ({ name: P.name, persona: P.persona, colors: P.colors, life: P.life, stats: P.stats, mulligans: P.mulligans, kept: 7 - P.bottomed,
       cmd: P.cmd ? { id: P.cmd.id, d: P.cmd.def.id } : null, cmdDmg: Object.values(P.cmdDmg).reduce((s, n) => Math.max(s, n), 0) })),
     defs: used, frames: G.frames,
@@ -5395,7 +5517,7 @@ return {
   _internal: { cv, fight, kills, canBlock, planPayment, manaSources, evalEffect, chooseTargets, aiAttackers, aiBlocks, sba, snap, newCard, castSpell, resolveEffects, combat, takeTurn, enterBattlefield, forecast, protectedFrom, targetOk, pow, tou, applyAction, returnControl, damageCreature, planDamage,
     cloneGame, combatWith, combatBlocked, aiAfterCombat, endOfTurn, openingHand, beginOnBattlefield },
   registerScripts, SCRIPTS,
-  lib: { fx, tempt, amass, makeTokens, FOOD, TREASURE, ORC_ARMY, tokenDef, addCounters, removeCounters, matches, countMine, isCreature, isLand, isArtifact, isEnchantment,
+  lib: { basePow, baseTou, manaCount, fx, tempt, amass, makeTokens, FOOD, TREASURE, ORC_ARMY, tokenDef, addCounters, removeCounters, matches, countMine, isCreature, isLand, isArtifact, isEnchantment,
     isLegendary, pow, tou, has, hasSub, orcish, subOf, ctrCount, isEquipped, equipmentOn, attachedTo, attach, ringBearer, other, emit, fire, dirty, dealDamage, damageCreature,
     damagePlayer, gainLife, drawCards, discardChoice, scryChoice, mill, searchLibrary, sacrifice, sacrificeChoice, destroyPermanent, exilePermanent, bounceCard, gainControl,
     putOntoBattlefield, enterBattlefield, removeFromZones, pickCards, chooseMode, yesNo, chooseNumber, ask, isHuman, cv, pv, onBf, byId, allPerms, allCreatures, diedThisTurn,

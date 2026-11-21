@@ -2004,5 +2004,7 @@ S['Villainous Hideout'] = (d) => {
 };
 
 /* @@MORE@@ */
+// The vocabulary above, shared with the Marvel Super Heroes Jumpstart cards (mshjmp.js)
+A.lib.mshKit = { ALIEN, ANYC, C, CLUE, DOOMBOT, GALACTUS, HARMFUL, HERO, INSECT, LEVIATHAN, MERFOLK, MOLOID, REDWING, ROBOT_VILLAIN, SOLDIER, SQUIRREL, STURDY_SHIELD, T, TIGER_GOD, VILLAIN, VOID, WALL, YOU, OPP, ZABU, alone, aloneSelf, attachE, attackingAlone, backScore, basicHere, batchOnce, becomeCopy, blackSymbols, blueSymbols, castAtMine, castNC, chooseOne, copyToken, copyUntilNextTurn, creGy, ctrEach, ctx0, discardE, drain, draw2, drawN, edictOf, exileTilEnd, fn, gain, grantKw, gyThisTurn, harness, harnessed, heroes, hit, hitOpp, holdUntilLeaves, impulse, impulseE, isEquip, legalFor, lone, lookTake, loseLife, mk, mkE, myTurn, nArt, nCre, nonCre, painless, permCard, pickOne, pickSome, plan, planOn, pu, puAi, pump, sacOrDiscardDraw, say, setPU, stripAbilities, targetsMine, tcs, tg, toLibrary, tokSpec, tokVal, turnOver, twBoth, twSpell, unCopy, untap, untilMyNextEnd, villainEnters, villains };
 return S;
 });
