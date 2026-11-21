@@ -33,7 +33,7 @@ const villains = (P, src) => P.bf.filter((c) => isCreature(c) && hasSub(c, 'Vill
 const permCard = (d) => !d.types.includes('Instant') && !d.types.includes('Sorcery');
 const say = (G, P, text, cards) => emit(G, 'info', text, { who: P.i, cards });
 const drawN = (G, P, n) => { if (n <= 0) return; drawCards(G, P, n); emit(G, 'draw', `${P.name} draws ${n === 1 ? 'a card' : `${n} cards`}.`, { who: P.i }); };
-const loseLife = (G, Q, n, who) => { if (n <= 0) return; Q.life -= n; emit(G, 'life', `${Q.name} loses ${n} life.`, { who: who != null ? who : Q.i, target: `p${Q.i}`, amount: n }); };
+const loseLife = (G, Q, n, who) => { if (n <= 0) return; Q.life -= n; L.noteLoss(G, Q, n); emit(G, 'life', `${Q.name} loses ${n} life.`, { who: who != null ? who : Q.i, target: `p${Q.i}`, amount: n }); };
 const gain = (G, P, n) => { if (n <= 0) return; const b = P.life; gainLife(G, P, n); const got = P.life - b; if (got > 0) emit(G, 'life', `${P.name} gains ${got} life.`, { who: P.i, target: `p${P.i}`, amount: -got }); };
 const pump = (G, c, p, t, kws = []) => { if (!onBf(G, c)) return; c.tp += p; c.tt += t; kws.forEach((k) => { if (!c.tkw.includes(k)) c.tkw.push(k); }); dirty(G); emit(G, 'pump', `${c.def.name} gets ${sgn(p)}/${sgn(t)}${kws.length ? ` and gains ${kws.join(' and ')}` : ''} until end of turn.`, { who: c.ctrl, cards: [c.id] }); };
 const grantKw = (G, c, kws, text) => { if (!onBf(G, c)) return; kws.forEach((k) => { if (!c.tkw.includes(k)) c.tkw.push(k); }); dirty(G); emit(G, 'pump', `${c.def.name} ${text || `gains ${kws.join(' and ')} until end of turn`}.`, { who: c.ctrl, cards: [c.id] }); };

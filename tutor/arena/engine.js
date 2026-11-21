@@ -744,6 +744,7 @@ const has = (c, k) => {
   if (c.tf && c.tf.noAbil) return c.tkw.includes(k) && !!c.tf.kwAfter;
   if (c.sfl && c.sfl.noAbil) return c.tkw.includes(k);
   if (k === 'indestructible' && c.tf && c.tf.loseInd) return false;
+  if (k === 'flying' && c.sfl && c.sfl.loseFlying) return false; // Colossus Hammer
   if (c.timedKw && c.g && c.timedKw.some((x) => x.kw === k && c.g.turn < x.until)) return true;
   return c.def.kw.includes(k) || c.tkw.includes(k) || (!!c.skw && c.skw.includes(k)) || (!!c.ctr && c.ctr[k] > 0) || (!!c.perp && !!c.perp.kw && c.perp.kw.includes(k));
 };
@@ -1399,6 +1400,7 @@ function damageCreature(G, c, n, src, opts) {
   if (opts && opts.combat && c.def.noCombatDmg) return 0;
   if ((G.players[c.ctrl].shieldTurn === G.turn || G.players[c.ctrl].safeTurn === G.turn) && !G.noPrevent) return 0;
   if (c.ctr && c.ctr.shield) { shieldSave(G, c); return 0; }
+  if (c.tf && c.tf.dmgToCtr && !G.noPrevent) { addCounters(G, c, n); return 0; } // Gatta and Luzzu: prevented, and that many +1/+1 counters
   if (c.def.preventAll && !G.noPrevent && (c.def.preventAll === true || c.def.preventAll(G, c, n))) return 0;
   if (c.sfl && c.sfl.noDamage && !G.noPrevent) return 0;
   if (c.def.healOnHit && c.dmg > 0) { c.dmg = 0; c.dt = false; }
@@ -1418,7 +1420,7 @@ function damageCreature(G, c, n, src, opts) {
 function damagePlayer(G, Q, n, srcCard, from) {
   if (n <= 0) return 0;
   if (protectedPlayer(G, Q, from || (srcCard && G.players[srcCard.ctrl]))) return 0;
-  if ((Q.safeTurn === G.turn || Q.shieldTurn === G.turn) && !G.noPrevent) { if (G.pending) fire(G, 'prevented', { P: Q, n, src: srcCard }); return 0; }
+  if ((Q.safeTurn === G.turn || Q.youSafeTurn === G.turn) && !G.noPrevent) { if (G.pending) fire(G, 'prevented', { P: Q, n, src: srcCard }); return 0; } // youSafeTurn: the player only (Selfless Squire)
   if (Q.prevent && Q.prevent.turn === G.turn && Q.prevent.n > 0 && !G.noPrevent) { const k = Math.min(n, Q.prevent.n); Q.prevent.n -= k; n -= k; if (k && Q.prevent.redirect) redirectDmg(G, Q.prevent.redirect, k); if (k && G.pending) fire(G, 'prevented', { P: Q, n: k, src: srcCard }); if (n <= 0) return 0; }
   // Urza's Armor: prevent 1 of each damage; Pariah: the damage is dealt to the enchanted creature instead
   if (!G.noPrevent) for (const x of Q.bf) if (x.def.armor) { n -= x.def.armor; if (n <= 0) return 0; }
@@ -1434,6 +1436,7 @@ function damagePlayer(G, Q, n, srcCard, from) {
   Q.life -= n;
   Q.hurtTurn = G.turn; // bloodthirst
   Q.hurtN = Q.hurtNTurn === G.turn ? (Q.hurtN || 0) + n : n; Q.hurtNTurn = G.turn; // damage taken this turn (Knollspine Dragon)
+  noteLoss(G, Q, n);
   if (from && from !== Q) from.stats.damage += n;
   if (G.pending) fire(G, 'dmgPlayer', { P: Q, n, src: srcCard, by: srcCard && srcCard.def ? (srcCard.ctrl != null ? srcCard.ctrl : srcCard.owner) : from ? from.i : null, combat: !!G.combatDmg });
   return n;
@@ -2158,6 +2161,9 @@ const MONARCH_DEF = { id: 'the-monarch', name: 'The monarch', types: [], sub: []
   ] };
 const crownOf = (G) => G.crown || (G.crown = { id: -(G.nextId++), def: MONARCH_DEF, owner: 0, ctrl: 0, mem: {}, tkw: [], cnt: 0, tp: 0, tt: 0, ctr: {}, tf: {}, emblem: true });
 const isMonarch = (G, P) => G.monarch === P.i;
+// Life lost this turn (damage, and life loss that goes through noteLoss): Reaper's Scythe, Y'shtola
+function noteLoss(G, Q, n) { if (n <= 0) return; Q.lossN = Q.lossTurn === G.turn ? (Q.lossN || 0) + n : n; Q.lossTurn = G.turn; }
+const lifeLost = (G, Q) => (Q.lossTurn === G.turn ? Q.lossN || 0 : 0);
 function becomeMonarch(G, P) {
   if (!P || G.monarch === P.i) return;
   const from = G.monarch;
@@ -2372,7 +2378,7 @@ function exilePermanent(G, P, c) {
 }
 // Put a card from a graveyard, exile, hand or library onto the battlefield under P's control
 function putOntoBattlefield(G, P, card, opts = {}) {
-  for (const Q of G.players) for (const z of [Q.gy, Q.exile, Q.hand, Q.library]) { const k = z.indexOf(card); if (k >= 0) { z.splice(k, 1); if (z === Q.gy && G.pending) fire(G, 'leaveGy', { P: Q, card }); } }
+  for (const Q of G.players) for (const z of [Q.gy, Q.exile, Q.hand, Q.library]) { const k = z.indexOf(card); if (k >= 0) { z.splice(k, 1); if (z === Q.gy) { if (!opts.from) opts = Object.assign({}, opts, { from: 'gy' }); if (G.pending) fire(G, 'leaveGy', { P: Q, card }); } } }
   enterBattlefield(G, P, card, null, opts);
   if (opts.tapped && !(isLand(card) && P.bf.some((x) => x.def.landsUntapped))) card.tapped = true;
   if (opts.attacking && G.combat) { card.attacking = true; card.tapped = true; G.combat.attackers.push(card); }
@@ -3138,7 +3144,8 @@ function castCost(P, card, targets, x, mode) {
   if (P.g && P.freeNext && P.freeNext.turn === P.g.turn && P.freeNext.f(card.def)) return genericCost(0); // World War Hulk
   if (P.g && P.bf.some((src) => src.def.freeCastIf && src.def.freeCastIf(P.g, P, card, src))) return genericCost(0); // Vision
   const alt = !fb && !esc && !may && d.modes && mode ? mode.map((k) => d.modes[k] && d.modes[k].alt).find(Boolean) : null; // Dash: an alternative cost
-  const c = Object.assign({}, fb ? d.flashback : esc ? d.escape.cost : may ? d.mayhem : alt || d.cost);
+  const xalt = P.g && !fb && !esc && !may ? P.xcast.find((y) => y.card === card && y.cost && xLive(P.g, P, y)) : null; // Foretell: cast from exile for the foretell cost
+  const c = Object.assign({}, fb ? d.flashback : esc ? d.escape.cost : may ? d.mayhem : alt || (xalt && xalt.cost) || d.cost);
   if (c.hy) c.hy = c.hy.slice();
   if (P.command.includes(card)) c.g += CMD.tax * (card.cmdCasts || 0);
   if (d.modes && mode) for (const k of mode) { const mc = d.modes[k] && d.modes[k].cost; if (mc) addCostInto(c, mc); }
@@ -3657,7 +3664,7 @@ function enterBattlefield(G, P, card, etbTargets, opts = {}) {
     for (let i = 0; i < n && !G.over; i++) resolveEffects(G, P, card.def.etb, card, i ? null : tg, 'etb', { item: opts.item });
   }
   if (isLand(card) && !G.over) for (const x of P.bf.slice()) if (isCreature(x) && x.def.landfall && x.def.landfall.length && !G.over) resolveEffects(G, P, x.def.landfall, x, null, 'trigger');
-  if (G.pending) { fire(G, 'enter', { c: card, P, cast: opts.item ? opts.item.zone || 'hand' : null, from: opts.from || null }); if (isLand(card)) fire(G, 'landfall', { c: card, P }); sba(G); }
+  if (G.pending) { fire(G, 'enter', { c: card, P, cast: opts.item ? opts.item.zone || 'hand' : null, from: opts.from || null, castFromGy: !!(opts.item && opts.item.fromGy) }); if (isLand(card)) fire(G, 'landfall', { c: card, P }); sba(G); }
 }
 // Sagas: a lore counter as it enters and after your draw step; each new counter's chapter triggers.
 function addLore(G, P, saga, n) {
@@ -3744,6 +3751,7 @@ function abilityCost(G, P, c, ab, targets) {
     if (host && host.def.equipCheaper) m.g = Math.max(0, m.g - host.def.equipCheaper);
     if (G.active === P.i && P.bf.some((x) => x.def.equipFree) && P.freeEquipTurn !== G.turn) return genericCost(0);
     if (P.bf.some((x) => x.def.equipOne) && costMV(m) > 1) return genericCost(1);
+    if (P.bf.some((x) => x.def.equipZero && x.def.equipZero(G, P, x))) return genericCost(0); // Puresteel Paladin's metalcraft
   }
   if (ab.costMod) m.g = Math.max(0, m.g - ab.costMod(G, P, c));
   if (ab.food && hasSub(c, 'Food')) m.g = Math.max(0, m.g - P.bf.filter((x) => x.def.foodDiscount).length); // Sam, Loyal Attendant
@@ -4102,7 +4110,7 @@ function evalCast(G, P, card, ctx) {
 // Which sets of modes a modal spell could be cast with (choose one, or up to two with a Wizard for Flame of Anor)
 function modeChoices(G, P, def) {
   const n = typeof def.modeN === 'function' ? def.modeN(G, P) : def.modeN || 1;
-  const out = def.modes.map((m, k) => [k]);
+  const out = def.modes.map((m, k) => [k]).filter(([k]) => !def.modes[k].cond || def.modes[k].cond(G, P)); // a mode can need a condition (Snuff Out's free cast)
   if (n >= 2) for (let i = 0; i < def.modes.length; i++) for (let j = i + 1; j < def.modes.length; j++) out.push([i, j]);
   return out;
 }
@@ -4225,6 +4233,7 @@ function canBlock(G, b, a) {
   if (G.noBlockNoFly === G.turn && !has(b, 'flying')) return false;
   if ((a.tf && a.tf.unblockable) || (a.sfl && a.sfl.unblockable)) return false;
   if (a.tf && a.tf.bigOnly && (pow(b) <= 2 || hasSub(b, 'Wall'))) return false;
+  if (a.sfl && a.sfl.bigOnly && pow(b) <= 2) return false; // Wrecking Ball Arm
   if (a.tf && a.tf.spiritsOnly && !hasSub(b, 'Spirit')) return false;
   if (a.tf && a.tf.hasteOnly && !has(b, 'haste')) return false;
   if (has(b, 'flying') && G.players[a.ctrl] && G.players[a.ctrl].bf.some((x) => x.def.noFlyers)) return false;
@@ -6063,6 +6072,6 @@ return {
     targetList, allTargets, findCard, protectedFrom, historicDef, isPermanentSpell, spellEffects, effsValue, effectValue, castZone, aiScry, pickBasicFrom, putInGraveyard, defMatches, lethalTo,
     canBlock, kills, dmgOut, combatPow, minBlockers, phaseIn, ctrlOf, onBfC: onBf, equipGain, uniqueByName, discardWorst, emptyPool, refFor, tgtOk, castCost, maxX,
     EFF, abilitiesOf, readyAbilities, activate, aiAbilities, parseEffects, parseKwLine, parseStructural, parseStatic, parseActivated, normalizeText,
-    surveil, transform, blink, meld, castAdventure, addEmblem, castNow, evalCast, modeChoices, auraHost, auraOk, shieldFor, combatDoom, preventVal, redirectDmg, redirectFor, setLookup, lookupDef, conjure, draft, seek, incubate, proliferate, addBoon, unearth, POWERSTONE, REBEL, INCUBATOR, becomeMonarch, isMonarch, monarchVal, vote, chooseCreatureType, creatureTypesOf, cmdIdentity, isCommander, returnControl, checkControl, allIslands, isIsland, regenSave, abilityCost, sneakWindow, teamworkPay, discardsThisTurn, noteDiscard, finishCountered, enteredThisTurn, attackedThisTurn, investigate, connive, shieldSave, CLUE, altFace, reduceCost, twPick, twPower, hexP, landChoices, landLimit, gyPermit, acOf, addCostInto, facesOf, sagaFinal, dmgMod, isInstantSpeed, playLandChoice },
+    surveil, transform, blink, meld, castAdventure, addEmblem, castNow, evalCast, modeChoices, auraHost, auraOk, shieldFor, combatDoom, preventVal, redirectDmg, redirectFor, setLookup, lookupDef, conjure, draft, seek, incubate, proliferate, addBoon, unearth, POWERSTONE, REBEL, INCUBATOR, noteLoss, lifeLost, becomeMonarch, isMonarch, monarchVal, vote, chooseCreatureType, creatureTypesOf, cmdIdentity, isCommander, returnControl, checkControl, allIslands, isIsland, regenSave, abilityCost, sneakWindow, teamworkPay, discardsThisTurn, noteDiscard, finishCountered, enteredThisTurn, attackedThisTurn, investigate, connive, shieldSave, CLUE, altFace, reduceCost, twPick, twPower, hexP, landChoices, landLimit, gyPermit, acOf, addCostInto, facesOf, sagaFinal, dmgMod, isInstantSpeed, playLandChoice },
 };
 });

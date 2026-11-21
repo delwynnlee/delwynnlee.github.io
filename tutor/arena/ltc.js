@@ -88,6 +88,8 @@ const aftermath = (cost, label, run, ai) => ({ cost: { m: C(cost), exileSelf: tr
 const noBlocks = (G, cs) => { for (const c of cs) c.tf.cantBlock = true; dirty(G); };
 // A vote where the AI just wants what's best for itself: score(G, Q, k)
 const tally = (r, k) => r.tally[k] || 0;
+// "Exile [this spell]" as it resolves: it's already in the graveyard by then, so it moves on to exile
+const exileSpell = (G, card) => { const O = G.players[card.owner]; const k = O.gy.indexOf(card); if (k >= 0) { O.gy.splice(k, 1); O.exile.push(card); dirty(G); } };
 
 /* ============================================================ Lands */
 S['Access Tunnel'] = (d) => {
@@ -393,7 +395,7 @@ S["Marshal's Anthem"] = (d) => {
   return d;
 };
 S['Selfless Squire'] = (d) => {
-  d.etb = [fn((G, X) => { X.P.shieldTurn = G.turn; emit(G, 'fog', `All damage that would be dealt to ${X.P.name} this turn will be prevented.`, { who: X.P.i }); }, { score: (G, P) => (G.combat && G.active !== P.i ? 2 : 0.2) })];
+  d.etb = [fn((G, X) => { X.P.youSafeTurn = G.turn; emit(G, 'fog', `All damage that would be dealt to ${X.P.name} this turn will be prevented.`, { who: X.P.i }); }, { score: (G, P) => (G.combat && G.active !== P.i ? 2 : 0.2) })];
   d.trig.push(T('prevented', { you: true, run: (G, X) => addCounters(G, X.src, X.ev.n) }));
   d.castScore = (G, P) => (G.combat && G.active !== P.i && G.combat.attackers.reduce((t, c) => t + Math.max(0, pow(c)), 0) >= 4 ? 3 : 0);
   return d;
@@ -1087,7 +1089,7 @@ S['Seeds of Renewal'] = (d) => {
     for (const c of cs) { X.P.gy.splice(X.P.gy.indexOf(c), 1); X.P.hand.push(c); }
     dirty(G);
     if (cs.length) emit(G, 'raise', `${X.P.name} returns ${nameList(cs)} to hand.`, { who: X.P.i, cards: cs.map((c) => c.id) });
-    X.src.fbExile = true;
+    exileSpell(G, X.src);
   }, { score: (G, P) => P.gy.slice().sort((a, b) => b.def.value - a.def.value).slice(0, 2).reduce((s, c) => s + c.def.value * 0.7, 0) - 1 })];
   d.role = 'draw';
   return d;
@@ -1379,7 +1381,7 @@ S['Sail into the West'] = (d) => {
         for (const c of cs) { Q.gy.splice(Q.gy.indexOf(c), 1); Q.hand.push(c); }
         if (cs.length) emit(G, 'raise', `${Q.name} returns ${nameList(cs)} to hand.`, { who: Q.i, cards: cs.map((c) => c.id) });
       }
-      X.src.fbExile = true;
+      exileSpell(G, X.src);
     } else {
       for (const Q of [X.P, X.O]) {
         const want = isHuman(G, Q) ? yesNo(G, Q, X.src, 'Discard your hand and draw seven cards?', Q.hand.length < 4) : Q.hand.length <= 3;
@@ -1485,7 +1487,7 @@ S['Travel Through Caradhras'] = (d) => {
       const c = pickOne(G, P, cs, 'Return a card from your graveyard to your hand', (x) => x.def.value, 'choose', 'graveyard');
       if (c) { P.gy.splice(P.gy.indexOf(c), 1); P.hand.push(c); emit(G, 'raise', `${P.name} returns ${c.def.name} to hand.`, { who: P.i, cards: [c.id] }); }
     }
-    X.src.fbExile = true;
+    exileSpell(G, X.src);
     dirty(G);
   }, { score: (G, P) => 2 + rampVal(G, P) })];
   d.role = 'ramp';
