@@ -439,6 +439,8 @@ svg.i .fill { fill: currentColor; }
 .card .zoneb { left: 50%; bottom: -6px; transform: translateX(-50%); background: rgba(21, 19, 26, .94); color: #e9dfc9; border: 1px solid var(--line-strong); font-size: max(9px, 10cqw); }
 .ringc { flex: none; display: inline-flex; align-items: center; gap: 5px; font: 700 12.5px/1 var(--sans); color: #ecd27a; padding: 5px 9px; border-radius: 999px; border: 1px solid rgba(236, 210, 122, .45); background: rgba(236, 210, 122, .08); white-space: nowrap; cursor: help; }
 .ringc i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid currentColor; }
+.monc { flex: none; display: inline-flex; align-items: center; gap: 5px; font: 700 12.5px/1 var(--sans); color: #ffd98a; padding: 5px 9px; border-radius: 999px; border: 1px solid rgba(255, 217, 138, .5); background: rgba(255, 217, 138, .1); white-space: nowrap; cursor: help; }
+.monc svg.i { width: 13px; height: 13px; }
 .pool { margin-top: 20px; }
 .sets-row { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 10px; margin: 0 0 4px; scrollbar-width: thin; }
 .setchip { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding: 10px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font: 700 14.5px/1.1 var(--sans); text-align: left; }
@@ -1266,7 +1268,7 @@ svg.i .fill { fill: currentColor; }
 <div class="insp" id="insp" role="dialog" aria-modal="true" aria-labelledby="inspName" hidden></div>
 <div class="sheet" id="sheet" hidden></div>
 
-<script src="engine.js?v=14"></script>
+<script src="engine.js?v=15"></script>
 <script src="ltr.js?v=1"></script>
 <script src="fin.js?v=1"></script>
 <script src="msh.js?v=2"></script>
@@ -1275,11 +1277,13 @@ svg.i .fill { fill: currentColor; }
 <script src="core.js?v=2"></script>
 <script src="classic.js?v=1"></script>
 <script src="arena23.js?v=1"></script>
+<script src="cmdr.js?v=1"></script>
+<script src="ltc.js?v=1"></script>
 <script src="decks.js?v=3"></script>
 <script src="commanders.js?v=3"></script>
 <script src="sets.js?v=4"></script>
 <script src="tutorial.js?v=4"></script>
-<script src="glossary.js?v=5"></script>
+<script src="glossary.js?v=6"></script>
 <script src="career.js?v=1"></script>
 <script src="journal.js?v=1"></script>
 <script>
@@ -1387,7 +1391,7 @@ const ARCH_LABEL = { aggro: 'Aggro', midrange: 'Midrange', control: 'Control' };
 const COLOR_NAME = { W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green' };
 const COLOR_VAR = { W: 'var(--w)', U: 'var(--u)', B: 'var(--b)', R: 'var(--r)', G: 'var(--g)' };
 async function loadData() {
-  const res = await fetch('cards.json?v=7');
+  const res = await fetch('cards.json?v=8');
   if (!res.ok) throw new Error(`cards.json: HTTP ${res.status}`);
   const j = await res.json();
   // Double-faced, adventurer and meld cards carry their other faces: { b: back, a: adventure, m: melded card, mdfc: either face can be cast }
@@ -1405,12 +1409,14 @@ async function loadData() {
   Arena.lib.setLookup((n) => DATA.byName.get(n) || null);
 }
 const DECKS = new Map();
+// A deck's commander and, for a partner pair, the second commander
+const cmdrsOf = (d) => (d && d.commander ? [d.commander].concat(d.partner ? [d.partner] : []) : []);
 function finishDeck(d, extra) {
   Object.assign(d, extra);
   const nonland = d.list.filter(({ def }) => !def.types.includes('Land'));
   if (!d.face) d.face = nonland.slice().sort((a, b) => b.def.value * (b.def.types.includes('Creature') ? 1.2 : 1) - a.def.value * (a.def.types.includes('Creature') ? 1.2 : 1))[0].def.name;
   d.accent = COLOR_VAR[d.colors[0]] || 'var(--c)';
-  d.size = d.list.reduce((t, x) => t + x.n, 0) + (d.commander ? 1 : 0);
+  d.size = d.list.reduce((t, x) => t + x.n, 0) + cmdrsOf(d).length;
   DECKS.set(d.key, d);
   return d;
 }
@@ -1476,7 +1482,11 @@ const curSet = () => setByCode(S.pool); // null when playing with all cards
 const isFullSet = (set) => set.cards.length >= set.total;
 // A deck's key says both choices: s.<set>. in front means one set's cards, k or kg means Commander
 const poolOfKey = (key) => { const m = /^s\.([a-z0-9]{2,4})\./.exec(key || ''); const set = m && setByCode(m[1]); return set ? set.code : 'all'; };
-const fmtOfKey = (key) => (/^(s\.[a-z0-9]{2,4}\.)?kg?\./.test(key || '') ? 'commander' : 'standard');
+const fmtOfKey = (key) => {
+  const m = /^o\.([a-z0-9-]+)$/.exec(key || '');
+  if (m) { const o = OFF.byId.get(m[1]); return o && o.cmdr ? 'commander' : 'standard'; } // an official Commander deck
+  return /^(s\.[a-z0-9]{2,4}\.)?kg?\./.test(key || '') ? 'commander' : 'standard';
+};
 function setPool(set) {
   if (!SETS.pools.has(set.code)) { const names = new Set(set.cards.concat(BASIC_NAMES)); SETS.pools.set(set.code, DATA.pool.filter((d) => names.has(d.name))); }
   return SETS.pools.get(set.code);
@@ -1563,7 +1573,7 @@ let READY = false;
 const OFF = { decks: [], byId: new Map(), cards: {}, err: false };
 async function loadOfficial() {
   try {
-    const res = await fetch('official.json?v=4');
+    const res = await fetch('official.json?v=5');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const j = await res.json();
     OFF.decks = j.decks || [];
@@ -1603,13 +1613,14 @@ const firstSentence = (t) => (/^.*?[.!?](\s|$)/.exec(t) || [t])[0].trim();
 function offDeck(o) {
   const key = `o.${o.id}`;
   if (DECKS.has(key)) return DECKS.get(key);
+  // A Commander deck: its commander (and partner) wait in the command zone; the rest is the library
   const cmdr = (o.cmdr || []).map((n) => DATA.byName.get(n) || stubDef(n));
-  const list = o.cards.map(([n, name]) => ({ def: DATA.byName.get(name) || stubDef(name), n })).concat(cmdr.slice(1).map((def) => ({ def, n: 1 })));
+  const list = o.cards.map(([n, name]) => ({ def: DATA.byName.get(name) || stubDef(name), n }));
   const playable = offPlayable(o) && list.every((x) => !x.def.stub) && cmdr.every((x) => !x.stub);
-  const base = playable && !o.cmdr ? Arena.deckFromList(o.name, o.colors, o.arch, list) : { name: o.name, colors: o.colors, archetype: o.arch, list, cards: [] };
-  if (cmdr.length) base.commander = cmdr[0];
+  const extra = cmdr.length ? Object.assign({ commander: cmdr[0], format: 'commander' }, cmdr[1] ? { partner: cmdr[1] } : null) : null;
+  const base = playable ? Arena.deckFromList(o.name, o.colors, o.arch, list, extra) : Object.assign({ name: o.name, colors: o.colors, archetype: o.arch, list, cards: [] }, extra);
   const face = [o.keys[0]].concat(o.keys).find((n) => n && !/Land/.test((DATA.byName.get(n) || stubDef(n)).typeLine)) || o.keys[0];
-  return finishDeck(base, { key, by: 'wotc', off: o, blurb: o.plan, keys: o.keys, face, set: o.set, playable: playable && !o.cmdr, half: isPack(o) });
+  return finishDeck(base, { key, by: 'wotc', off: o, blurb: o.plan, keys: o.keys, face, set: o.set, playable, half: isPack(o) });
 }
 // Jumpstart: two half-deck packs from the same set, shuffled together
 function packPair(a, b) {
@@ -1880,7 +1891,8 @@ function curveHTML(d, counts) {
   return `<div class="curve" aria-label="Mana curve: ${buckets.map((n, k) => `${n} at ${k === 5 ? '6 or more' : k + 1}`).join(', ')}" style="--accent:${d.accent}">${buckets.map((n, k) => `<div>${counts ? `<em>${n}</em>` : ''}<i style="height:${Math.round((n / max) * (counts ? 82 : 100))}%"></i><b>${k === 5 ? '6+' : k + 1}</b></div>`).join('')}</div>`;
 }
 function listHTML(d) {
-  const head = d.commander ? `<h4>Commander</h4><div class="row cmdrow"><span class="n">${icon('star')}</span><span class="nm">${esc(d.commander.name)}</span><span class="mc">${manaHTML(d.commander.manaCost)}</span></div>` : '';
+  const cs = cmdrsOf(d);
+  const head = cs.length ? `<h4>${cs.length > 1 ? 'Commanders' : 'Commander'}</h4>${cs.map((c) => `<div class="row cmdrow${c.stub ? ' miss' : ''}"><span class="n">${icon('star')}</span><span class="nm">${esc(c.name)}</span><span class="mc">${manaHTML(c.manaCost)}</span></div>`).join('')}` : '';
   const groups = [['Creatures', (x) => x.types.includes('Creature')], ['Spells', (x) => !x.types.includes('Creature') && !x.types.includes('Land')], ['Lands', (x) => x.types.includes('Land')]];
   return `<div class="decklist">${head}${groups.map(([label, f]) => {
     const rows = d.list.filter(({ def }) => f(def)).sort((a, b) => a.def.mv - b.def.mv || a.def.name.localeCompare(b.def.name));
@@ -1889,7 +1901,7 @@ function listHTML(d) {
   }).join('')}</div>`;
 }
 function metaHTML(d) {
-  return `<div class="deck-meta"><span class="cols" aria-label="${d.colors.map((c) => COLOR_NAME[c]).join(' and ')}">${colorsHTML(d.colors)}</span><span class="arch">${ARCH_LABEL[d.archetype]}</span>${d.commander ? `<span class="cmd-name">${icon('star')}${esc(d.commander.name)}</span>` : ''}<span class="by">${d.by === 'career' ? (d.key === 'cr.me' ? 'Your career deck' : 'Career villain') : d.by === 'claude' ? 'Designed by Claude' : d.by === 'wotc' ? `Official ${d.off ? esc(d.off.type) : 'Jumpstart pair'}` : 'Built by the generator'}${d.set ? ` · ${esc(shortSet(d.set))}` : ''}${d.off && d.off.year ? ` · ${d.off.year}` : ''}</span></div>`;
+  return `<div class="deck-meta"><span class="cols" aria-label="${d.colors.map((c) => COLOR_NAME[c]).join(' and ')}">${colorsHTML(d.colors)}</span><span class="arch">${ARCH_LABEL[d.archetype]}</span>${d.commander ? `<span class="cmd-name">${icon('star')}${esc(cmdrsOf(d).map((c) => c.name).join(' and '))}</span>` : ''}<span class="by">${d.by === 'career' ? (d.key === 'cr.me' ? 'Your career deck' : 'Career villain') : d.by === 'claude' ? 'Designed by Claude' : d.by === 'wotc' ? `Official ${d.off ? esc(d.off.type) : 'Jumpstart pair'}` : 'Built by the generator'}${d.set ? ` · ${esc(shortSet(d.set))}` : ''}${d.off && d.off.year ? ` · ${d.off.year}` : ''}</span></div>`;
 }
 function renderSeats() {
   const parts = [0, 1].map((i) => {
@@ -1922,7 +1934,7 @@ const TYPE_GROUPS = [
   ['Lands', (x) => x.types.includes('Land')],
 ];
 function deckStats(d) {
-  const all = d.commander ? d.list.concat({ def: d.commander, n: 1 }) : d.list;
+  const all = d.list.concat(cmdrsOf(d).map((def) => ({ def, n: 1 })));
   const count = (f) => all.filter(({ def }) => f(def)).reduce((t, x) => t + x.n, 0);
   const spells = all.filter(({ def }) => !def.types.includes('Land'));
   const n = spells.reduce((t, x) => t + x.n, 0);
@@ -1934,16 +1946,16 @@ function deckStats(d) {
 function deckText(d) {
   const line = ({ def, n }) => `${n} ${def.name}`;
   const rows = d.list.slice().sort((a, b) => a.def.types.includes('Land') - b.def.types.includes('Land') || a.def.mv - b.def.mv || a.def.name.localeCompare(b.def.name));
-  return `${d.commander ? `Commander\n1 ${d.commander.name}\n\n` : ''}Deck\n${rows.map(line).join('\n')}\n`;
+  return `${d.commander ? `Commander\n${cmdrsOf(d).map((c) => `1 ${c.name}`).join('\n')}\n\n` : ''}Deck\n${rows.map(line).join('\n')}\n`;
 }
 // The cards that make a deck work: its notes say for official decks; otherwise the commander and the strongest spells
 function keyCards(d) {
   if (d.keys) return d.keys.map((n) => DATA.byName.get(n) || (OFF.cards[n] ? stubDef(n) : null)).filter(Boolean);
-  const seen = new Set(d.commander ? [d.commander.name] : []);
+  const seen = new Set(cmdrsOf(d).map((c) => c.name));
   const top = d.list.filter(({ def }) => !def.types.includes('Land')).map((x) => x.def).sort((a, b) => b.value - a.value).filter((x) => (seen.has(x.name) ? false : seen.add(x.name)));
-  return (d.commander ? [d.commander] : []).concat(d.face && !seen.has(d.face) && DATA.byName.get(d.face) ? [DATA.byName.get(d.face)] : []).concat(top).slice(0, 4);
+  return cmdrsOf(d).concat(d.face && !seen.has(d.face) && DATA.byName.get(d.face) ? [DATA.byName.get(d.face)] : []).concat(top).slice(0, 4);
 }
-function missingCount(d) { return d.list.filter((x) => x.def.stub).length + (d.commander && d.commander.stub ? 1 : 0); }
+function missingCount(d) { return d.list.filter((x) => x.def.stub).length + cmdrsOf(d).filter((c) => c.stub).length; }
 function dvFootHTML(d, key) {
   if (DV.ctx === 'career') return '';
   if (DV.ctx === 'library') {
@@ -2003,7 +2015,7 @@ function openDeckView(key, from, ctx) {
   renderDeckCards(d);
   box.hidden = false;
   box.querySelector('.dv-box').scrollTop = 0;
-  ensureImages([d.face].concat(d.commander ? [d.commander.name] : [], d.list.map((x) => x.def.name)));
+  ensureImages([d.face].concat(cmdrsOf(d).map((c) => c.name), d.list.map((x) => x.def.name)));
   box.querySelector('.dv-x').focus();
 }
 function renderDeckCards(d) {
@@ -2013,7 +2025,7 @@ function renderDeckCards(d) {
   if (DV.mode === 'list') { host.innerHTML = listHTML(d); return; }
   host.innerHTML = '';
   const byCost = (a, b) => a.def.mv - b.def.mv || a.def.name.localeCompare(b.def.name);
-  const groups = (d.commander ? [['Commander', [{ def: d.commander, n: 1 }]]] : []).concat(TYPE_GROUPS.map(([label, f]) => [label, d.list.filter(({ def }) => f(def)).sort(byCost)]));
+  const groups = (d.commander ? [[d.partner ? 'Commanders' : 'Commander', cmdrsOf(d).map((def) => ({ def, n: 1 }))]] : []).concat(TYPE_GROUPS.map(([label, f]) => [label, d.list.filter(({ def }) => f(def)).sort(byCost)]));
   groups.filter(([, rows]) => rows.length).forEach(([label, rows], g) => {
     const sec = document.createElement('section');
     sec.className = 'dv-group';
@@ -2139,16 +2151,18 @@ function renderPick() {
   const set = curSet();
   const cmd = S.format === 'commander';
   const designed = !set || ((cmd ? SETS.commanders[set.code] : SETS.decks[set.code]) || []).length;
-  const offOk = !cmd && !set && OFF.decks.some(offPlayable);
+  // Official decks: the 60-card ones for Standard, the precons for Commander (all cards only)
+  const offFits = (o) => offPlayable(o) && !isPack(o) && !!o.cmdr === cmd;
+  const offOk = !set && OFF.decks.some(offFits);
   if (S.src === 'official' && !offOk) S.src = 'claude';
   $('#srcSeg [data-src="official"]').hidden = !offOk;
   $$('#srcSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.src === S.src)));
   $('#srcSeg [data-src="claude"]').textContent = designed ? "Claude's decks" : 'Ready decks';
   $('#srcSeg [data-src="gen"]').textContent = cmd ? 'Pick a commander' : 'Build one';
   if (S.src === 'official') {
-    const ds = OFF.decks.filter((o) => offPlayable(o) && !isPack(o)).map(offDeck);
-    const packs = [...new Set(OFF.decks.filter((o) => isPack(o) && offPlayable(o)).map((o) => o.set))];
-    L.pickBody.innerHTML = `<p class="set-note" style="margin:0 0 4px">Wizards' own preconstructed decks that the engine can play, card for card. The <a href="./#decks" data-go-decks>Decks</a> tab has each one's strategy, and many more to browse.</p>`
+    const ds = OFF.decks.filter(offFits).map(offDeck);
+    const packs = cmd ? [] : [...new Set(OFF.decks.filter((o) => isPack(o) && offPlayable(o)).map((o) => o.set))];
+    L.pickBody.innerHTML = `<p class="set-note" style="margin:0 0 4px">${cmd ? "Wizards' own Commander decks that the engine can play, card for card, commander and all." : "Wizards' own preconstructed decks that the engine can play, card for card."} The <a href="./#decks" data-go-decks>Decks</a> tab has each one's strategy, and many more to browse.</p>`
       + `<div class="deck-grid">${ds.map(tileHTML).join('')}</div>`
       + (packs.length ? `<div class="gen-row" style="margin-top:16px">${packs.map((c) => `<button type="button" class="pill" data-jspair="${esc(c)}">${icon('die')}Shuffle two ${esc(shortSet(c))} Jumpstart packs</button>`).join('')}</div>` : '');
     ensureImages(ds.map((d) => d.face));
@@ -2199,7 +2213,7 @@ function libEntries() {
   const out = [];
   const add = (d, src, group, kind) => {
     if (!d) return;
-    const names = d.list.map((x) => x.def.name).concat(d.commander ? [d.commander.name] : []);
+    const names = d.list.map((x) => x.def.name).concat(cmdrsOf(d).map((c) => c.name));
     out.push({ key: d.key, d, src, group, kind, name: d.name, colors: d.colors, arch: d.archetype, plan: d.blurb, face: d.face,
       playable: d.playable !== false, half: !!d.half, miss: missingCount(d), hay: `${d.name}\n${d.blurb}\n${names.join('\n')}`.toLowerCase() });
   };
@@ -2274,8 +2288,13 @@ function libOpponent(key) {
   const fair = (ks) => pickRandom(ks.filter((k) => k && k !== key && seatable(deckByKey(k))));
   if (d.by === 'wotc') {
     const me = d.off || d.pair[0];
-    if (d.pair) return randomPair(me.set) || fair(OFF.decks.filter((o) => offPlayable(o) && !isPack(o)).map((o) => `o.${o.id}`));
-    const full = OFF.decks.filter((o) => o !== me && offPlayable(o) && !isPack(o));
+    if (d.pair) return randomPair(me.set) || fair(OFF.decks.filter((o) => offPlayable(o) && !isPack(o) && !o.cmdr).map((o) => `o.${o.id}`));
+    // A Commander precon meets another precon (from its own set if it can), or one of Claude's Commander decks
+    if (me.cmdr) {
+      const cmdOff = OFF.decks.filter((o) => o !== me && offPlayable(o) && o.cmdr);
+      return fair(cmdOff.filter((o) => o.set === me.set).map((o) => `o.${o.id}`)) || fair(cmdOff.map((o) => `o.${o.id}`)) || fair(CMDR.specs.map(cmdDeck).filter(Boolean).map((x) => x.key));
+    }
+    const full = OFF.decks.filter((o) => o !== me && offPlayable(o) && !isPack(o) && !o.cmdr);
     return fair(full.filter((o) => o.set === me.set && o.type === me.type).map((o) => `o.${o.id}`)) || fair(full.filter((o) => o.set === me.set || o.type === me.type).map((o) => `o.${o.id}`))
       || fair(full.map((o) => `o.${o.id}`)) || `c.${window.ARENA_DECKS[0].id}`;
   }
@@ -2296,7 +2315,7 @@ function libPlay(key, how) {
   closeDeckView();
   setFormat(fmtOfKey(key), [key, opp]);
   saveSeats();
-  if (d.by === 'wotc' && S.format === 'standard' && S.pool === 'all') S.src = 'official';
+  if (d.by === 'wotc' && S.pool === 'all') S.src = 'official';
   renderSeats();
   renderPick();
   renderButtons();
@@ -2557,6 +2576,7 @@ function buildSides() {
         <span class="who"><span class="nm">${esc(pl.name)}</span><span class="sub"></span></span>
         <span class="mana" title="Untapped mana"><b class="mn">0</b> mana</span>
         <button type="button" class="ringc" hidden></button>
+        <button type="button" class="monc" hidden title="The monarch draws a card at the beginning of their end step. Deal combat damage to the monarch to take the crown.">${icon('crown')}Monarch</button>
         ${mine ? '<span class="grow"></span><div class="row-zone hand myhand" aria-label="Your hand"></div>' : '<div class="row-zone hand" aria-label="Hand"></div>'}
         <span class="zones">
           ${cmdFmt && !mine ? '<span class="pile cmdz" title="Command zone"><span class="stack cz"></span><span class="lbl">Commander</span><b class="taxn"></b></span>' : ''}
@@ -2757,6 +2777,8 @@ function renderSide(pi, ps, f, used) {
   side.querySelector('.who .sub').textContent = compact ? `AI · ${ps.mana != null ? ps.mana : 0} mana` : `${W.mode === 'play' ? (pi === 0 ? 'You' : `AI, ${ARCH_LABEL[pl.persona].toLowerCase()}`) : ARCH_LABEL[pl.persona]}${mull}`;
   if (ps.poison) side.querySelector('.who .sub').textContent += ` · ${ps.poison} poison`;
   side.querySelector('.gyn').textContent = ps.gyN;
+  const mc = side.querySelector('.monc');
+  if (mc) { mc.hidden = !ps.mon; mc.setAttribute('aria-label', `${pi === 0 && W.mode === 'play' ? 'You are' : `${W.replay.players[pi].name} is`} the monarch: a card at the end of each of ${pi === 0 && W.mode === 'play' ? 'your' : 'their'} turns, until a creature deals combat damage to ${pi === 0 && W.mode === 'play' ? 'you' : 'them'}.`); }
   const rc = side.querySelector('.ringc');
   if (rc) {
     rc.hidden = !ps.ring;
@@ -2841,15 +2863,19 @@ function renderSide(pi, ps, f, used) {
   const handTiles = !!pp && pi === 0;
   const hnodes = ps.hand.filter(([id]) => !spotIds.has(id)).map(([id, d]) => { const el = cardFor(id, d, !faceUp); used.add(id); el.classList.remove('tapped', 'att', 'blk', 'sick', 'incmd', 'cmdr'); if (bigHand) delete el.dataset.small; else el.dataset.small = '1'; tile(el, handTiles && faceUp); setBadges(el, ''); return el; });
   // The command zone: your commander waits at the left of your hand; anyone else's sits in its own pile
+  // Partners keep their own tax (ps.taxes); a lone commander's is ps.tax
+  const taxOf = (id) => (ps.taxes ? ps.taxes[id] || 0 : ps.tax || 0);
+  const cmdIds = [];
   const cmdCards = (ps.cmd || []).filter(([id]) => !spotIds.has(id)).map(([id, d]) => {
     const el = cardFor(id, d);
     used.add(id);
+    cmdIds.push(id);
     el.classList.remove('tapped', 'att', 'blk', 'sick', 'cmdr');
     el.classList.add('incmd');
     return el;
   });
   const myCmd = W.mode === 'play' && pi === 0;
-  if (myCmd) cmdCards.forEach((el) => { if (bigHand) delete el.dataset.small; else el.dataset.small = '1'; tile(el, handTiles); setBadges(el, `<span class="badge cmdb" title="Commander">${icon('crown')}</span>${ps.tax ? `<span class="badge taxb" title="Commander tax">+${ps.tax}</span>` : ''}`); });
+  if (myCmd) cmdCards.forEach((el, k) => { const tx = taxOf(cmdIds[k]); if (bigHand) delete el.dataset.small; else el.dataset.small = '1'; tile(el, handTiles); setBadges(el, `<span class="badge cmdb" title="Commander">${icon('crown')}</span>${tx ? `<span class="badge taxb" title="Commander tax">+${tx}</span>` : ''}`); });
   const xcards = myCmd ? (ps.xh || []).filter(([id]) => !spotIds.has(id)) : [];
   const xnodes = xcards.map(([id, d, zone]) => {
     const el = cardFor(id, d);
@@ -3222,8 +3248,9 @@ function openInspector(el, actions) {
       else if (p.hand.some(([h]) => h === id)) stateLine = whose === 'Yours' ? `In your hand. ${whyNot(def)}` : `In ${whose} hand.`;
       else if ((p.cmd || []).some(([h]) => h === id)) {
         extra.push('commander');
-        stateLine = `${whose === 'Yours' ? 'Your commander, waiting' : `${whose} commander, waiting`} in the command zone.${p.tax ? ` Commander tax: ${sym(String(p.tax))} more each cast.` : ' Cast it from here like a card in hand.'}`;
-        if (whose === 'Yours') stateLine += ` ${whyNot(def, p.tax || 0)}`;
+        const tx = p.taxes ? p.taxes[id] || 0 : p.tax || 0;
+        stateLine = `${whose === 'Yours' ? 'Your commander, waiting' : `${whose} commander, waiting`} in the command zone.${tx ? ` Commander tax: ${sym(String(tx))} more each cast.` : ' Cast it from here like a card in hand.'}`;
+        if (whose === 'Yours') stateLine += ` ${whyNot(def, tx)}`;
       } else if (b && b.cmdr && whose === 'Yours') stateLine += ' Your commander.';
     }
   }
@@ -4719,7 +4746,7 @@ function wire() {
     if (HOLD.swallow && Date.now() - HOLD.swallow < 1500) { HOLD.swallow = 0; e.stopPropagation(); e.preventDefault(); }
   }, true);
   document.addEventListener('click', (e) => {
-    const rc = e.target.closest('.ringc');
+    const rc = e.target.closest('.ringc, .monc');
     if (rc) { nudge(rc.title); return; }
     const ak = e.target.closest('#insp [data-actk]');
     if (ak) { startAction(W.inspActs[+ak.dataset.actk]); return; }
