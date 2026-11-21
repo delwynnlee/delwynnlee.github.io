@@ -699,7 +699,8 @@ function roleOf(def) {
 function makeRng(seed) {
   let s = (seed >>> 0) || 0x9e3779b9;
   const next = () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
-  return { next, int: (n) => Math.floor(next() * n), pick: (a) => a[Math.floor(next() * a.length)], shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(next() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; } };
+  return { next, int: (n) => Math.floor(next() * n), pick: (a) => a[Math.floor(next() * a.length)], shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(next() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; },
+    get: () => s, set: (v) => { s = v >>> 0; } };
 }
 
 /* ============================================================
@@ -759,14 +760,14 @@ function newCard(G, def, owner) {
 }
 // `setup` starts a game from a fixed position instead of shuffled opening hands (the tutorial uses it):
 // { turn, active, text, players: [{ life, library (top card first), hand, bf: [{ def, tapped, sick, cnt }], gy, cmdOnBf, cmdCasts, cmdDmg }] }
-function createGame({ decks, seed, first = null, record = true, human = null, answers = [], setup = null, stopEmpty = true }) {
+function createGame({ decks, seed, first = null, record = true, human = null, answers = [], setup = null, stopEmpty = true, memo = null }) {
   const rng = makeRng(seed == null ? Date.now() : seed);
   const format = decks.every((d) => d.commander) ? 'commander' : 'standard';
   const G = { rng, seed, turn: 0, active: 0, first: 0, players: [], frames: [], record, over: false, winner: null, reason: '',
-    stack: [], defs: {}, nextId: 1, phase: 'setup', human, answers, qi: 0, format, setup, stopEmpty,
+    stack: [], defs: {}, nextId: 1, phase: 'setup', human, answers, qi: 0, format, setup, stopEmpty, memo, searchN: 0,
     pending: [], delayed: [], depth: 0, dirty: true, combat: null, died: [], extraTurns: [] };
   decks.forEach((d, i) => {
-    const P = { i, name: d.name, persona: PERSONAS[d.archetype] ? d.archetype : 'midrange', colors: d.colors || [], life: format === 'commander' ? CMD.life : 20,
+    const P = { i, name: d.name, persona: PERSONAS[d.archetype] ? d.archetype : 'midrange', hard: d.ai === 'hard', colors: d.colors || [], life: format === 'commander' ? CMD.life : 20,
       library: [], hand: [], bf: [], gy: [], exile: [], landsPlayed: 0, lost: false, decked: false, mulligans: 0, bottomed: 0,
       command: [], cmd: null, cmdCasts: 0, cmdDmg: {}, g: G, ring: { n: 0, bearer: null }, pool: { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 },
       drawn: 0, cast: 0, died: 0, left: 0, attackedWith: 0, xcast: [],
@@ -3531,6 +3532,7 @@ function evalCast(G, P, card, ctx) {
   if (!pick) return null;
   const ch = pick.ch;
   if (ch.score - pick.pain <= 0.2) return null;
+  if (P.hard && !holdsUp(G, P, card, pick.eff, ch)) return null;
   let s = ch.score - pick.pain;
   if (isInstantSpeed(def) && (ctx === 'main1' || ctx === 'main2') && s < 60) {
     s -= per.hold * 2.2;
@@ -3734,7 +3736,268 @@ function aiAttackers(G, A, D) {
       chosen.splice(chosen.indexOf(keep), 1);
     }
   }
-  return chosen;
+  return A.hard ? planAttack(G, A, D, cands, chosen) : chosen;
+}
+
+/* ---------- Hard AI: a copy of the game to try moves on ---------- */
+// Everything is copied except card definitions and functions, which every game shares and none changes.
+// Returns the copy and the map from each original object to its copy.
+const isDefLike = (v) => typeof v.name === 'string' && Array.isArray(v.types) && Array.isArray(v.kw) && Array.isArray(v.etb);
+function cloneGame(G) {
+  const map = new Map();
+  for (const d of Object.values(G.defs)) map.set(d, d);
+  const G2 = {};
+  map.set(G, G2);
+  const cp = (v) => {
+    if (v === null || typeof v !== 'object') return v;
+    const hit = map.get(v);
+    if (hit) return hit;
+    if (Array.isArray(v)) { const a = new Array(v.length); map.set(v, a); for (let i = 0; i < v.length; i++) a[i] = cp(v[i]); return a; }
+    if (v instanceof Map) { const m = new Map(); map.set(v, m); for (const [k, x] of v) m.set(cp(k), cp(x)); return m; }
+    if (v instanceof Set) { const m = new Set(); map.set(v, m); for (const x of v) m.add(cp(x)); return m; }
+    if (isDefLike(v)) { map.set(v, v); return v; }
+    const o = {};
+    map.set(v, o);
+    for (const k of Object.keys(v)) o[k] = cp(v[k]);
+    return o;
+  };
+  for (const k of Object.keys(G)) {
+    if (k === 'frames') G2.frames = [];
+    else if (k === 'rng') { G2.rng = makeRng(1); G2.rng.set(G.rng.get()); }
+    else if (k === 'defs') G2.defs = Object.assign({}, G.defs);
+    else G2[k] = cp(G[k]);
+  }
+  return { G2, map };
+}
+
+/* ---------- Hard AI: looking ahead ---------- */
+// How the board looks for P: creatures, other permanents, cards in hand, and life, where each point counts more the lower it gets
+function standing(G, P) {
+  if (G.over) return G.winner === P.i ? 1000 : G.winner == null ? 0 : -1000;
+  const side = (Q) => {
+    let v = Q.hand.length + (Q.command.length ? 1.5 : 0) + (Q.life <= 0 ? -100 : 9 * Math.log(1 + Q.life));
+    for (const c of Q.bf) v += isCreature(c) ? cv(c) : isLand(c) ? 0.8 : pv(G, c) * 0.7;
+    for (const n of Object.values(Q.cmdDmg || {})) v -= 6 * (n / CMD.lethal) ** 2;
+    return v;
+  };
+  return side(P) - side(other(G, P));
+}
+// Play a copy of the game on from here. P can't see the opponent's hand or either library, so in the copy those are
+// shuffled together and dealt again. `go` makes the move being tried and plays on; both sides then play as the normal AI.
+function tryLine(G, pi, seed, go) {
+  const { G2, map } = cloneGame(G);
+  G2.human = null; G2.answers = []; G2.record = false; G2.memo = null;
+  for (const Q of G2.players) Q.hard = false;
+  const r = makeRng(seed);
+  const P = G2.players[pi], O = G2.players[1 - pi];
+  const hidden = r.shuffle(O.hand.concat(O.library));
+  O.hand = hidden.slice(0, O.hand.length); O.library = hidden.slice(O.hand.length);
+  r.shuffle(P.library);
+  G2.rng = makeRng(r.int(4294967295) + 1);
+  try { go(G2, (x) => map.get(x) || x); } catch (e) { return null; }
+  return standing(G2, G2.players[pi]);
+}
+const mixSeed = (...xs) => xs.reduce((h, x) => Math.imul(h ^ (x >>> 0), 2654435761) >>> 0, 0x9e3779b9) || 1;
+// A decision the hard AI looked ahead for is worked out once per game: a game replayed from its first move
+// (the way a game against a person is) takes the stored answer instead of looking again. Each stored answer
+// carries a hash of the person's answers it came after, so one made before an undo is never used after it.
+const strHash = (t) => { let h = 2166136261; for (let i = 0; i < t.length; i++) h = Math.imul(h ^ t.charCodeAt(i), 16777619); return h >>> 0; };
+function remember(G, kind, work, save, load) {
+  G.searchN = (G.searchN || 0) + 1;
+  const k = `${kind}${G.searchN}`, at = `${G.qi}.${G.ah || 0}`;
+  const hit = G.memo && G.memo[k];
+  if (hit && hit[0] === at) { const r = load(hit[1]); if (r) return r; }
+  const r = work();
+  if (G.memo) G.memo[k] = [at, save(r)];
+  return r;
+}
+const LOOKS = 5; // how many shuffles of the unknown cards each option is tried against
+// Each attack on the shortlist is played out to the end of the opponent's next turn
+function searchAttack(G, A, D, opts, base) {
+  return remember(G, 'a', () => {
+    const tot = opts.map(() => 0), n = opts.map(() => 0);
+    for (let d = 0; d < LOOKS; d++) {
+      const seed = mixSeed(G.seed, G.turn, G.searchN, d);
+      opts.forEach((set, i) => {
+        const v = tryLine(G, A.i, seed, (G2, m) => {
+          const A2 = G2.players[A.i], D2 = G2.players[D.i];
+          combatWith(G2, A2, D2, set.map(m));
+          if (!G2.over && !aiAfterCombat(G2, A2)) endOfTurn(G2, A2);
+          if (!G2.over) takeTurn(G2);
+        });
+        if (v != null) { tot[i] += v; n[i]++; }
+      });
+    }
+    let best = opts.indexOf(base), bv = n[best] ? tot[best] / n[best] : -Infinity;
+    opts.forEach((set, i) => { if (n[i] && tot[i] / n[i] > bv + 0.25) { best = i; bv = tot[i] / n[i]; } });
+    return opts[best];
+  }, (set) => set.map((c) => c.id), (ids) => { const cs = ids.map((id) => A.bf.find((c) => c.id === id)); return cs.every(Boolean) ? cs : null; });
+}
+
+// Blocks: the usual pick, no blocks, the usual pick less one block, plus one more block, or a chump in front of everything;
+// each played out to the end of the defender's own next turn
+function hardBlocks(G, D, A, live) {
+  const base = aiBlocks(G, D, A, live);
+  const opts = [];
+  const seen = new Set();
+  const add = (m) => { const k = [...m].map(([a, bs]) => `${a}:${bs.map((b) => b.id).sort((x, y) => x - y).join('.')}`).sort().join(','); if (!seen.has(k)) { seen.add(k); opts.push(m); } };
+  add(base);
+  add(new Map());
+  for (const aid of base.keys()) { const m = new Map(base); m.delete(aid); add(m); }
+  const used = new Set([...base.values()].flat());
+  const free = D.bf.filter((b) => isCreature(b) && !used.has(b));
+  for (const a of live) {
+    if (base.has(a.id) || minBlockers(a) > 1) continue;
+    const bs = free.filter((b) => canBlock(G, b, a));
+    if (!bs.length) continue;
+    const killer = bs.filter((b) => kills(b, a)).sort((x, y) => cv(x) - cv(y))[0];
+    const cheap = bs.slice().sort((x, y) => cv(x) - cv(y))[0];
+    for (const b of new Set([killer, cheap].filter(Boolean))) { const m = new Map(base); m.set(a.id, [b]); add(m); }
+  }
+  { // everything blocked by the cheapest creature that can
+    const m = new Map(base), taken = new Set(used);
+    for (const a of live.slice().sort((x, y) => dmgOut(y) - dmgOut(x))) {
+      if (m.has(a.id) || minBlockers(a) > 1) continue;
+      const b = D.bf.filter((x) => isCreature(x) && !taken.has(x) && canBlock(G, x, a)).sort((x, y) => cv(x) - cv(y))[0];
+      if (b) { m.set(a.id, [b]); taken.add(b); }
+    }
+    add(m);
+  }
+  if (opts.length < 2) return base;
+  const short = opts.slice(0, 8);
+  return remember(G, 'b', () => {
+    const tot = short.map(() => 0), n = short.map(() => 0);
+    for (let d = 0; d < LOOKS; d++) {
+      const seed = mixSeed(G.seed, G.turn, G.searchN, d, 7);
+      short.forEach((blk, i) => {
+        const v = tryLine(G, D.i, seed, (G2, m) => {
+          const A2 = G2.players[A.i], D2 = G2.players[D.i];
+          const live2 = live.map(m);
+          const blk2 = new Map([...blk].map(([aid, bs]) => [aid, bs.map(m)]));
+          if (!combatBlocked(G2, A2, D2, live2, blk2)) endCombat(G2);
+          if (!G2.over && !aiAfterCombat(G2, A2)) endOfTurn(G2, A2);
+          if (!G2.over) takeTurn(G2);
+        });
+        if (v != null) { tot[i] += v; n[i]++; }
+      });
+    }
+    let best = 0, bv = n[0] ? tot[0] / n[0] : -Infinity;
+    short.forEach((m, i) => { if (n[i] && tot[i] / n[i] > bv + 0.25) { best = i; bv = tot[i] / n[i]; } });
+    return short[best];
+  }, (m) => [...m].map(([aid, bs]) => [aid, bs.map((b) => b.id)]), (rows) => {
+    const m = new Map();
+    for (const [aid, ids] of rows) { const bs = ids.map((id) => D.bf.find((c) => c.id === id)); if (!bs.every(Boolean)) return null; m.set(aid, bs); }
+    return m;
+  });
+}
+
+/* ---------- Hard AI: removal kept for what matters ---------- */
+const KILLS = ['destroy', 'exile', 'destroyP', 'exileP', 'tuck', 'tuckN', 'bounce', 'bounceP', 'dmg', 'dmgX', 'fight', 'bite', 'edict'];
+const PREMIUM = ['destroy', 'exile', 'destroyP', 'exileP', 'tuck', 'tuckN'];
+// What a creature is worth as a removal target: its body, or what its abilities are worth if that's more
+const targetWorth = (G, c) => Math.max(pv(G, c), (c.def.value || 0) * 1.1) + (c.cmdr ? 1.5 : 0);
+// Whether a removal spell should go now, at this target, or wait for a better one: the hard AI doesn't trade an
+// unconditional answer for a 2/2 while the opponent's commander or bigger threats are still to come
+function holdsUp(G, P, card, eff, ch) {
+  if (!eff.some((e) => KILLS.includes(e.k))) return true;
+  const O = other(G, P);
+  const hit = ch.targets.flatMap((t) => (t ? targetList(t) : [])).map((x) => x.c || x.c2).filter((c) => c && c.ctrl !== P.i && isCreature(c));
+  if (!hit.length) return true;
+  // Under pressure, any answer is a good answer
+  const incoming = O.bf.filter((c) => isCreature(c) && !has(c, 'defender')).reduce((t, c) => t + dmgOut(c), 0);
+  if (incoming * 3 >= P.life || P.life <= (G.format === 'commander' ? 16 : 8)) return true;
+  const premium = eff.some((e) => PREMIUM.includes(e.k));
+  let bar = premium ? 4.2 : 2.4;
+  const answers = P.hand.filter((c) => c !== card && ['removal', 'burn', 'sweeper'].includes(c.def.role)).length;
+  bar -= answers * 0.9;
+  // Their commander is coming back sooner or later: keep one clean answer for it
+  if (G.format === 'commander' && premium && O.command.length && !answers) bar = Math.max(bar, Math.min(7, cv({ def: O.command[0].def, cnt: 0, tp: 0, tt: 0, dmg: 0, tkw: [], tf: {}, g: null, base: null, sp: 0, st: 0, ctr: {} }) * 0.75));
+  if (G.turn >= 18) bar -= 1.5;
+  return Math.max(...hit.map((c) => targetWorth(G, c))) >= bar;
+}
+
+/* ---------- Hard AI: attacks worked out on paper ---------- */
+// What a point of damage to P is worth next to a creature: more the lower P's life
+const dmgWorth = (P) => 0.12 + 2.4 / Math.max(4, P.life);
+// Damage that would get through if `attackers` all attacked and each of `home` blocked one of them, biggest first
+function damageThrough(G, attackers, home) {
+  const used = new Set();
+  let total = 0;
+  for (const a of attackers.slice().sort((x, y) => dmgOut(y) - dmgOut(x))) {
+    const need = minBlockers(a);
+    const bs = home.filter((b) => !used.has(b) && canBlock(G, b, a)).sort((x, y) => cv(x) - cv(y));
+    if (bs.length >= need) {
+      const team = bs.slice(0, need);
+      team.forEach((b) => used.add(b));
+      if (has(a, 'trample')) total += Math.max(0, dmgOut(a) - team.reduce((t, b) => t + Math.max(0, tou(b) - b.dmg), 0));
+    } else total += dmgOut(a);
+  }
+  return total;
+}
+// How good attacking with `S` looks for A: the defender blocks the way the AI would, the damage plays out on paper,
+// and whatever is left standing hits back next turn into the creatures that stayed home
+function attackValue(G, A, D, S) {
+  const undo = [];
+  for (const a of S) { undo.push([a, a.attacking, a.blocked, a.blockedBy]); a.attacking = true; a.blocked = false; a.blockedBy = []; }
+  const saved = G.rng;
+  G.rng = makeRng(((G.seed >>> 0) ^ (G.turn * 2654435761) ^ S.length) >>> 0); // a side die: the game's own dice stay untouched
+  let map;
+  try { map = S.length ? aiBlocks(G, D, A, S) : new Map(); if (S.length) forcedBlocks(G, D, S, map); } finally { G.rng = saved; }
+  const bundo = [];
+  for (const [aid, bs] of map) {
+    const a = S.find((x) => x.id === aid);
+    if (!a) continue;
+    a.blocked = true; a.blockedBy = bs.slice();
+    for (const b of bs) { bundo.push([b, b.blocking]); b.blocking = aid; }
+  }
+  let fc;
+  try { fc = forecast(G, D, S, new Set(), null, false); } finally {
+    for (const [b, was] of bundo.reverse()) b.blocking = was;
+    for (const [a, at, bl, by] of undo) { a.attacking = at; a.blocked = bl; a.blockedBy = by; }
+  }
+  let v = 0;
+  for (const c of fc.dead) v += c.ctrl === A.i ? -cv(c) : cv(c);
+  const lifeAfter = D.life - fc.toD + fc.gainD;
+  if (lifeAfter <= 0) return 1000 + fc.toD;
+  v += fc.toD * dmgWorth(D);
+  if (G.format === 'commander') {
+    for (const a of S) {
+      if (!a.cmdr || map.has(a.id) || fc.dead.has(a)) continue;
+      const total = (D.cmdDmg[a.id] || 0) + dmgOut(a);
+      if (total >= CMD.lethal) return 1000 + total;
+      v += dmgOut(a) * 0.25 * (total / CMD.lethal);
+    }
+  }
+  // Next turn: what survives on their side swings at whatever didn't attack (or has vigilance) on ours
+  const theirs = D.bf.filter((c) => isCreature(c) && !fc.dead.has(c) && pow(c) > 0 && !has(c, 'defender') && !c.def.cantAttack);
+  const home = A.bf.filter((c) => isCreature(c) && !fc.dead.has(c) && (!S.includes(c) || has(c, 'vigilance')) && !c.def.cantBlock);
+  const back = damageThrough(G, theirs, home);
+  const lifeA = A.life + fc.gainA;
+  if (back >= lifeA) v -= 60 + back - lifeA;
+  else v -= back * dmgWorth(A) * 0.6;
+  return v;
+}
+// Try a handful of attacks: the usual pick, everything, nothing, everything but one, the creatures nothing can block,
+// the ones no single blocker kills, and the usual pick plus one more; keep the best on paper
+function planAttack(G, A, D, cands, base) {
+  const forced = cands.filter((c) => c.def.mustAttack || c.def.sacAtEnd || mustAttackNow(G, c));
+  const opts = new Map();
+  const add = (set) => { const s0 = [...new Set(forced.concat(set))]; const k = s0.map((c) => c.id).sort((x, y) => x - y).join(','); if (!opts.has(k)) opts.set(k, s0); };
+  add(base);
+  add(cands);
+  add([]);
+  for (const c of cands) add(cands.filter((x) => x !== c));
+  add(cands.filter((c) => !blockersFor(G, D, c).length));
+  add(cands.filter((c) => !blockersFor(G, D, c).some((b) => fight(c, b).aDies)));
+  for (const c of cands) if (!base.includes(c)) add(base.concat(c));
+  const ranked = [...opts.values()].map((set) => ({ set, v: attackValue(G, A, D, set) })).sort((x, y) => y.v - x.v);
+  if (!ranked.length) return base;
+  if (ranked[0].v >= 1000) return ranked[0].set;
+  // The six best on paper, the usual pick and holding back, played out
+  const short = ranked.slice(0, 6).map((x) => x.set);
+  const baseSet = [...opts.values()][0];
+  for (const s0 of [baseSet, [...opts.values()][2]]) if (s0 && !short.includes(s0)) short.push(s0);
+  return short.length > 1 ? searchAttack(G, A, D, short, baseSet) : ranked[0].set;
 }
 function bestDoubleBlock(G, a, cands) {
   let best = null;
@@ -4002,6 +4265,10 @@ function combat(G) {
   if (G.over) { G.combat = null; return; }
   if (!isHuman(G, A)) aiCrew(G, A, D);
   const attackers = isHuman(G, A) ? humanAttackers(G, A) : aiAttackers(G, A, D);
+  combatWith(G, A, D, attackers);
+}
+// The rest of a combat once the attackers are chosen
+function combatWith(G, A, D, attackers) {
   if (!attackers.length) { endCombat(G); return; }
   G.combat.attackers = attackers.slice();
   for (const c of attackers) { c.attacking = true; if (!has(c, 'vigilance')) c.tapped = true; }
@@ -4027,7 +4294,14 @@ function combat(G) {
   if (G.over) return;
   const live = G.combat.attackers.filter((c) => onBf(G, c) && c.attacking);
   if (live.length) {
-    const blocks = isHuman(G, D) ? humanBlocks(G, D, A, live) : aiBlocks(G, D, A, live);
+    const blocks = isHuman(G, D) ? humanBlocks(G, D, A, live) : D.hard ? hardBlocks(G, D, A, live) : aiBlocks(G, D, A, live);
+    if (combatBlocked(G, A, D, live, blocks)) return;
+  }
+  endCombat(G);
+}
+// The rest of a combat once blocks are chosen. True when the game ended on the way.
+function combatBlocked(G, A, D, live, blocks) {
+  {
     forcedBlocks(G, D, live, blocks);
     for (const [aid, bs] of blocks) { const a = live.find((x) => x.id === aid); a.blocked = true; a.blockedBy = bs.slice(); bs.forEach((b) => { b.blocking = aid; }); }
     G.combat.blocksDone = true;
@@ -4039,9 +4313,9 @@ function combat(G) {
     for (const [aid, bs] of blocks) { const a = live.find((x) => x.id === aid); if (isLegendary(a)) bs.forEach((b) => { b.ylp = G.turn; }); if (bs.some(isLegendary)) a.ylp = G.turn; }
     for (const [aid, bs] of blocks) { const a = live.find((x) => x.id === aid); fire(G, 'blocked', { c: a, by: bs.slice(), P: A }); for (const b of bs) fire(G, 'blocks', { c: b, a, P: D }); }
     sba(G);
-    if (G.over) return;
+    if (G.over) return true;
     sneakWindow(G, A);
-    if (G.over) return;
+    if (G.over) return true;
     // Tricks: the attacker acts first. When a human acts, the AI gets one more chance to answer, and vice versa.
     if (isHuman(G, A)) {
       if (humanWindow(G, A, 'blocks') >= 0 && !G.over && aiTricks(G, D, 'block', live) && !G.over) humanWindow(G, A, 'blocks');
@@ -4063,7 +4337,7 @@ function combat(G) {
       if (!G.over) { combatDamage(G, A, D, fighters, firstStep ? 'regular' : 'all'); sba(G); }
     }
   }
-  endCombat(G);
+  return false;
 }
 // Sneak (Elektra): during the declare blockers step, cast it for its sneak cost by returning an unblocked attacker to hand;
 // it enters tapped and attacking
@@ -4232,6 +4506,7 @@ function ask(G, req) {
   if (G.qi < G.answers.length) {
     const a = G.answers[G.qi++];
     if (!a || a.type !== req.type) throw new Error(`Replay out of step at answer ${G.qi - 1}: expected ${req.type}, got ${a && a.type}`);
+    if (G.memo) G.ah = mixSeed(G.ah || 0, strHash(JSON.stringify(a)));
     return a;
   }
   req.s = snap(G);
@@ -4687,8 +4962,8 @@ function humanBlocks(G, D, A, attackers) {
   }
   return map;
 }
-function runInteractive({ decks, seed, human = 0, answers = [], setup = null, stopEmpty = true }) {
-  const G = createGame({ decks, seed, record: true, human, answers, setup, stopEmpty });
+function runInteractive({ decks, seed, human = 0, answers = [], setup = null, stopEmpty = true, memo = null }) {
+  const G = createGame({ decks, seed, record: true, human, answers, setup, stopEmpty, memo });
   try {
     playGame(G);
     return { G, done: true, req: null };
@@ -4764,11 +5039,20 @@ function takeTurn(G) {
   } else {
     aiMain(G, P, 1); if (G.over) return;
     if (!G.endTurn) { combat(G); if (G.over) return; }
-    while (G.extraCombat && !G.over && !G.endTurn) { G.extraCombat = false; combat(G); }
-    if (G.over) return;
-    if (!G.endTurn) aiMain(G, P, 2); if (G.over) return;
-    while (G.extraMain && !G.over && !G.endTurn) { G.extraMain = false; combat(G); if (G.over) return; if (!G.endTurn) aiMain(G, P, 2); if (G.over) return; }
+    if (aiAfterCombat(G, P)) return;
   }
+  endOfTurn(G, P);
+}
+// After the first combat: any extra combats, the second main phase, and any extra combat-and-main pairs. True when the game ended.
+function aiAfterCombat(G, P) {
+  while (G.extraCombat && !G.over && !G.endTurn) { G.extraCombat = false; combat(G); }
+  if (G.over) return true;
+  if (!G.endTurn) aiMain(G, P, 2); if (G.over) return true;
+  while (G.extraMain && !G.over && !G.endTurn) { G.extraMain = false; combat(G); if (G.over) return true; if (!G.endTurn) aiMain(G, P, 2); if (G.over) return true; }
+  return false;
+}
+// End step, cleanup, and handing the turn on
+function endOfTurn(G, P) {
   G.extraCombat = false;
   G.extraMain = false;
   emptyPool(G, P);
@@ -5108,7 +5392,8 @@ return {
   PERSONAS, ARCH, MAX_TURNS, createGame, playGame, runMatch, replayOf, buildDeck, deckFromList, guildName,
   runInteractive, NeedInput, humanActions, attackCandidates, costText,
   CMD, CMDR_ARCH, CMD_BANNED, colorIdentity, canCommand, commanderArchetype, buildCommanderDeck,
-  _internal: { cv, fight, kills, canBlock, planPayment, manaSources, evalEffect, chooseTargets, aiAttackers, aiBlocks, sba, snap, newCard, castSpell, resolveEffects, combat, takeTurn, enterBattlefield, forecast, protectedFrom, targetOk, pow, tou, applyAction, returnControl, damageCreature, planDamage },
+  _internal: { cv, fight, kills, canBlock, planPayment, manaSources, evalEffect, chooseTargets, aiAttackers, aiBlocks, sba, snap, newCard, castSpell, resolveEffects, combat, takeTurn, enterBattlefield, forecast, protectedFrom, targetOk, pow, tou, applyAction, returnControl, damageCreature, planDamage,
+    cloneGame, combatWith, combatBlocked, aiAfterCombat, endOfTurn, openingHand, beginOnBattlefield },
   registerScripts, SCRIPTS,
   lib: { fx, tempt, amass, makeTokens, FOOD, TREASURE, ORC_ARMY, tokenDef, addCounters, removeCounters, matches, countMine, isCreature, isLand, isArtifact, isEnchantment,
     isLegendary, pow, tou, has, hasSub, orcish, subOf, ctrCount, isEquipped, equipmentOn, attachedTo, attach, ringBearer, other, emit, fire, dirty, dealDamage, damageCreature,

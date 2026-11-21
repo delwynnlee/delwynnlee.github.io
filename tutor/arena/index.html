@@ -304,6 +304,8 @@ svg.i .fill { fill: currentColor; }
 
 .modes { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; margin-top: 24px; }
 .seg-lg button { height: 40px; padding: 0 20px; font-size: 15.5px; font-weight: 600; }
+.ai-pick { display: flex; align-items: center; gap: 10px; margin: 0 auto 0 8px; }
+.ai-pick > span { font: 700 13.5px var(--sans); color: var(--muted); }
 .learn { display: inline-flex; align-items: center; gap: 12px; padding: 8px 18px 8px 9px; border-radius: 14px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); text-align: left; transition: border-color .15s, background-color .15s; }
 .learn:hover { background: var(--raised); }
 .learn-ic { width: 40px; height: 40px; flex: none; border-radius: 11px; display: grid; place-items: center; background: color-mix(in srgb, var(--m) 20%, transparent); color: var(--m); }
@@ -767,6 +769,7 @@ svg.i .fill { fill: currentColor; }
   .go-row .lbl { display: none; }
   .modes { margin-top: 18px; }
   .modes .seg-lg { width: 100%; }
+  .ai-pick { width: 100%; margin: 0; justify-content: space-between; }
   .lib-bar .seg-lg { width: 100%; }
   .lib-search { flex-basis: 100%; order: 2; }
   #libPlay { order: 3; }
@@ -903,6 +906,13 @@ svg.i .fill { fill: currentColor; }
         <button type="button" data-fmt="standard" aria-pressed="true">Standard</button>
         <button type="button" data-fmt="commander" aria-pressed="false">Commander</button>
       </div>
+      <div class="ai-pick">
+        <span id="aiLbl">AI opponent</span>
+        <div class="seg" role="group" aria-labelledby="aiLbl" id="aiSeg">
+          <button type="button" data-ai="normal" aria-pressed="false" title="Plays by rules of thumb">Normal</button>
+          <button type="button" data-ai="hard" aria-pressed="true" title="Plays its attacks and blocks out a turn ahead before choosing">Hard</button>
+        </div>
+      </div>
       <button type="button" class="learn" id="learnBtn"></button>
     </div>
     <div class="pool">
@@ -1015,7 +1025,7 @@ svg.i .fill { fill: currentColor; }
 <div class="insp" id="insp" role="dialog" aria-modal="true" aria-labelledby="inspName" hidden></div>
 <div class="sheet" id="sheet" hidden></div>
 
-<script src="engine.js?v=9"></script>
+<script src="engine.js?v=10"></script>
 <script src="ltr.js?v=1"></script>
 <script src="fin.js?v=1"></script>
 <script src="msh.js?v=1"></script>
@@ -1475,7 +1485,7 @@ function makeCard(def, id, opts = {}) {
 /* ============================================================
    App state, routing
    ============================================================ */
-const S = { view: 'lobby', format: 'standard', seats: [null, null], active: 0, src: 'claude', gen: { colors: ['R', 'G'], arch: 'aggro' }, cgen: { colors: [], arch: 'auto', pick: null }, recent: [], sim: null, pool: 'all', poolPick: 'all' };
+const S = { view: 'lobby', format: 'standard', seats: [null, null], active: 0, src: 'claude', gen: { colors: ['R', 'G'], arch: 'aggro' }, cgen: { colors: [], arch: 'auto', pick: null }, recent: [], sim: null, pool: 'all', poolPick: 'all', ai: store.get('arena.ai.v1', 'hard') === 'normal' ? 'normal' : 'hard' };
 const FMT = {
   standard: { seatsKey: 'arena.seats.v1', recentKey: 'arena.recent.v1', defaults: () => [`c.${window.ARENA_DECKS[0].id}`, `c.${window.ARENA_DECKS[2].id}`],
     hero: 'Pick two decks, then play against the AI yourself or watch two AI players fight it out with real Magic cards. Every attack, block and counterspell is played by the rules.' },
@@ -1546,7 +1556,9 @@ function renderPool() {
   const on = row.querySelector('[aria-pressed="true"]');
   if (on && (on.offsetLeft + on.offsetWidth > row.scrollLeft + row.clientWidth || on.offsetLeft < row.scrollLeft)) row.scrollLeft = on.offsetLeft - row.offsetLeft - 12;
 }
+function renderAi() { $$('#aiSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.ai === S.ai))); }
 function renderFormat() {
+  renderAi();
   $$('#fmtSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.fmt === S.format)));
   $('#heroText').textContent = FMT[S.format].hero;
   document.body.dataset.fmt = S.format;
@@ -2958,6 +2970,7 @@ const PB = { title: $('#pbTitle'), hint: $('#pbHint'), acts: $('#pbActs') };
 const HOLD = { ms: 450, timer: 0, card: null, x: 0, y: 0, swallow: 0 };
 const PLAY_PACE = 1.8, AI_PACE = 1.35;
 const savedPlay = () => store.get('arena.play.v1', null);
+const savedOpts = (sv) => ({ legacy: sv.v !== 2, ai: sv.ai === 'hard' ? 'hard' : 'normal', memo: sv.memo || null });
 function playStart(seed, answers, opts = {}) {
   const d0 = opts.decks ? opts.decks[0] : deckByKey(S.seats[0]), d1 = opts.decks ? opts.decks[1] : deckByKey(S.seats[1]);
   if (!d0 || !d1) return;
@@ -2967,7 +2980,10 @@ function playStart(seed, answers, opts = {}) {
   closeSpotlight(false);
   closeChoice();
   closeInspector();
-  Object.assign(PL, { legacy: !!opts.legacy, prePick: null, held: null, on: true, keys: opts.decks ? null : S.seats.slice(), decks: opts.decks || mirrorSafe(d0, d1), setup: opts.setup || null, seed, answers: (answers || []).slice(), req: null, done: false, shown: -1, pend: null, skip: null, imgs: false, toastTurn: 0 });
+  // Lessons are written for the normal AI; a game picks its level when it starts and keeps it when resumed
+  const ai = opts.lesson ? 'normal' : opts.ai || S.ai;
+  const decks = opts.decks || mirrorSafe(d0, d1);
+  Object.assign(PL, { legacy: !!opts.legacy, prePick: null, held: null, on: true, keys: opts.decks ? null : S.seats.slice(), decks: ai === 'hard' ? [decks[0], Object.assign({}, decks[1], { ai })] : decks, ai, memo: opts.memo || {}, setup: opts.setup || null, seed, answers: (answers || []).slice(), req: null, done: false, shown: -1, pend: null, skip: null, imgs: false, toastTurn: 0 });
   W.mode = 'play';
   W.seed = seed;
   W.decks = PL.decks;
@@ -2999,7 +3015,7 @@ function endPlay() {
 function advance(animate, first) {
   let r;
   try {
-    r = Arena.runInteractive({ decks: PL.decks, seed: PL.seed, human: 0, answers: PL.answers, setup: PL.setup, stopEmpty: !PL.legacy });
+    r = Arena.runInteractive({ decks: PL.decks, seed: PL.seed, human: 0, answers: PL.answers, setup: PL.setup, stopEmpty: !PL.legacy, memo: PL.memo });
   } catch (err) {
     // A saved game from an older version can fall out of step: keep the answers that still fit.
     const m = /answer (\d+)/.exec((err && err.message) || '');
@@ -3102,7 +3118,7 @@ function closeSpotlight(run) {
 }
 function settle(r) {
   // A finished game stays saved (so a reload shows how it ended) but no longer waits in the lobby. Lessons aren't saved.
-  if (PL.keys) store.set('arena.play.v1', { v: PL.legacy ? 1 : 2, a: PL.keys[0], b: PL.keys[1], seed: PL.seed, answers: PL.answers, turn: r.done ? W.replay.turns : r.req.turn, names: PL.decks.map((d) => d.name), at: Date.now(), done: r.done || undefined });
+  if (PL.keys) store.set('arena.play.v1', { v: PL.legacy ? 1 : 2, a: PL.keys[0], b: PL.keys[1], seed: PL.seed, answers: PL.answers, ai: PL.ai, memo: PL.ai === 'hard' ? PL.memo : undefined, turn: r.done ? W.replay.turns : r.req.turn, names: PL.decks.map((d) => d.name), at: Date.now(), done: r.done || undefined });
   if (r.done) {
     setUi('over');
     if (TU.on && !TU.completed && (W.replay.winner === 0 || TU.lesson.practice)) lessonComplete();
@@ -3642,7 +3658,7 @@ function resumeSaved() {
   if (!sv) return;
   setFormat(fmtOfKey(sv.a), [sv.a, sv.b]);
   saveSeats();
-  playStart(sv.seed, sv.answers, { legacy: sv.v !== 2 });
+  playStart(sv.seed, sv.answers, savedOpts(sv));
 }
 const tutDone = () => new Set((store.get('arena.tut.v1', null) || { done: [] }).done);
 function renderLearnBtn() {
@@ -3788,6 +3804,7 @@ function tuAction(k, b) {
 function wire() {
   $('#watchBtn').addEventListener('click', () => watch(newSeed()));
   $('#playBtn').addEventListener('click', () => playStart(newSeed()));
+  $('#aiSeg').addEventListener('click', (e) => { const b = e.target.closest('button[data-ai]'); if (!b) return; S.ai = b.dataset.ai; store.set('arena.ai.v1', S.ai); renderAi(); });
   $('#resume').addEventListener('click', (e) => {
     const b = e.target.closest('[data-res]');
     if (!b) return;
@@ -4072,7 +4089,7 @@ function wire() {
       const f = fmtOfKey(h.a.key);
       if (f !== S.format || poolOfKey(h.a.key) !== S.pool) { setFormat(f, [h.a.key, h.b.key]); renderPick(); } else S.seats = [h.a.key, h.b.key];
     }
-    if (h.play != null && h.a && h.b) { if (!(PL.on && PL.seed === h.play)) { const sv = savedPlay(); const same = sv && sv.seed === h.play && sv.a === h.a.key && sv.b === h.b.key; playStart(h.play, same ? sv.answers : [], { legacy: same && sv.v !== 2 }); } }
+    if (h.play != null && h.a && h.b) { if (!(PL.on && PL.seed === h.play)) { const sv = savedPlay(); const same = sv && sv.seed === h.play && sv.a === h.a.key && sv.b === h.b.key; playStart(h.play, same ? sv.answers : [], same ? savedOpts(sv) : {}); } }
     else if (h.seed != null && h.a && h.b) { if (!(S.view === 'watch' && W.mode === 'watch' && W.seed === h.seed)) watch(h.seed, { replace: true }); }
     else if (S.view !== 'lobby') { setView('lobby', false); renderSeats(); }
   });
@@ -4112,7 +4129,7 @@ async function boot() {
   if (h.lesson && lessonById(h.lesson)) lessonStart(h.lesson, true);
   else if (h.learn) { setView('learn', false); renderLessons(); }
   else if (h.decks) openLibrary(false);
-  else if (h.play != null && h.a && h.b) { const sv = savedPlay(); const same = sv && sv.seed === h.play && sv.a === h.a.key && sv.b === h.b.key; playStart(h.play, same ? sv.answers : [], { legacy: same && sv.v !== 2 }); }
+  else if (h.play != null && h.a && h.b) { const sv = savedPlay(); const same = sv && sv.seed === h.play && sv.a === h.a.key && sv.b === h.b.key; playStart(h.play, same ? sv.answers : [], same ? savedOpts(sv) : {}); }
   else if (h.seed != null && h.a && h.b) watch(h.seed, { replace: true, paused: false });
   else syncHash(false);
 }
