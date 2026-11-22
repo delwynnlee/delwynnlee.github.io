@@ -1,0 +1,198 @@
+/* Tutor's two looks, shared by the card browser and the Arena.
+   Dark and light use the same layers, from the page up:
+     --bg       the page
+     --sunken   wells you type or drag in (search boxes, sliders, segmented tracks)
+     --surface  panels and tiles that sit on the page
+     --overlay  dialogs and sheets that float over everything
+     --raised   buttons and other things you press
+   Each layer gets an edge (--line), a lit top edge (--hi) and a shadow (--sh-1..3) so it reads as a separate object,
+   and the colors exist as "r g b" triples (--bg-rgb...) for translucent versions: rgb(var(--bg-rgb) / .9).
+   Buttons are lit from above (--btn), a pressed or "on" one sits in a well (--sunken with --sh-in),
+   and the one solid control in a group (--solid-grad) is the main action or the chosen option.
+   ui.js sets <html data-theme="dark|light"> before the page draws. */
+:root, :root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #17151c; --bg-rgb: 23 21 28;
+  --sunken: #100e14; --sunken-rgb: 16 14 20;
+  --surface: #221f29; --surface-rgb: 34 31 41;
+  --overlay: #29252f; --overlay-rgb: 41 37 47;
+  --raised: #322d3b; --raised-rgb: 50 45 59;
+  --raised-2: #3d3848;
+  --text: #f1eadd; --text-rgb: 241 234 221;
+  --muted: #b8b0c0;
+  --faint: #8f889b;
+  --hover: rgb(var(--text-rgb) / .07);
+  --line: rgb(var(--text-rgb) / .13);
+  --line-strong: rgb(var(--text-rgb) / .27);
+  --hi: rgb(255 255 255 / .075);
+  --accent: #ecbd52;
+  --accent-soft: rgb(236 189 82 / .22);
+  --sh-1: inset 0 1px 0 var(--hi), 0 1px 1px rgb(0 0 0 / .5), 0 2px 6px rgb(0 0 0 / .28);
+  --sh-2: inset 0 1px 0 var(--hi), 0 2px 4px rgb(0 0 0 / .35), 0 10px 26px rgb(0 0 0 / .32);
+  --sh-3: inset 0 1px 0 var(--hi), 0 24px 70px rgb(0 0 0 / .62);
+  --sh-in: inset 0 2px 4px rgb(0 0 0 / .5), inset 0 0 0 1px rgb(0 0 0 / .3);
+  --btn: linear-gradient(180deg, #3a3444, #2c2834);
+  --btn-hover: linear-gradient(180deg, #453e51, #34303e);
+  --btn-press: linear-gradient(180deg, #25212c, #2d2935);
+  --solid: #efe4cc;
+  --solid-grad: linear-gradient(180deg, #fff7e6, #e3d4b5);
+  --solid-hover: linear-gradient(180deg, #fffaf0, #ecdec2);
+  --on-solid: #1b1820;
+  --sh-lift: inset 0 1px 0 var(--hi), 0 6px 12px rgb(0 0 0 / .32), 0 18px 40px rgb(0 0 0 / .34);
+  --sh-bar: 0 1px 0 rgb(0 0 0 / .5), 0 6px 18px rgb(0 0 0 / .22);
+  --well: rgb(var(--text-rgb) / .055);
+  --scrim: rgb(7 6 10 / .74);
+  --chrome: rgb(var(--bg-rgb) / .9);
+  --on-mana: #1d1a22;
+  --drop: rgb(0 0 0 / .75);
+  --side-art-op: .44;
+  --glow: rgb(var(--text-rgb) / .055);
+  --grain-op: .5;
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  /* The five colors of mana, plus multicolor and colorless, and what's good or bad news */
+  --w: #efe4bc; --u: #5fa3d9; --b: #a691b7; --r: #e8693f; --g: #52af7a; --m: #d6b35a; --c: #b9b2a7;
+  --good: #8fd8a8; --bad: #ff8f78;
+  --legal: #86c9a0; --banned: #ef7d66; --restricted: #e2bf66;
+  --rc-common: #cbc5ba; --rc-uncommon: #a6bdd1; --rc-rare: #dcb85e; --rc-mythic: #e67a42; --rc-special: #bb93dc;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #e9e3d8; --bg-rgb: 233 227 216;
+  --sunken: #ddd5c7; --sunken-rgb: 221 213 199;
+  --surface: #f7f3eb; --surface-rgb: 247 243 235;
+  --overlay: #fbf8f2; --overlay-rgb: 251 248 242;
+  --raised: #ffffff; --raised-rgb: 255 255 255;
+  --raised-2: #fffcf5;
+  --text: #241f2a; --text-rgb: 36 31 42;
+  --muted: #5b5363;
+  --faint: #81788a;
+  --hover: rgb(var(--text-rgb) / .055);
+  --line: rgb(var(--text-rgb) / .14);
+  --line-strong: rgb(var(--text-rgb) / .3);
+  --hi: rgb(255 255 255 / .95);
+  --accent: #9b6a10;
+  --accent-soft: rgb(155 106 16 / .18);
+  --sh-1: inset 0 1px 0 var(--hi), 0 1px 1px rgb(70 50 25 / .16), 0 2px 5px rgb(70 50 25 / .09);
+  --sh-2: inset 0 1px 0 var(--hi), 0 2px 4px rgb(70 50 25 / .1), 0 10px 24px rgb(70 50 25 / .12);
+  --sh-3: 0 24px 70px rgb(45 30 15 / .3), 0 2px 6px rgb(45 30 15 / .12);
+  --sh-in: inset 0 2px 3px rgb(70 50 25 / .16), inset 0 0 0 1px rgb(70 50 25 / .07);
+  --btn: linear-gradient(180deg, #ffffff, #f1ece3);
+  --btn-hover: linear-gradient(180deg, #ffffff, #f7f3ec);
+  --btn-press: linear-gradient(180deg, #e9e3d8, #f2ede5);
+  --solid: #2b2531;
+  --solid-grad: linear-gradient(180deg, #3d3546, #231e29);
+  --solid-hover: linear-gradient(180deg, #4a4154, #2b2531);
+  --on-solid: #fbf6ec;
+  --sh-lift: inset 0 1px 0 var(--hi), 0 6px 12px rgb(70 50 25 / .12), 0 18px 36px rgb(70 50 25 / .15);
+  --sh-bar: 0 1px 0 rgb(70 50 25 / .1), 0 6px 16px rgb(70 50 25 / .08);
+  --well: rgb(var(--text-rgb) / .045);
+  --scrim: rgb(38 31 24 / .42);
+  --chrome: rgb(var(--surface-rgb) / .92);
+  --on-mana: #fffaf0;
+  --drop: rgb(45 30 15 / .38);
+  --side-art-op: .3;
+  --glow: rgb(255 255 255 / .55);
+  --grain-op: .45;
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .22 0 0 0 0 .1 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --w: #a8862a; --u: #2c78b6; --b: #74579a; --r: #c64a22; --g: #2b8650; --m: #9f781a; --c: #857a6d;
+  --good: #1d7f46; --bad: #bf3c23;
+  --legal: #1f7d46; --banned: #bd4129; --restricted: #94700f;
+  --rc-common: #6f6a62; --rc-uncommon: #4d6e8b; --rc-rare: #9d771a; --rc-mythic: #c0531d; --rc-special: #7b52a8;
+}
+
+/* ---------- What both pages share: the paper, the header, and how controls look (each page sets their sizes) ---------- */
+.grain { position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: var(--grain-op); background-image: var(--grain); }
+.top {
+  background: var(--chrome); border-bottom: 1px solid var(--line); box-shadow: var(--sh-bar);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1);
+}
+.brand { flex: none; text-decoration: none; color: var(--text); font: 900 27px/1 var(--serif); letter-spacing: -.012em; padding: 4px 2px 6px; border-radius: 6px; }
+.nav { display: flex; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.nav::-webkit-scrollbar { display: none; }
+.nav a { flex: none; text-decoration: none; color: var(--muted); font: 500 15.5px/1 var(--sans); padding: 10px 13px; border-radius: 10px; }
+.nav a:hover { color: var(--text); background: var(--hover); }
+.nav a[aria-current="page"] { color: var(--text); background: var(--btn); box-shadow: inset 0 0 0 1px var(--line), var(--sh-1); }
+.top .ui-menu-btn { flex: none; }
+@media (max-width: 640px) {
+  .brand { font-size: 22px; }
+  .nav { gap: 1px; }
+  .nav a { padding: 9px 5px; font-size: 15px; }
+  .top .ui-menu-btn { width: 36px; height: 36px; border-radius: 10px; }
+}
+
+.btn-ghost, .icon-btn, .pill, .chip, .pip {
+  color: var(--text); background: var(--btn); border: 1px solid var(--line-strong); box-shadow: var(--sh-1);
+  transition: background-color .15s, border-color .15s, box-shadow .15s, color .15s;
+}
+:is(.btn-ghost, .icon-btn, .pill, .chip, .pip):hover:where(:not(:disabled)) { background: var(--btn-hover); }
+:is(.btn-ghost, .icon-btn, .pill, .chip, .pip):active:where(:not(:disabled)) { background: var(--btn-press); box-shadow: var(--sh-in); }
+:is(.btn-ghost, .icon-btn, .pill, .chip, .pip):disabled { box-shadow: none; }
+/* A toggle that's on stays pressed in */
+.btn-ghost[aria-pressed="true"], .icon-btn[aria-pressed="true"] { background: var(--sunken); box-shadow: var(--sh-in); }
+/* The main action, or the chosen chip */
+.pill-solid, .pill[aria-pressed="true"], .chip[aria-pressed="true"] { background: var(--solid-grad); color: var(--on-solid); border-color: transparent; }
+:is(.pill-solid, .pill[aria-pressed="true"], .chip[aria-pressed="true"]):hover:where(:not(:disabled)) { background: var(--solid-hover); }
+:is(.pill-solid, .pill[aria-pressed="true"], .chip[aria-pressed="true"]):active:where(:not(:disabled)) { background: var(--solid-grad); box-shadow: inset 0 2px 4px rgb(0 0 0 / .28); }
+.pip[aria-pressed="true"] {
+  border-color: var(--pip); background: color-mix(in oklab, var(--pip) 20%, var(--sunken));
+  box-shadow: 0 0 0 1px var(--pip), 0 0 14px color-mix(in srgb, var(--pip) 32%, transparent), var(--sh-in);
+}
+/* A segmented choice: a well, with the chosen one raised out of it */
+.seg { background: var(--sunken); border: 1px solid var(--line); box-shadow: var(--sh-in); }
+.seg button { border: 0; background: transparent; color: var(--muted); }
+.seg button:hover { color: var(--text); }
+.seg button[aria-pressed="true"] { background: var(--btn); color: var(--text); box-shadow: inset 0 0 0 1px var(--line-strong), var(--sh-1); }
+.link-btn { border: 0; background: none; padding: 4px 0; color: var(--muted); font: 500 15px var(--sans); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-strong); }
+.link-btn:hover { color: var(--text); }
+@media (forced-colors: active) {
+  .pip[aria-pressed="true"], .chip[aria-pressed="true"], .pill[aria-pressed="true"], .seg button[aria-pressed="true"], .btn-ghost[aria-pressed="true"], .icon-btn[aria-pressed="true"] { outline: 2px solid CanvasText; }
+}
+
+/* ---------- The appearance menu (ui.js builds it) ---------- */
+.ui-menu-btn svg { width: 20px; height: 20px; }
+.ui-menu {
+  position: fixed; z-index: 90; min-width: 220px; padding: 6px; border-radius: 14px;
+  background: var(--overlay); border: 1px solid var(--line-strong); box-shadow: var(--sh-3);
+  animation: ui-pop .16s cubic-bezier(.2, .75, .15, 1);
+}
+.ui-menu .ui-mh { margin: 6px 10px 4px; font: 700 11.5px/1.2 var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--faint); }
+.ui-menu button {
+  display: flex; align-items: center; gap: 11px; width: 100%; min-height: 42px; padding: 0 12px; border: 0; border-radius: 10px;
+  background: transparent; color: var(--text); font: 500 15.5px/1.2 var(--sans); text-align: left;
+}
+.ui-menu button svg { width: 19px; height: 19px; flex: none; color: var(--muted); }
+.ui-menu button:hover, .ui-menu button:focus-visible { background: var(--hover); outline: none; }
+.ui-menu button[aria-checked="true"] { background: var(--accent-soft); }
+.ui-menu button[aria-checked="true"] svg { color: var(--accent); }
+.ui-menu button .ui-tick { margin-left: auto; width: 16px; height: 16px; color: var(--accent); visibility: hidden; }
+.ui-menu button[aria-checked="true"] .ui-tick { visibility: visible; }
+.ui-menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 4px; }
+.ui-menu kbd, .ui-keys kbd {
+  display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 6px;
+  font: 700 12.5px/1 var(--sans); color: var(--text); background: var(--btn); border: 1px solid var(--line-strong); box-shadow: 0 1px 0 var(--line-strong);
+}
+.ui-menu button kbd { margin-left: auto; }
+@keyframes ui-pop { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
+
+/* ---------- Keyboard shortcuts sheet ---------- */
+.ui-keys { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: 18px; }
+.ui-keys-scrim { position: absolute; inset: 0; background: var(--scrim); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+.ui-keys-box {
+  position: relative; width: min(640px, 100%); max-height: calc(100dvh - 36px); overflow: auto; padding: 22px 24px 18px;
+  background: var(--overlay); border: 1px solid var(--line-strong); border-radius: 20px; box-shadow: var(--sh-3);
+  animation: ui-pop .2s cubic-bezier(.2, .75, .15, 1);
+}
+.ui-keys h2 { margin: 0 44px 4px 0; font: 800 24px/1.15 var(--serif); }
+.ui-keys > .ui-keys-box > p { margin: 0 0 8px; color: var(--muted); font-size: 14.5px; }
+.ui-keys h3 { margin: 16px 0 6px; font: 700 12px/1.2 var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--faint); }
+.ui-keys dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 7px 16px; margin: 0; align-items: center; }
+.ui-keys dt { display: flex; gap: 4px; flex-wrap: wrap; }
+.ui-keys dd { margin: 0; color: var(--text); font-size: 15px; }
+.ui-keys .ui-x { position: absolute; top: 14px; right: 14px; }
+
+/* ---------- Paging between cards or decks: the drag follows your finger, and springs back if you let go early ---------- */
+.ui-paging { transition: transform .22s cubic-bezier(.2, .75, .15, 1), opacity .22s; }
+@media (prefers-reduced-motion: reduce) {
+  .ui-paging { transition: none; }
+  .ui-menu, .ui-keys-box { animation: none; }
+}
