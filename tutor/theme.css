@@ -208,11 +208,13 @@ body[data-art="cards"] { --art: url("/tutor/img/hero-cards-dark.webp"); }
 body[data-art="decks"] { --art: url("/tutor/img/hero-decks-dark.webp"); --art-x: 80%; }
 body[data-art="learn"] { --art: url("/tutor/img/hero-learn-dark.webp"); --art-x: 70%; }
 body[data-art="journal"] { --art: url("/tutor/img/hero-journal-dark.webp"); --art-x: 72%; }
+body[data-art="finals"] { --art: url("/tutor/img/hero-finals-dark.webp"); --art-x: 74%; }
 :root[data-theme="light"] body[data-art="arena"] { --art: url("/tutor/img/hero-arena-light.webp"); }
 :root[data-theme="light"] body[data-art="cards"] { --art: url("/tutor/img/hero-cards-light.webp"); }
 :root[data-theme="light"] body[data-art="decks"] { --art: url("/tutor/img/hero-decks-light.webp"); }
 :root[data-theme="light"] body[data-art="learn"] { --art: url("/tutor/img/hero-learn-light.webp"); }
 :root[data-theme="light"] body[data-art="journal"] { --art: url("/tutor/img/hero-journal-light.webp"); }
+:root[data-theme="light"] body[data-art="finals"] { --art: url("/tutor/img/hero-finals-light.webp"); }
 /* Over a scene the header lets more of it through (it blurs whatever scrolls under it) */
 body[data-art] .top { background: rgb(var(--bg-rgb) / .66); }
 body[data-art] .art-title { padding-top: 34px; }

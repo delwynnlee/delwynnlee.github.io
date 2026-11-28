@@ -7,7 +7,7 @@
 <meta name="description" content="AI vs AI Magic: The Gathering games you can watch, with decks designed by Claude or built on the spot.">
 <meta name="theme-color" content="#17151c">
 <meta name="color-scheme" content="dark light">
-<link rel="stylesheet" href="../theme.css?v=2">
+<link rel="stylesheet" href="../theme.css?v=3">
 <script src="../ui.js?v=1"></script>
 <link rel="icon" type="image/png" sizes="64x64" href="../img/favicon-64.png">
 <link rel="icon" type="image/png" sizes="192x192" href="../img/icon-192.png">
@@ -306,6 +306,36 @@ svg.i .fill { fill: currentColor; }
 .learn-medal { width: 46px; height: 46px; }
 .learn-txt b { display: block; font: 800 16.5px/1.2 var(--serif); }
 .learn-txt span { display: block; color: var(--muted); font-size: 13.5px; }
+.learn-row { display: flex; flex-wrap: wrap; gap: 10px; }
+/* ---------- Famous finals ---------- */
+.fin-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin-top: 18px; }
+.fin-bar .ai-pick { margin: 0; }
+.fin-count { margin: 0; color: var(--muted); font-size: 14px; text-shadow: 0 1px 10px rgb(var(--bg-rgb) / .9); }
+.fin { margin-top: 18px; padding: 18px 20px 16px; border-radius: 22px; border: 1px solid var(--line-strong); background: rgb(var(--surface-rgb) / .92); box-shadow: var(--sh-2); }
+.fin-head { display: flex; align-items: center; gap: 16px; }
+.fin-medal { flex: none; width: 76px; height: 76px; }
+.fin-tx { min-width: 0; }
+.fin-kick { margin: 0; font: 700 12px/1.3 var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--m); }
+.fin h2 { margin: 4px 0 2px; font: 800 26px/1.12 var(--serif); }
+.fin-score { margin: 0; color: var(--muted); font: 600 14.5px/1.3 var(--sans); }
+.fin-story { margin: 14px 0 0; max-width: 70ch; font: 400 16.5px/1.55 var(--serif); }
+.fin-sides { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+.fin-side { display: flex; flex-direction: column; overflow: hidden; border-radius: 18px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--sh-1); }
+.fin-side.done { border-color: color-mix(in srgb, var(--m) 70%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--m) 50%, transparent), var(--sh-1); }
+.fin-art { height: 96px; background: var(--raised) center 22% / cover no-repeat; }
+.fin-sb { display: flex; flex-direction: column; flex: 1; padding: 12px 14px 14px; }
+.fin-role { margin: 0; font: 700 11.5px/1.3 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.fin-side.champ .fin-role { color: var(--m); }
+.fin-side h3 { margin: 3px 0 2px; font: 800 19px/1.2 var(--serif); }
+.fin-who { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--muted); font-size: 13.5px; }
+.fin-who .cols { display: inline-flex; gap: 2px; }
+.fin-goal { margin: 10px 0 0; font: 600 15px/1.4 var(--sans); }
+.fin-tick { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 6px; border-radius: 50%; color: var(--on-mana); background: var(--m); vertical-align: -4px; }
+.fin-tick svg.i { width: 13px; height: 13px; }
+.fin-rec { margin: 4px 0 0; color: var(--muted); font-size: 13.5px; }
+.fin-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: auto; padding-top: 14px; }
+.fin-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin: 14px 0 0; font-size: 14px; }
+.fin-foot a { color: var(--muted); }
 .deck-meta .cmd-name { display: inline-flex; align-items: center; gap: 4px; color: var(--text); font-weight: 600; }
 .deck-meta .cmd-name svg.i, .decklist .cmdrow svg.i { width: 15px; height: 15px; color: var(--m); }
 .legends { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 8px; margin-top: 12px; max-height: 372px; overflow: auto; padding: 2px; overscroll-behavior: contain; }
@@ -1117,6 +1147,14 @@ svg.i .fill { fill: currentColor; }
 .jr-foot { margin: 22px 0 0; display: flex; justify-content: center; }
 
 @media (max-width: 640px) {
+  .fin { padding: 14px 14px 12px; border-radius: 18px; }
+  .fin-medal { width: 62px; height: 62px; }
+  .fin h2 { font-size: 21px; }
+  .fin-story { font-size: 15.5px; }
+  .fin-sides { grid-template-columns: minmax(0, 1fr); }
+  .fin-art { height: 84px; }
+  .learn-row { width: 100%; }
+  .learn-row .learn { flex: 1 1 100%; }
   .cr-pj { flex-direction: column; align-items: stretch; gap: 8px; padding: 8px; }
   .cr-pj-art { width: 100%; height: 64px; }
   .cr-pj-tx b { font-size: 15.5px; }
@@ -1188,7 +1226,7 @@ svg.i .fill { fill: currentColor; }
           <button type="button" data-ai="hard" aria-pressed="true" title="Plays its attacks and blocks out a turn ahead before choosing">Hard</button>
         </div>
       </div>
-      <button type="button" class="learn" id="learnBtn"></button>
+      <div class="learn-row"><button type="button" class="learn" id="learnBtn"></button><button type="button" class="learn" id="finalsBtn"></button></div>
     </div>
     <div class="pool">
       <p class="gen-label" id="poolLbl">Cards</p>
@@ -1220,7 +1258,7 @@ svg.i .fill { fill: currentColor; }
       <div id="pickBody"></div>
     </section>
     <footer class="credits">
-      Card data and images from <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>, official deck lists from <a href="https://mtgjson.com" target="_blank" rel="noopener">MTGJSON</a>. The rules engine plays a simplified game with <span id="poolCount">4,093</span> cards whose text it can read, including every card in The Lord of the Rings: Tales of Middle-earth, Magic: The Gathering FINAL FANTASY and Marvel Super Heroes. There are no planeswalkers, and a spell can be answered once but not fought over on the stack.
+      Card data and images from <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>, official deck lists from <a href="https://mtgjson.com" target="_blank" rel="noopener">MTGJSON</a>. The rules engine plays a simplified game with <span id="poolCount">4,093</span> cards whose text it can read, including every card in The Lord of the Rings: Tales of Middle-earth, Magic: The Gathering FINAL FANTASY and Marvel Super Heroes, and in the eight Famous Finals decks. A spell can be answered once but not fought over on the stack, and a counterspell can't answer a triggered ability.
       Arena is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. &copy;Wizards of the Coast LLC.
     </footer>
   </div>
@@ -1256,6 +1294,14 @@ svg.i .fill { fill: currentColor; }
     <p>Seven short lessons, from your first land to winning with commander damage. Each one sets up a board and walks you through it, one tap at a time.</p>
   </section>
   <div id="lessons"></div>
+</main>
+
+<main id="finals" class="lobby" hidden>
+  <section class="hero art-title">
+    <h1>Famous finals</h1><span class="ornament" aria-hidden="true"></span>
+    <p>Four pro finals, with both finalists’ decks exactly as they played them. Take either seat against the other deck: win the way the champion did, or win the game the runner-up couldn’t.</p>
+  </section>
+  <div id="finalsBody"></div>
 </main>
 
 <main id="career" class="lobby career" hidden><div id="careerBody"></div></main>
@@ -1305,7 +1351,7 @@ svg.i .fill { fill: currentColor; }
 <div class="insp" id="insp" role="dialog" aria-modal="true" aria-labelledby="inspName" hidden></div>
 <div class="sheet" id="sheet" hidden></div>
 
-<script src="engine.js?v=17"></script>
+<script src="engine.js?v=18"></script>
 <script src="ltr.js?v=1"></script>
 <script src="fin.js?v=1"></script>
 <script src="msh.js?v=4"></script>
@@ -1318,12 +1364,14 @@ svg.i .fill { fill: currentColor; }
 <script src="ltc.js?v=2"></script>
 <script src="fic.js?v=2"></script>
 <script src="msc.js?v=1"></script>
+<script src="std.js?v=2"></script>
 <script src="decks.js?v=3"></script>
 <script src="commanders.js?v=3"></script>
 <script src="sets.js?v=4"></script>
 <script src="tutorial.js?v=4"></script>
 <script src="glossary.js?v=8"></script>
 <script src="career.js?v=2"></script>
+<script src="finals.js?v=1"></script>
 <script src="journal.js?v=2"></script>
 <script>
 'use strict';
@@ -1430,7 +1478,7 @@ const ARCH_LABEL = { aggro: 'Aggro', midrange: 'Midrange', control: 'Control' };
 const COLOR_NAME = { W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green' };
 const COLOR_VAR = { W: 'var(--w)', U: 'var(--u)', B: 'var(--b)', R: 'var(--r)', G: 'var(--g)' };
 async function loadData() {
-  const res = await fetch('cards.json?v=10');
+  const res = await fetch('cards.json?v=11');
   if (!res.ok) throw new Error(`cards.json: HTTP ${res.status}`);
   const j = await res.json();
   // Double-faced, adventurer and meld cards carry their other faces: { b: back, a: adventure, m: melded card, mdfc: either face can be cast }
@@ -1594,6 +1642,8 @@ function deckByKey(key) {
   if (m) { const set = setByCode(m[1]); return set ? genCmdDeck(m[2], m[3], +m[4], set) : null; }
   m = /^o\.([a-z0-9-]+)$/.exec(key);
   if (m) { const o = OFF.byId.get(m[1]); return o ? offDeck(o) : null; }
+  m = /^f\.([a-z0-9-]+)$/.exec(key);
+  if (m) return finalDeck(m[1]);
   m = /^j\.([a-z0-9-]+)\.([a-z0-9-]+)$/.exec(key);
   if (m) { const a = OFF.byId.get(m[1]), b = OFF.byId.get(m[2]); return a && b && a !== b && isPack(a) && isPack(b) && a.set === b.set && offPlayable(a) && offPlayable(b) ? packPair(a, b) : null; }
   return null;
@@ -1895,6 +1945,7 @@ function migrateSets() {
 function hashFor() {
   if (S.view === 'learn') return '#learn';
   if (S.view === 'career') return '#career';
+  if (S.view === 'finals') return '#finals';
   if (S.view === 'journal') return '#journal';
   if (S.view === 'watch' && W.mode === 'play' && PL.career != null) return '#career=fight';
   if (S.view === 'decks') return '#decks';
@@ -1916,7 +1967,7 @@ function readHash() {
   const ok = (d) => (seatable(d) ? d : null);
   const a = ok(deckByKey(p.get('a'))), b = ok(deckByKey(p.get('b')));
   const seed = p.get('seed'), pl = p.get('play');
-  return { a, b, seed: seed != null && /^\d{1,10}$/.test(seed) ? +seed : null, play: pl != null && /^\d{1,10}$/.test(pl) ? +pl : null, learn: p.has('learn'), lesson: p.get('lesson'), decks: p.has('decks'), career: p.has('career'), journal: p.has('journal') };
+  return { a, b, seed: seed != null && /^\d{1,10}$/.test(seed) ? +seed : null, play: pl != null && /^\d{1,10}$/.test(pl) ? +pl : null, learn: p.has('learn'), lesson: p.get('lesson'), decks: p.has('decks'), career: p.has('career'), journal: p.has('journal'), finals: p.has('finals') };
 }
 
 /* ============================================================
@@ -1940,7 +1991,7 @@ function listHTML(d) {
   }).join('')}</div>`;
 }
 function metaHTML(d) {
-  return `<div class="deck-meta"><span class="cols" aria-label="${d.colors.map((c) => COLOR_NAME[c]).join(' and ')}">${colorsHTML(d.colors)}</span><span class="arch">${ARCH_LABEL[d.archetype]}</span>${d.commander ? `<span class="cmd-name">${icon('star')}${esc(cmdrsOf(d).map((c) => c.name).join(' and '))}</span>` : ''}<span class="by">${d.by === 'career' ? (/^cr\.(\w+\.)?me$/.test(d.key) ? 'Your career deck' : 'Career villain') : d.by === 'claude' ? 'Designed by Claude' : d.by === 'wotc' ? `Official ${d.off ? esc(d.off.type) : 'Jumpstart pair'}` : 'Built by the generator'}${d.set ? ` · ${esc(shortSet(d.set))}` : ''}${d.off && d.off.year ? ` · ${d.off.year}` : ''}</span></div>`;
+  return `<div class="deck-meta"><span class="cols" aria-label="${d.colors.map((c) => COLOR_NAME[c]).join(' and ')}">${colorsHTML(d.colors)}</span><span class="arch">${ARCH_LABEL[d.archetype]}</span>${d.commander ? `<span class="cmd-name">${icon('star')}${esc(cmdrsOf(d).map((c) => c.name).join(' and '))}</span>` : ''}<span class="by">${d.by === 'career' ? (/^cr\.(\w+\.)?me$/.test(d.key) ? 'Your career deck' : 'Career villain') : d.by === 'final' ? `${esc(d.fin.player)} · ${esc(d.fin.short)} ${d.fin.won ? 'champion' : 'runner-up'}` : d.by === 'claude' ? 'Designed by Claude' : d.by === 'wotc' ? `Official ${d.off ? esc(d.off.type) : 'Jumpstart pair'}` : 'Built by the generator'}${d.set ? ` · ${esc(shortSet(d.set))}` : ''}${d.off && d.off.year ? ` · ${d.off.year}` : ''}</span></div>`;
 }
 function renderSeats() {
   const parts = [0, 1].map((i) => {
@@ -1996,7 +2047,7 @@ function keyCards(d) {
 }
 function missingCount(d) { return d.list.filter((x) => x.def.stub).length + cmdrsOf(d).filter((c) => c.stub).length; }
 function dvFootHTML(d, key) {
-  if (DV.ctx === 'career') return '';
+  if (DV.ctx === 'career' || DV.ctx === 'finals') return '';
   if (DV.ctx === 'library') {
     if (d.playable === false) return `<button type="button" class="pill" disabled>Not playable yet</button>`;
     if (d.half) {
@@ -2282,7 +2333,7 @@ function renderPick() {
    ============================================================ */
 const LIB = Object.assign({ src: 'all', q: '', set: 'all', kind: 'all', colors: [], playable: false }, store.get('arena.lib.v1', {}));
 LIB.q = '';
-const KIND_ORDER = ['60-card deck', 'Commander deck', 'Starter Kit', 'Welcome Deck', 'Jumpstart pack', 'Starter deck', 'Theme deck', 'Intro pack', 'Event deck', 'Planeswalker deck', 'Arena starter deck'];
+const KIND_ORDER = ['60-card deck', 'Commander deck', 'Famous final', 'Starter Kit', 'Welcome Deck', 'Jumpstart pack', 'Starter deck', 'Theme deck', 'Intro pack', 'Event deck', 'Planeswalker deck', 'Arena starter deck'];
 let libAll = null;
 function libEntries() {
   if (libAll) return libAll;
@@ -2301,6 +2352,7 @@ function libEntries() {
     for (const sp of SETS.commanders[set.code] || []) add(setCmdDeck(set, sp), 'claude', set.code, 'Commander deck');
   }
   for (const o of OFF.decks) add(offDeck(o), 'official', groupOf(o.set), o.type === 'Commander deck' ? 'Commander deck' : o.type);
+  for (const f of FIN.FINALS) for (const x of f.decks) add(finalDeck(x.id), 'finals', 'ALL', 'Famous final');
   libAll = out;
   return out;
 }
@@ -2583,7 +2635,7 @@ function watch(seed, opts = {}) {
 const SCROLL = {};
 try { history.scrollRestoration = 'manual'; } catch { /* old browsers */ }
 // The painted scene at the top of each page (theme.css); a game and the career have their own pictures
-const ART = { lobby: 'arena', decks: 'decks', learn: 'learn', journal: 'journal' };
+const ART = { lobby: 'arena', decks: 'decks', learn: 'learn', journal: 'journal', finals: 'finals' };
 function setView(view, push) {
   if (S.view !== 'watch') SCROLL[S.view] = window.scrollY;
   S.view = view;
@@ -2591,6 +2643,7 @@ function setView(view, push) {
   $('#lobby').hidden = view !== 'lobby';
   $('#learn').hidden = view !== 'learn';
   $('#career').hidden = view !== 'career';
+  $('#finals').hidden = view !== 'finals';
   $('#journal').hidden = view !== 'journal';
   $('#decks').hidden = view !== 'decks';
   jTip();
@@ -2604,9 +2657,9 @@ function setView(view, push) {
     mu.innerHTML = TU.on ? `<span>${TU.lesson.practice ? 'Practice game' : `Lesson ${lessonNo(TU.lesson)}: ${esc(TU.lesson.title)}`}</span>`
       : `<span>${esc(W.decks[0].name)}${W.mode === 'play' ? ' <em>(you)</em>' : ''}</span><span class="vs">vs</span><span>${esc(W.decks[1].name)}</span>`;
     back.hidden = false;
-    const to = TU.on ? 'Lessons' : S.backTo === 'decks' ? 'Decks' : S.backTo === 'career' ? 'Career' : 'Arena';
+    const to = TU.on ? 'Lessons' : S.backTo === 'decks' ? 'Decks' : S.backTo === 'career' ? 'Career' : S.backTo === 'finals' ? 'Finals' : 'Arena';
     back.innerHTML = `${icon('back')}<span>${to}</span>`;
-    back.setAttribute('aria-label', `Back to ${to === 'Arena' ? 'the Arena' : to === 'Decks' ? 'the decks' : to === 'Career' ? 'the career' : 'the lessons'}`);
+    back.setAttribute('aria-label', `Back to ${to === 'Arena' ? 'the Arena' : to === 'Decks' ? 'the decks' : to === 'Career' ? 'the career' : to === 'Finals' ? 'the famous finals' : 'the lessons'}`);
     document.title = TU.on ? `${TU.lesson.title}: Learn to play` : `${W.mode === 'play' ? 'Playing ' : ''}${W.decks[0].name} vs ${W.decks[1].name}: Arena`;
   } else if (view === 'decks') {
     stop();
@@ -2622,20 +2675,22 @@ function setView(view, push) {
     back.hidden = true;
     document.title = view === 'career' ? `Career: ${CAR.journey(crJ()).title}` : 'Journal: Arena';
     closeLog();
-  } else if (view === 'learn') {
+  } else if (view === 'learn' || view === 'finals') {
     stop();
     endPlay();
+    if (view === 'finals') S.backTo = null;
     mu.hidden = true;
     back.hidden = false;
     back.innerHTML = `${icon('back')}<span>Arena</span>`;
     back.setAttribute('aria-label', 'Back to the Arena');
-    document.title = 'Learn to play: Arena';
+    document.title = view === 'finals' ? 'Famous finals: Arena' : 'Learn to play: Arena';
     closeLog();
   } else {
     stop();
     endPlay();
     S.backTo = null;
     renderResume();
+    renderFinalsBtn();
     mu.hidden = true;
     back.hidden = true;
     document.title = 'Arena: watch AI players battle with Magic cards';
@@ -3204,7 +3259,7 @@ function showBanner() {
       <button type="button" class="pill" data-act="lessons">All lessons</button>` : playing ? `<button type="button" class="pill pill-solid" data-act="playagain">${icon('swords')}Play again</button>
       <button type="button" class="pill" data-act="replay">${icon('first')}Watch the replay</button>` : `<button type="button" class="pill pill-solid" data-act="rematch">${icon('swords')}Rematch</button>
       <button type="button" class="pill" data-act="again">${icon('first')}Watch again</button>`}
-      ${TU.on || crk != null ? '' : '<button type="button" class="pill" data-act="lobby">Change decks</button>'}
+      ${TU.on || crk != null ? '' : S.backTo === 'finals' ? '<button type="button" class="pill" data-act="finals">Back to the finals</button>' : '<button type="button" class="pill" data-act="lobby">Change decks</button>'}
       <button type="button" class="link-btn" data-act="close">Look at the board</button>
     </div></div>`;
   T.banner.hidden = false;
@@ -4017,6 +4072,8 @@ const CHOOSE_TEXT = {
   'tap-cost': (n, r) => [`Tap ${n === 1 ? 'an untapped creature' : `${n} untapped creatures`}`, r.label ? `To pay for ${r.label}.` : 'To pay the cost.'],
   'exile-cost': (n, r) => [`Exile ${n === 1 ? 'a card' : `${n} cards`} from your graveyard`, r.label ? `To pay for ${r.label}.` : 'To pay the cost.'],
   'discard-cost': (n, r) => ['Discard a card', r.label === 'Ward' ? 'To pay the ward cost.' : 'To pay the cost.'],
+  evidence: (n, r) => [`Collect evidence ${r.need}`, `Exile cards from your graveyard with a total mana value of ${r.need} or more.`],
+  'blight-cost': () => ['Blight 1', 'Put a -1/-1 counter on a creature you control to pay the extra cost.'],
   crew: (n, r) => [`Crew ${r.label || 'the vehicle'}`, `Tap creatures with total power ${r.need} or more. It becomes a creature until end of turn.`],
   teamwork: (n, r) => [`Teamwork ${r.need}`, `Tap creatures with total power ${r.need} or more to cast ${r.label || 'the spell'} with teamwork.`],
   connive: () => ['Connive: discard a card', 'If it is a nonland card, the creature that connived gets a +1/+1 counter.'],
@@ -4045,7 +4102,7 @@ const CONFIRM = {
   return: (sel) => (sel.length ? 'Return it' : 'None'), copy: () => 'Copy it', pile: (sel) => `${sel.length} face down`, keep: (sel) => (sel.length ? `Keep ${sel.length}` : 'Keep none'),
   shuffle: (sel) => (sel.length ? `Shuffle ${sel.length} in` : 'None'), give: () => 'Give it away', gypick: (sel) => (sel.length ? 'Choose' : 'None'),
   surveil: (sel) => (sel.length ? `Put ${sel.length} in the graveyard` : 'Keep them all on top'), look: (sel) => (sel.length ? 'Take' : 'None'), 'bounce-cost': () => 'Return it',
-  'hand-discard': () => 'Discard it', choose: (sel) => (sel.length ? 'Choose' : 'None'),
+  'hand-discard': () => 'Discard it', choose: (sel) => (sel.length ? 'Choose' : 'None'), evidence: () => 'Exile them', 'blight-cost': () => 'Blight it',
 };
 function openChoice(req) {
   const box = $('#sheet');
@@ -4188,6 +4245,7 @@ function renderLearnBtn() {
   const left = window.ARENA_TUTORIAL.LESSONS.filter((x) => !done.has(x.id)).length;
   const head = done.size ? (left ? 'Continue the tutorial' : 'Tutorial complete') : S.format === 'commander' ? 'New to Commander?' : 'New to Magic?';
   $('#learnBtn').innerHTML = `<img class="medal learn-medal" src="../img/lesson-learn.webp" alt="" width="46" height="46"><span class="learn-txt"><b>${head}</b><span>${done.size ? `${n - left} of ${n} lessons done` : `Learn to play in ${n} short lessons`}</span></span>`;
+  renderFinalsBtn();
 }
 
 
@@ -4377,7 +4435,8 @@ function dayLabel(t) {
 }
 function gameRow(e) {
   const jy = e.career != null && window.ARENA_CAREER ? ARENA_CAREER.journey(e.cj || 'cloud') : null, stage = jy && jy.stages[e.career];
-  const what = stage ? `${jy.title}, stage ${e.career + 1}: ${stage.title}` : `${e.fmt === 'commander' ? 'Commander' : 'Standard'} · ${e.ai === 'hard' ? 'Hard' : 'Normal'} AI`;
+  const fin = !stage && window.ARENA_FINALS ? ARENA_FINALS.FINALS.find((f) => f.decks.some((d) => ARENA_FINALS.deckName(d) === e.me.n) && f.decks.some((d) => ARENA_FINALS.deckName(d) === e.op.n)) : null;
+  const what = stage ? `${jy.title}, stage ${e.career + 1}: ${stage.title}` : `${fin ? `${fin.short} final` : e.fmt === 'commander' ? 'Commander' : 'Standard'} · ${e.ai === 'hard' ? 'Hard' : 'Normal'} AI`;
   const how = e.res === 'draw' ? (e.why === 'turns' ? 'Turn limit' : 'Both fell') : JRN.HOW[e.why] || '';
   return `<li class="jg"><span class="jg-r ${e.res}" aria-label="${RES[e.res][1]}">${RES[e.res][0]}</span>`
     + `<span class="jg-main"><b>vs ${esc(e.op.n)}</b><span>${esc(e.me.n)} · ${esc(what)}</span></span>`
@@ -4501,7 +4560,9 @@ function openJournal(push = true) {
    Career: Cloud's journey to Sephiroth, Frodo's to Mount Doom
    ============================================================ */
 const CAR = window.ARENA_CAREER;
-const CR = { j: null, runs: {}, decks: new Map(), names: {}, plain: null, pend: null };
+const CR = { j: null, runs: {}, decks: new Map(), names: {}, plain: null, pend: null, pool: null };
+// The careers build from the cards they always had: the Famous Finals cards (std.js) stay out, so saved fights replay the same
+const careerPool = () => CR.pool || (CR.pool = window.ARENA_STD ? DATA.pool.filter((d) => !ARENA_STD.includes(d.name)) : DATA.pool);
 // The journey on show: the one last chosen, else Frodo's (the newer one; Cloud's is a tap away beside it)
 const crJ = () => CR.j || (CR.j = CAR.JOURNEYS[store.get('arena.career.j.v1', '')] ? store.get('arena.career.j.v1', '') : 'frodo');
 function crPick(j) { if (!CAR.JOURNEYS[j]) return; CR.j = j; store.set('arena.career.j.v1', j); }
@@ -4517,12 +4578,12 @@ const careerGame = (j = crJ()) => store.get(crKey(j, true), null);
 // The hero's deck and the villains', kept like any other deck so the deck view can open them
 function careerMe(j = crJ()) {
   const run = careerRun(j), J = CAR.journey(j);
-  if (!CR.decks.has(`${j}.me`)) CR.decks.set(`${j}.me`, finishDeck(CAR.heroDeck(Arena, DATA.pool, run), { key: crDeckKey(j, 'me'), by: 'career', face: run.cmd,
+  if (!CR.decks.has(`${j}.me`)) CR.decks.set(`${j}.me`, finishDeck(CAR.heroDeck(Arena, careerPool(), run), { key: crDeckKey(j, 'me'), by: 'career', face: run.cmd,
     blurb: `${J.blurb}: ${plural(run.got.length, 'card')} earned so far. Every win brings a pack of new ones, which replace ${J.his} weakest cards.` }));
   return CR.decks.get(`${j}.me`);
 }
 function careerFoe(k, j = crJ()) {
-  if (!CR.decks.has(`${j}.${k}`)) { const st = CAR.journey(j).stages[k]; CR.decks.set(`${j}.${k}`, finishDeck(CAR.stageDeck(Arena, DATA.pool, k, j), { key: crDeckKey(j, k), by: 'career', blurb: st.text, face: CAR.norm(st.cmd) })); }
+  if (!CR.decks.has(`${j}.${k}`)) { const st = CAR.journey(j).stages[k]; CR.decks.set(`${j}.${k}`, finishDeck(CAR.stageDeck(Arena, careerPool(), k, j), { key: crDeckKey(j, k), by: 'career', blurb: st.text, face: CAR.norm(st.cmd) })); }
   return CR.decks.get(`${j}.${k}`);
 }
 function careerStartFight(resume) {
@@ -4620,7 +4681,7 @@ function openReward() {
   const j = crJ(), J = CAR.journey(j), run = careerRun(j);
   if (!run || !run.reward) return;
   const { k, seed } = run.reward;
-  const packs = CAR.packsFor(Arena, DATA.pool, worldNames(j), run, k, seed);
+  const packs = CAR.packsFor(Arena, careerPool(), worldNames(j), run, k, seed);
   const gift = CAR.giftFor(run, k);
   CR.pend = { packs, gift };
   ensureImages(packs.flatMap((p) => p.cards).concat(gift ? gift.cards : []));
@@ -4645,7 +4706,7 @@ function takePack(i) {
   const j = crJ(), J = CAR.journey(j), run = careerRun(j), pend = CR.pend, pack = pend && pend.packs[i];
   if (!run || !run.reward || !pack) return;
   const gifts = pend.gift ? pend.gift.cards : [];
-  const r = CAR.addCards(DATA.pool, run, pack.cards.concat(gifts));
+  const r = CAR.addCards(careerPool(), run, pack.cards.concat(gifts));
   const next = Object.assign({}, r.run, { reward: null });
   careerSave(next, j);
   const box = $('#crReward .rw-box');
@@ -4654,6 +4715,79 @@ function takePack(i) {
     + `<div class="cr-acts"><button type="button" class="pill pill-solid" data-rw="fight">${icon('swords')}On to stage ${next.stage + 1}</button><button type="button" class="link-btn" data-rw="close">Back to the journey</button></div>`;
   box.querySelector('[data-rw="fight"]').focus();
   renderCareer();
+}
+
+/* ============================================================
+   Famous finals: four real pro finals, both decks as registered
+   ============================================================ */
+const FIN = window.ARENA_FINALS || { FINALS: [], byId: new Map(), deckName: (d) => d.archetype, rival: () => null, surname: (p) => p };
+// A finalist's deck, kept like any other deck (key f.<id>) so seats, the hash, resuming and the deck view all work
+function finalDeck(id) {
+  const key = `f.${id}`;
+  if (DECKS.has(key)) return DECKS.get(key);
+  const x = FIN.byId.get(id);
+  if (!x || !READY) return null;
+  const { f, d } = x;
+  const list = d.main.map(([n, name]) => ({ def: DATA.byName.get(name), n }));
+  const ok = list.filter((y) => y.def);
+  const colors = Arena.COLORS.filter((c) => ok.some((y) => y.def.colors.includes(c)));
+  const deck = finishDeck(Arena.deckFromList(FIN.deckName(d), colors, d.arch, ok), { key, by: 'final', blurb: d.plan, face: d.face, fin: { id: f.id, short: f.short, won: d.won, player: d.player } });
+  if (ok.length < list.length) deck.playable = false;
+  return deck;
+}
+// How you've done with a finalist's deck against the other finalist's: from the journal
+function finalRecord(id) {
+  const x = FIN.byId.get(id), r = FIN.rival(id);
+  if (!x || !r) return { n: 0, w: 0, best: null };
+  const me = FIN.deckName(x.d), op = FIN.deckName(r);
+  const gs = journalList().filter((e) => e.me.n === me && e.op.n === op && e.career == null);
+  const wins = gs.filter((e) => e.res === 'win');
+  return { n: gs.length, w: wins.length, best: wins.length ? Math.min(...wins.map((e) => e.turns)) : null };
+}
+const finalSides = () => FIN.FINALS.flatMap((f) => f.decks);
+const finalsDone = () => finalSides().filter((d) => finalRecord(d.id).w > 0).length;
+function renderFinalsBtn() {
+  const b = $('#finalsBtn');
+  if (!b) return;
+  const n = finalSides().length, done = finalsDone();
+  b.innerHTML = `<img class="medal learn-medal" src="../img/finals.webp" alt="" width="46" height="46"><span class="learn-txt"><b>Famous finals</b><span>${done ? `${done} of ${n} goals done` : `Replay ${FIN.FINALS.length} pro finals with the real decks`}</span></span>`;
+}
+function finalSideHTML(f, d) {
+  const r = finalRecord(d.id), deck = finalDeck(d.id);
+  const rec = !r.n ? 'Not played yet' : r.w ? `${plural(r.w, 'win')} in ${plural(r.n, 'game')}${r.best ? ` · fastest on turn ${r.best}` : ''}` : `${plural(r.n, 'game')}, no wins yet`;
+  const can = deck && deck.playable !== false;
+  return `<div class="fin-side${r.w ? ' done' : ''}${d.won ? ' champ' : ''}"><span class="fin-art" ${crBg(d.face)}></span><div class="fin-sb">`
+    + `<p class="fin-role">${d.won ? 'Champion' : 'Runner-up'}</p><h3>${esc(FIN.deckName(d))}</h3>`
+    + `<p class="fin-who"><span class="cols">${deck ? colorsHTML(deck.colors) : ''}</span>${esc(d.player)} · ${esc(d.from)}</p>`
+    + `<p class="fin-goal">${r.w ? `<span class="fin-tick" aria-label="Goal done">${icon('check')}</span>` : ''}${esc(d.goal)}</p><p class="fin-rec">${esc(rec)}</p>`
+    + `<div class="fin-acts"><button type="button" class="pill pill-solid" data-fplay="${esc(d.id)}"${can ? '' : ' disabled'}>${icon('swords')}Play as ${esc(FIN.surname(d.player))}</button><button type="button" class="link-btn" data-fdeck="${esc(d.id)}">See the deck</button></div></div></div>`;
+}
+function renderFinals() {
+  ensureImages(finalSides().map((d) => d.face));
+  const n = finalSides().length, done = finalsDone();
+  const parts = [`<div class="fin-bar"><div class="ai-pick"><span id="finAiLbl">AI opponent</span><div class="seg" role="group" aria-labelledby="finAiLbl">${['normal', 'hard'].map((k) => `<button type="button" data-fai="${k}" aria-pressed="${S.ai === k}">${k === 'hard' ? 'Hard' : 'Normal'}</button>`).join('')}</div></div>`
+    + `<p class="fin-count">${done ? `${done} of ${n} goals done` : 'One game decides it: main decks, no sideboards.'}</p></div>`];
+  for (const f of FIN.FINALS) {
+    const [a, b] = f.decks, win = a.won ? a : b;
+    parts.push(`<section class="fin" id="fin-${esc(f.id)}"><div class="fin-head"><img class="medal fin-medal" src="../img/final-${esc(f.id)}.webp" alt="" width="76" height="76" loading="lazy">`
+      + `<div class="fin-tx"><p class="fin-kick">${esc(f.when)} · ${esc(f.where)}</p><h2>${esc(f.event)}</h2><p class="fin-score">${esc(win.player)} won${f.score ? ` ${f.score}` : ''}</p></div></div>`
+      + `<p class="fin-story">${esc(f.story)}</p>`
+      + `<div class="fin-sides">${f.decks.map((d) => finalSideHTML(f, d)).join('')}</div>`
+      + `<p class="fin-foot"><button type="button" class="link-btn" data-fwatch="${esc(f.id)}">Watch the AI play it</button><a href="${esc(f.link.url)}" target="_blank" rel="noopener">Read about the final on ${esc(f.link.label)}</a></p></section>`);
+  }
+  $('#finalsBody').innerHTML = parts.join('');
+}
+function openFinals(push = true) {
+  setView('finals', push);
+  renderFinals();
+}
+// Play one finalist's deck against the other's (or watch the AI play the champion's side)
+function finalStart(id, watchIt) {
+  const r = FIN.rival(id), me = finalDeck(id), op = r && finalDeck(r.id);
+  if (!me || !op || me.playable === false || op.playable === false) return;
+  setFormat('standard', [me.key, op.key]);
+  S.backTo = 'finals';
+  if (watchIt) watch(newSeed()); else playStart(newSeed());
 }
 
 /* ============================================================
@@ -4687,7 +4821,7 @@ function wire() {
     if (!b || b.disabled) return;
     const j = crJ(), J = CAR.journey(j), run = careerRun(j), act = b.dataset.cr;
     const over = `Start ${J.hero}’s journey over? Your progress and ${J.his} cards will be lost.`;
-    if (act === 'new') { if (run && !run.done && !confirm(over)) return; careerSave(CAR.newRun(Arena, DATA.pool, worldNames(j), newSeed(), j, plainNames()), j); store.set(crKey(j, true), null); renderCareer(); }
+    if (act === 'new') { if (run && !run.done && !confirm(over)) return; careerSave(CAR.newRun(Arena, careerPool(), worldNames(j), newSeed(), j, plainNames()), j); store.set(crKey(j, true), null); renderCareer(); }
     else if (act === 'reset') { if (confirm(over)) { careerSave(null, j); store.set(crKey(j, true), null); renderCareer(); } }
     else if (act === 'fight') careerStartFight(false);
     else if (act === 'resume') careerStartFight(true);
@@ -4792,7 +4926,7 @@ function wire() {
   $('#randBtn').addEventListener('click', randomMatchup);
   $('#swapBtn').addEventListener('click', () => { S.seats.reverse(); S.sim = null; L.sim.hidden = true; saveSeats(); renderSeats(); syncHash(false); });
   $('#fmtSeg').addEventListener('click', (e) => { const b = e.target.closest('button[data-fmt]'); if (!b || b.dataset.fmt === S.format) return; setFormat(b.dataset.fmt); renderSeats(); renderPick(); renderButtons(); syncHash(false); });
-  $('#toLobby').addEventListener('click', () => { if (S.view === 'watch' && TU.on) { goLessons(); return; } if (S.view === 'watch' && S.backTo === 'decks') { openLibrary(true); return; } if (S.view === 'watch' && S.backTo === 'career') { openCareer(true); return; } setView('lobby', true); renderSeats(); });
+  $('#toLobby').addEventListener('click', () => { if (S.view === 'watch' && TU.on) { goLessons(); return; } if (S.view === 'watch' && S.backTo === 'decks') { openLibrary(true); return; } if (S.view === 'watch' && S.backTo === 'career') { openCareer(true); return; } if (S.view === 'watch' && S.backTo === 'finals') { openFinals(true); return; } setView('lobby', true); renderSeats(); });
   $('.lib-search-ic').innerHTML = icon('search');
   // The header's tabs switch views in place once the cards are in
   // A tab takes you to its page; tapping the one you're on takes you back to its top
@@ -4815,6 +4949,17 @@ function wire() {
     if (t) openDeckView(t.dataset.lib, t, 'library');
   });
   $('#learnBtn').addEventListener('click', () => goLessons());
+  $('#finalsBtn').addEventListener('click', () => openFinals());
+  $('#finalsBody').addEventListener('click', (e) => {
+    const ai = e.target.closest('[data-fai]');
+    if (ai) { S.ai = ai.dataset.fai; store.set('arena.ai.v1', S.ai); renderAi(); renderFinals(); return; }
+    const p = e.target.closest('[data-fplay]');
+    if (p) { if (!p.disabled) finalStart(p.dataset.fplay); return; }
+    const w = e.target.closest('[data-fwatch]');
+    if (w) { const f = FIN.FINALS.find((x) => x.id === w.dataset.fwatch); const champ = f && f.decks.find((d) => d.won); if (champ) finalStart(champ.id, true); return; }
+    const dk = e.target.closest('[data-fdeck]');
+    if (dk) { finalDeck(dk.dataset.fdeck); openDeckView(`f.${dk.dataset.fdeck}`, dk, 'finals'); }
+  });
   $('#lessons').addEventListener('click', (e) => { const b = e.target.closest('[data-lesson]'); if (b) lessonStart(b.dataset.lesson); });
   document.addEventListener('click', (e) => {
     const v = e.target.closest && e.target.closest('[data-view]');
@@ -4919,6 +5064,7 @@ function wire() {
     else if (a.dataset.act === 'replay') toReplay();
     else if (a.dataset.act === 'again') { T.banner.hidden = true; render(0, false); play(); }
     else if (a.dataset.act === 'lobby') { setView('lobby', true); renderSeats(); }
+    else if (a.dataset.act === 'finals') openFinals(true);
     else if (a.dataset.act === 'career') openCareer(true, PL.cj || 'cloud');
     else if (a.dataset.act === 'crreward') { CR.autoReward = true; openCareer(true, PL.cj || 'cloud'); }
     else if (a.dataset.act === 'crretry') { crPick(PL.cj || 'cloud'); careerStartFight(false); }
@@ -5062,6 +5208,7 @@ function wire() {
     if (h.learn) { if (S.view !== 'learn') { setView('learn', false); renderLessons(); } return; }
     if (h.decks) { if (S.view !== 'decks') openLibrary(false); return; }
     if (h.career) { if (S.view !== 'career') openCareer(false); return; }
+    if (h.finals) { if (S.view !== 'finals') openFinals(false); return; }
     if (h.journal) { if (S.view !== 'journal') openJournal(false); return; }
     if (h.a && h.b && fmtOfKey(h.a.key) === fmtOfKey(h.b.key) && poolOfKey(h.a.key) === poolOfKey(h.b.key)) {
       const f = fmtOfKey(h.a.key);
@@ -5108,6 +5255,7 @@ async function boot() {
   else if (h.learn) { setView('learn', false); renderLessons(); }
   else if (h.decks) openLibrary(false);
   else if (h.career) openCareer(false);
+  else if (h.finals) openFinals(false);
   else if (h.journal) openJournal(false);
   else if (h.play != null && h.a && h.b) { const sv = savedPlay(); const same = sv && sv.seed === h.play && sv.a === h.a.key && sv.b === h.b.key; playStart(h.play, same ? sv.answers : [], same ? savedOpts(sv) : {}); }
   else if (h.seed != null && h.a && h.b) watch(h.seed, { replace: true, paused: false });

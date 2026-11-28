@@ -756,6 +756,8 @@ const combatPow = (c) => (c.tf && c.tf.toughDmg ? tou(c) : pow(c));
 const dmgOut = (c) => Math.max(0, combatPow(c)) * (has(c, 'double strike') ? 2 : 1);
 // How many creatures it takes to block this one
 const minBlockers = (c) => Math.max(has(c, 'menace') ? 2 : 1, c.def.minBlock || 1);
+// "Can't be blocked by more than one creature": for a turn, by the card itself, or from an Aura or Equipment (Meltstrider's Resolve)
+const oneBlock = (a) => !!((a.tf && a.tf.maxOne) || a.def.maxOne || (fresh(a), a.sfl && a.sfl.maxOne));
 
 function cv(c) {
   let v = Math.max(0, pow(c)) + Math.max(0, tou(c) - c.dmg) * 0.7;
@@ -1390,6 +1392,8 @@ function dmgMod(G, src, victim, n) {
     // Hawkeye, Young Avenger: noncombat damage to an opponent or their permanents gets +X (his power)
     const sc = src.ctrl != null ? src.ctrl : src.owner;
     if (!G.combatDmg && sc != null && victim !== sc && G.players[sc]) for (const h of G.players[sc].bf) if (h.def.noncombatPlus && isCreature(h)) n += Math.max(0, pow(h));
+    // Artist's Talent at level 3: noncombat damage to an opponent or their permanents gets +2
+    if (!G.combatDmg && sc != null && victim !== sc && G.players[sc]) for (const h of G.players[sc].bf) if (h.def.dmgBoost) n += h.def.dmgBoost(G, h) || 0;
     if (sc != null && victim !== sc && G.players[sc]) for (const h of G.players[sc].bf) if (h.def.dmgPlusOne && h !== src) n += 1;
   }
   return n;
@@ -1848,6 +1852,8 @@ function manaSources(P, purpose) {
     const boostC = isLand(c) ? P.bf.filter((x) => x.def.cBoost).length : 0;
     if (isLand(c) && ctrCount(c, 'blight')) { if (!c.tapped) out.push({ c, colors: ['C'], amount: 1 + boostC, tap: true }); continue; }
     if (forArt && isCreature(c) && !c.tapped && (c.def.colors.includes('U') || (c.tf && c.tf.blue))) { out.push({ c, colors: ['C'], amount: 2, tap: true }); continue; }
+    // Badgermole Cub: a creature you tap for mana adds an additional {G}
+    const cub = isCreature(c) && !c.tapped && !sick ? P.bf.filter((x) => x.def.creatureManaPlus).length : 0;
     if (c.def.mana && !c.tapped && !sick) {
       const two = c.def.mana.length === 2 && c.def.mana[0] === 'C' && c.def.mana[1] === 'C';
       const onlyC = two || (c.def.mana.length === 1 && c.def.mana[0] === 'C');
@@ -1857,7 +1863,8 @@ function manaSources(P, purpose) {
         if (islands && !c.def.mana.includes('U') && !plus.includes('U')) plus.push('U');
         if (landAuras) for (const a of landAuras) if (a.att === c.id) { extra += a.def.landMana.n; if (!c.def.mana.includes(a.def.landMana.col) && !plus.includes(a.def.landMana.col)) plus.push(a.def.landMana.col); }
       }
-      out.push({ c, colors: two ? ['C'] : plus.length ? c.def.mana.concat(plus) : c.def.mana, amount: (two ? 2 : 1) + (onlyC ? boostC : 0) + extra, tap: true });
+      if (cub && !c.def.mana.includes('G') && !plus.includes('G')) plus.push('G');
+      out.push({ c, colors: two ? ['C'] : plus.length ? c.def.mana.concat(plus) : c.def.mana, amount: (two ? 2 : 1) + (onlyC ? boostC : 0) + extra + cub, tap: true });
       continue;
     }
     if (c.def.manaAbs) {
@@ -1876,6 +1883,7 @@ function manaSources(P, purpose) {
         const rank = (x) => x.colors.length * 2 + x.amount * 3 - x.conv * 3 - (x.painOnColor ? 0 : x.life) - (x.sac ? 4 : 0);
         if (!best || rank(src) > rank(best)) best = src;
       }
+      if (best && cub && best.tap) { best.amount += cub; if (!best.colors.includes('G')) best.colors = best.colors.concat('G'); }
       if (best) {
         // A converter (Surveillance Room: {1}, {T}: any color) can still just tap for its free mana ({T}: Add {C})
         if (best.conv) for (const ab of c.def.manaAbs) { if (ab.conv || ab.only || ab.life || ab.sac || ab.tap === false || ab.cond || ab.amountFn || ab.colorsFn) continue; best.free = { colors: ab.colors, amount: ab.amount || 1 }; break; }
@@ -3016,7 +3024,7 @@ function freeCastFromHand(G, P, maxMv, label) {
 }
 function evalFree(G, P, card) {
   const d = card.def;
-  const options = d.modes ? modeChoices(G, P, d) : [null];
+  const options = d.modes ? modeChoices(G, P, d, card) : [null];
   let best = null;
   for (const mode of options) { const ch = chooseTargets(G, P, spellEffects(d, mode), 'main2', card, { x: 0 }); if (ch && (!best || ch.score > best.score)) best = { score: ch.score, targets: ch.targets, mode }; }
   return best;
@@ -3036,7 +3044,7 @@ function castNow(G, P, card, opts = {}) {
   let mode = null, targets = [], x = 0;
   if (isHuman(G, P)) {
     if (opts.ask !== false && !yesNo(G, P, card, `Cast ${d.name}${free ? ' without paying its mana cost' : ''}?`, true)) return false;
-    if (d.modes) { const ms = modeChoices(G, P, d).filter((m) => free || canPay(P, castCost(P, card, [], 0, m), { def: d, anyType: !!opts.anyType })); if (!ms.length) return false; mode = ms[chooseMode(G, P, card, `${d.name}: choose`, ms.map((m) => m.map((i) => d.modes[i].label).join(' and ')), 0)]; }
+    if (d.modes) { const ms = modeChoices(G, P, d, card).filter((m) => free || canPay(P, castCost(P, card, [], 0, m), { def: d, anyType: !!opts.anyType })); if (!ms.length) return false; mode = ms[chooseMode(G, P, card, `${d.name}: choose`, ms.map((m) => m.map((i) => d.modes[i].label).join(' and ')), 0)]; }
     if (isIS(d)) { const eff = spellEffects(d, mode); targets = eff.some(needsTarget) ? (askTargets(G, P, card, eff, {}) || eff.map(() => null)) : eff.map(() => null); }
   } else {
     if (isIS(d)) { const r = free ? evalFree(G, P, card) : evalCast(G, P, card, 'main2'); if (!r || r.score <= 0.3) return false; mode = r.mode; targets = r.targets; x = r.x || 0; }
@@ -3126,6 +3134,7 @@ function threatOf(G, O, item) {
     else if (e.k === 'draw') s += e.n * 1.1;
     else if (e.k === 'tokens') s += effectValue(e);
     else if (e.k === 'drain') s += O.life <= e.n ? 100 : 1;
+    else if (e.k === 'fn' && e.value != null) s += Math.max(0, e.value); // a scripted effect: what it says it's worth
   });
   return s;
 }
@@ -3275,6 +3284,9 @@ function addCostOptions(G, P, card, mode, over) {
   if (a.reveal) { const c = P.hand.find((x) => x !== card && x.def.sub.includes(a.reveal)); if (c) out.push({ behold: c }); }
   if (a.discard) { if (P.hand.filter((c) => c !== card).length >= a.discard) out.push({ discard: a.discard }); }
   if (a.orPay) out.push({ pay: a.orPay });
+  if (a.life && P.life > a.life) out.push({ life: a.life });
+  if (a.blight) for (const c of P.bf) if (isCreature(c)) out.push({ blight: c });
+  if (a.evidence && P.gy.reduce((t, c) => t + (c.def.mv || 0), 0) >= a.evidence) out.push({ evidence: a.evidence });
   if (a.pay && canPayBoth(P, castCost(P, card, [], 0, mode), a.pay)) out.push({ pay: a.pay });
   if (a.teamwork && twPower(P) >= a.teamwork) out.push({ teamwork: a.teamwork });
   if (a.behold) { const c = P.bf.find((x) => isCreature(x) && hasSub(x, a.behold)) || P.hand.find((x) => x !== card && x.def.types.includes('Creature') && x.def.sub.includes(a.behold)); if (c) out.push({ behold: c }); }
@@ -3294,12 +3306,25 @@ function aiAddCost(G, P, card, mode, over) {
     else if (o.pay) s = canPayBoth(P, card.def.cost, o.pay) ? costMV(o.pay) * 0.45 : Infinity;
     else if (o.teamwork) { const tp = twPick(G, P, o.teamwork); if (tp) { o.tw = tp.cs; s = Math.max(0, tp.pain); } else s = Infinity; }
     else if (o.behold) s = 0;
+    else if (o.life) s = o.life * (P.life <= 8 ? 0.9 : 0.35);
+    else if (o.blight) s = (tou(o.blight) - o.blight.dmg <= 1 ? pv(G, o.blight) : 0.3 + cv(o.blight) * 0.08) - (o.blight.token ? 0.2 : 0);
+    else if (o.evidence) { o.pick = evidencePick(G, P, o.evidence, card); s = o.pick ? o.pick.reduce((t, c) => t + (c.def.flashback || c.def.gyActs ? 0.8 : 0.1), 0) : Infinity; }
     else if (o.sacs) { o.pick = o.sacs.slice().sort((x, y) => pv(G, x) - pv(G, y) || x.id - y.id).slice(0, o.n); s = o.pick.reduce((t, c) => t + pv(G, c) + (c.token ? -0.6 : 0), 0); }
     else if (o.tapArt) s = (o.tapArt.def.mana || o.tapArt.def.manaAbs ? 1 : 0.2) + (isCreature(o.tapArt) ? 0.5 : 0);
     else if (o.tapCres) { o.pick = o.tapCres.slice().sort((x, y) => (x.def.mana || x.def.manaAbs ? 1 : 0) - (y.def.mana || y.def.manaAbs ? 1 : 0) || cv(x) - cv(y)).slice(0, o.n); s = o.pick.reduce((t, c) => t + 0.3 + (c.def.mana || c.def.manaAbs ? 0.8 : 0) + (G.active === P.i && (G.phase === 'main1') && !c.sick ? cv(c) * 0.15 : 0), 0); }
     if (s < bs) { bs = s; best = o; }
   }
   return bs === Infinity ? null : Object.assign({ pain: bs }, best);
+}
+// Collect evidence N: exile cards with total mana value N or more from your graveyard (the AI keeps what it can still use)
+function evidencePick(G, P, n, card) {
+  const cs = P.gy.filter((c) => c !== card).sort((a, b) => ((a.def.flashback || a.def.gyActs ? 1 : 0) - (b.def.flashback || b.def.gyActs ? 1 : 0)) || b.def.mv - a.def.mv);
+  const pick = [];
+  let tot = 0;
+  for (const c of cs) { if (tot >= n) break; if (!c.def.mv) continue; pick.push(c); tot += c.def.mv; }
+  // drop the cards not needed after all
+  for (const c of pick.slice().sort((a, b) => a.def.mv - b.def.mv)) if (tot - c.def.mv >= n) { pick.splice(pick.indexOf(c), 1); tot -= c.def.mv; }
+  return tot >= n ? pick : null;
 }
 function payAddCost(G, P, card, choice, item, mode, over) {
   if (!(over || acOf(card.def, mode)) || !choice) return true;
@@ -3335,6 +3360,23 @@ function payAddCost(G, P, card, choice, item, mode, over) {
     if (!onBf(G, choice.tapArt) || choice.tapArt.tapped) return false;
     choice.tapArt.tapped = true;
     emit(G, 'tapfx', `${P.name} taps ${choice.tapArt.def.name} to cast ${card.def.name}.`, { who: P.i, cards: [choice.tapArt.id] });
+  } else if (choice.life) {
+    if (P.life <= choice.life) return false;
+    P.life -= choice.life;
+    noteLoss(G, P, choice.life);
+    emit(G, 'life', `${P.name} pays ${choice.life} life to cast ${card.def.name}.`, { who: P.i, target: `p${P.i}`, amount: choice.life });
+  } else if (choice.blight) {
+    if (!onBf(G, choice.blight)) return false;
+    item.kicked = true;
+    emit(G, 'pump', `${P.name} blights ${choice.blight.def.name} to cast ${card.def.name}.`, { who: P.i, cards: [choice.blight.id] });
+    addCounters(G, choice.blight, 1, '-1/-1', true);
+  } else if (choice.evidence) {
+    const pick = (choice.pick || evidencePick(G, P, choice.evidence, card) || []).filter((c) => P.gy.includes(c));
+    if (pick.reduce((t, c) => t + (c.def.mv || 0), 0) < choice.evidence) return false;
+    item.kicked = true;
+    for (const c of pick) { P.gy.splice(P.gy.indexOf(c), 1); P.exile.push(c); }
+    dirty(G);
+    emit(G, 'exile', `${P.name} collects evidence: ${nameList(pick)}.`, { who: P.i, cards: pick.map((c) => c.id) });
   } else if (choice.behold) {
     item.kicked = true;
     emit(G, 'info', `${P.name} beholds ${choice.behold.def.name}.`, { who: P.i, cards: [choice.behold.id] });
@@ -3351,6 +3393,13 @@ function humanAddCost(G, P, card, mode, over) {
   const tws = opts.filter((o) => o.teamwork);
   if (tws.length) { const cs = humanTwPick(G, P, card, tws[0].teamwork); return cs ? { teamwork: tws[0].teamwork, tw: cs } : null; }
   if (opts.some((o) => o.behold)) return opts.find((o) => o.behold);
+  const lifeO = opts.find((o) => o.life);
+  if (lifeO && discards.length) return chooseMode(G, P, card, `${card.def.name}: pay the extra cost`, ['Discard a card', `Pay ${lifeO.life} life`], 0) === 1 ? lifeO : discards[0];
+  if (lifeO) return lifeO;
+  const bl = opts.filter((o) => o.blight).map((o) => o.blight);
+  if (bl.length) return { blight: bl.length === 1 ? bl[0] : pickCards(G, { type: 'choose', reason: 'blight-cost', n: 1, min: 1, max: 1, zone: 'battlefield', cards: bl.map((c) => c.id), label: `${card.def.name}: blight 1 (a -1/-1 counter)` }, bl, 1)[0] };
+  const ev = opts.find((o) => o.evidence);
+  if (ev) { const cs = P.gy.slice(); const pick = pickCards(G, { type: 'choose', reason: 'evidence', n: cs.length, min: 1, max: cs.length, zone: 'graveyard', cards: cs.map((c) => c.id), need: ev.evidence, label: `${card.def.name}: collect evidence ${ev.evidence} (total mana value)` }, cs, null).slice(); let tot = pick.reduce((t, c) => t + (c.def.mv || 0), 0); for (const c of cs.slice().sort((a, b) => b.def.mv - a.def.mv)) { if (tot >= ev.evidence) break; if (!pick.includes(c)) { pick.push(c); tot += c.def.mv || 0; } } return { evidence: ev.evidence, pick }; }
   const multi = opts.find((o) => o.sacs);
   if (multi) { const pick = pickCards(G, { type: 'choose', reason: 'sacrifice-cost', n: multi.n, min: multi.n, max: multi.n, zone: 'battlefield', cards: multi.sacs.map((c) => c.id), label: card.def.name }, multi.sacs, multi.n); return { sacs: multi.sacs, n: multi.n, pick }; }
   const tapc = opts.find((o) => o.tapCres);
@@ -3466,7 +3515,8 @@ function toOwnerGy(G, card) {
   if (card.fbExile) { card.fbExile = false; G.players[card.owner].exile.push(card); return; }
   G.players[card.owner].gy.push(card);
 }
-const modeText = (def, mode) => (def.modes && mode && def.modes.length > 1 ? ` (${mode.map((k) => (def.modes[k].label || '').replace(/ \(\+.*\)$/, '')).filter(Boolean).join(', ')})` : '');
+// A mode can carry a shorter note for the log (log: '' says nothing: "casts Pawpatch Recruit.")
+const modeText = (def, mode) => { if (!(def.modes && mode && def.modes.length > 1)) return ''; const t = mode.map((k) => { const m = def.modes[k]; return (m.log != null ? m.log : m.label || '').replace(/ \(\+.*\)$/, ''); }).filter(Boolean).join(', '); return t ? ` (${t})` : ''; };
 // An adventurer card: cast the adventure from hand; when it resolves the card is exiled and its land can be played later
 function castAdventure(G, P, card, targets, opts = {}) {
   const land = card.def;
@@ -4047,7 +4097,7 @@ function evalCast(G, P, card, ctx) {
   // A permanent with a choice as it's cast (kicker): the best affordable option, by its mode's ai bonus
   let pmode = null, pbonus = 0;
   if (def.modes && isPermanentSpell(def)) {
-    for (const m of modeChoices(G, P, def)) {
+    for (const m of modeChoices(G, P, def, card)) {
       if (!canPay(P, castCost(P, card, [], x, m), purpose)) continue;
       const md = def.modes[m[0]], b = md.ai ? md.ai(G, P, card) : 0;
       if (b == null) continue;
@@ -4081,7 +4131,7 @@ function evalCast(G, P, card, ctx) {
     return s - pain > 0.5 ? Object.assign({ score: s - pain, targets, x }, pmode ? { mode: pmode } : null) : null;
   }
   // Instants and sorceries; a modal spell tries each choice of modes
-  const options = def.modes ? modeChoices(G, P, def) : [null];
+  const options = def.modes ? modeChoices(G, P, def, card) : [null];
   let pick = null;
   for (const mode of options) {
     if (mode && def.modes.some((m) => m.cost) && !canPay(P, castCost(P, card, [], x, mode), purpose)) continue;
@@ -4108,13 +4158,18 @@ function evalCast(G, P, card, ctx) {
     if (per.hold >= 0.6 && s < 4) return null; // control saves instants for the opponent's turn
   }
   if (pick.eff.some((e) => e.k === 'draw' || e.k === 'loot') && isInstantSpeed(def) && ctx !== 'end') s -= 1.5;
+  // Holding up a counterspell: a deck that plays them doesn't tap below the mana for its cheapest answer without a good reason
+  if ((ctx === 'main1' || ctx === 'main2') && per.hold >= 0.45 && other(G, P).hand.length && s < 6) {
+    const ans = P.hand.filter((c) => c !== card && (c.def.respond || (c.def.spell && c.def.spell.some((e) => e.k === 'counter'))) && canPay(P, castCost(P, c), { def: c.def }));
+    if (ans.length) { const cheap = ans.sort((a, b) => a.def.mv - b.def.mv)[0]; if (!canPayBoth(P, castCost(P, card, ch.targets, x, pick.mode), castCost(P, cheap))) s -= per.hold * 1.6; }
+  }
   if (def.castScore) s += def.castScore(G, P, card, ctx);
   return s > 0.3 ? { score: s + def.mv * 0.1, targets: ch.targets, x, mode: pick.mode } : null;
 }
 // Which sets of modes a modal spell could be cast with (choose one, or up to two with a Wizard for Flame of Anor)
-function modeChoices(G, P, def) {
+function modeChoices(G, P, def, card) {
   const n = typeof def.modeN === 'function' ? def.modeN(G, P) : def.modeN || 1;
-  const out = def.modes.map((m, k) => [k]).filter(([k]) => !def.modes[k].cond || def.modes[k].cond(G, P)); // a mode can need a condition (Snuff Out's free cast)
+  const out = def.modes.map((m, k) => [k]).filter(([k]) => !def.modes[k].cond || def.modes[k].cond(G, P, card)); // a mode can need a condition (Snuff Out's free cast; warp only from hand)
   if (n >= 2) for (let i = 0; i < def.modes.length; i++) for (let j = i + 1; j < def.modes.length; j++) out.push([i, j]);
   if (n >= 3) for (let i = 0; i < def.modes.length; i++) for (let j = i + 1; j < def.modes.length; j++) for (let k = j + 1; k < def.modes.length; k++) out.push([i, j, k]);
   return out;
@@ -4638,7 +4693,7 @@ function aiBlocks(G, D, A, attackers) {
       else if (wall.length && !has(a, 'trample')) pick = [wall[0].b];
       else if (trade.length) pick = [trade[0].b];
     }
-    if (!pick && cands.length >= 2 && need <= 2 && !(a.tf && a.tf.maxOne) && !a.def.maxOne && (needTwo || cv(a) >= 4.5)) pick = bestDoubleBlock(G, a, cands);
+    if (!pick && cands.length >= 2 && need <= 2 && !oneBlock(a) && (needTwo || cv(a) >= 4.5)) pick = bestDoubleBlock(G, a, cands);
     if (!pick && need >= 3 && cands.length >= need) { const team = cands.slice().sort((x, y) => dmgOut(y) - dmgOut(x)).slice(0, need); if (team.reduce((t, b) => t + dmgOut(b), 0) >= tou(a) - a.dmg && !has(a, 'indestructible')) pick = team; }
     const cmdLethal = G.format === 'commander' && a.cmdr && dmgOut(a) >= CMD.lethal - (D.cmdDmg[a.id] || 0);
     if (!pick && !needTwo && (incoming >= D.life || cmdLethal || (incoming >= D.life - 3 && G.rng.next() < per.chump))) {
@@ -4823,7 +4878,7 @@ function aiTricks(G, P, role, attackers) {
     if (!live.length) return cast;
     const base = combatValue(G, P, D, live, new Set(), null);
     let best = null;
-    for (const card of P.hand) for (const mode of (card.def.modes && !acOf(card.def, null) ? modeChoices(G, P, card.def) : [null])) {
+    for (const card of P.hand) for (const mode of (card.def.modes && !acOf(card.def, null) ? modeChoices(G, P, card.def, card) : [null])) {
       const d = card.def;
       const spellOf = mode ? spellEffects(d, mode) : d.spell;
       if (mode && acOf(d, mode)) continue;
@@ -5352,7 +5407,7 @@ function humanActions(G, P, when) {
     const cre = d.types.includes('Creature');
     const fromCmd = zone === 'command';
     const where = fromCmd ? ' from the command zone' : zone === 'xcast' ? (P.gy.includes(c) ? ' from your graveyard' : ' from exile') : zone === 'top' ? ' from the top of your library' : zone === 'flashback' ? ` with flashback (${costText(castCost(P, c))})` : zone === 'escape' ? ` with escape (${costText(castCost(P, c))}, exile ${c.def.escape.exile} other cards)` : zone === 'mayhem' ? ` with mayhem (${costText(castCost(P, c))})` : zone === 'gydiscard' ? ' from your graveyard (discard a card)' : zone === 'gycast' ? ' from your graveyard' : '';
-    const modes = d.modes ? modeChoices(G, P, d) : [null];
+    const modes = d.modes ? modeChoices(G, P, d, c) : [null];
     for (const mode of modes) {
       if (mode && d.modes.some((m) => m.cost || m.addCost)) {
         if (!canPay(P, castCost(P, c, [], 0, mode), purpose)) continue;
@@ -5611,7 +5666,7 @@ function forcedBlocks(G, D, attackers, map) {
 function humanBlocks(G, D, A, attackers) {
   const blockers = D.bf.filter((b) => isCreature(b) && !b.tapped && !b.def.cantBlock && !b.noBlock && !(b.sfl && b.sfl.cantBlock) && !(b.tf && b.tf.cantBlock));
   const opts = attackers.map((a) => Object.assign({ id: a.id, menace: has(a, 'menace'), by: blockers.filter((b) => canBlock(G, b, a)).map((b) => b.id) },
-    minBlockers(a) > 2 ? { need: minBlockers(a) } : null, (a.tf && a.tf.maxOne) || a.def.maxOne ? { max: 1 } : null, mustBeBlocked(G, a) ? { lure: true } : null)).filter((o) => o.by.length);
+    minBlockers(a) > 2 ? { need: minBlockers(a) } : null, oneBlock(a) ? { max: 1 } : null, mustBeBlocked(G, a) ? { lure: true } : null)).filter((o) => o.by.length);
   const map = new Map();
   if (!opts.length) return map;
   const ans = ask(G, { type: 'block', attackers: opts, twice: blockers.filter((b) => b.def.blockTwo).map((b) => b.id), any: blockers.filter((b) => b.def.blockAny).map((b) => b.id) });
@@ -5621,7 +5676,7 @@ function humanBlocks(G, D, A, attackers) {
     const a = attackers.find((x) => x.id === aid);
     if (!a || map.has(aid)) continue;
     let bs = (bids || []).map((id) => blockers.find((b) => b.id === id)).filter((b, k, arr) => b && arr.indexOf(b) === k && (!used.has(b) || reBlock(b, twice)) && canBlock(G, b, a));
-    if ((a.tf && a.tf.maxOne) || a.def.maxOne) bs = bs.slice(0, 1);
+    if (oneBlock(a)) bs = bs.slice(0, 1);
     if (!bs.length || bs.length < minBlockers(a)) continue;
     map.set(aid, bs);
     bs.forEach((b) => { if (used.has(b)) twice.add(b); used.add(b); });
@@ -6077,7 +6132,7 @@ return {
     fightCards, biteCards, flicker, flickerVal, goad, bottomFromHand, lookAtTop, revealUntil, freeCastFromHand, castCopyOfCard, exileUntil, returnHeld, addPool, ANY, needsTarget,
     targetList, allTargets, findCard, protectedFrom, historicDef, isPermanentSpell, spellEffects, effsValue, effectValue, castZone, aiScry, pickBasicFrom, putInGraveyard, defMatches, lethalTo,
     canBlock, kills, dmgOut, combatPow, minBlockers, phaseIn, ctrlOf, onBfC: onBf, equipGain, uniqueByName, discardWorst, emptyPool, refFor, tgtOk, castCost, maxX,
-    EFF, abilitiesOf, readyAbilities, activate, aiAbilities, parseEffects, parseKwLine, parseStructural, parseStatic, parseActivated, normalizeText,
+    EFF, abilitiesOf, readyAbilities, activate, canPayBoth, aiAbilities, parseEffects, parseKwLine, parseStructural, parseStatic, parseActivated, normalizeText,
     surveil, transform, blink, meld, castAdventure, addEmblem, castNow, evalCast, modeChoices, auraHost, auraOk, shieldFor, combatDoom, preventVal, redirectDmg, redirectFor, setLookup, lookupDef, conjure, draft, seek, incubate, proliferate, addBoon, unearth, POWERSTONE, REBEL, INCUBATOR, noteLoss, lifeLost, becomeMonarch, isMonarch, monarchVal, vote, chooseCreatureType, creatureTypesOf, cmdIdentity, isCommander, returnControl, checkControl, allIslands, isIsland, regenSave, abilityCost, sneakWindow, teamworkPay, discardsThisTurn, noteDiscard, finishCountered, enteredThisTurn, attackedThisTurn, investigate, connive, shieldSave, CLUE, altFace, reduceCost, twPick, twPower, hexP, landChoices, landLimit, gyPermit, acOf, addCostInto, facesOf, sagaFinal, dmgMod, isInstantSpeed, playLandChoice },
 };
 });
