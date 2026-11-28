@@ -19,6 +19,7 @@
     for (const raw of json.cards) {
       const def = compileCard(raw);
       if (!def.ok) continue;
+      Object.defineProperty(def, '__d', { value: true });
       defs.set(def.id, def);
       if (!byName.has(def.name)) byName.set(def.name, []);
       byName.get(def.name).push(def);
@@ -31,9 +32,11 @@
      2. Seeded randomness
      ============================================================ */
   function makeRng(seed) {
-    let s = (seed >>> 0) || 0x9e3779b9;
-    const next = () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
-    return { next, int: (k) => Math.floor(next() * k), shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(next() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; } };
+    const r = { s: (seed >>> 0) || 0x9e3779b9 };
+    r.next = () => { let s = r.s; s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; r.s = s; return s / 4294967296; };
+    r.int = (k) => Math.floor(r.next() * k);
+    r.shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r.next() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+    return r;
   }
 
   /* ============================================================
@@ -70,13 +73,16 @@
   }
 
   // setup (lessons): { turn, active, players: [{ deck (top first), hand, active: {d, energy, dmg, tool, cond}, bench, prizes (defs or a count), discard, taken }] }
-  function createGame({ decks, seed, pool, human = null, answers = [], record = true, setup = null, first = null }) {
+  // ai: 'normal' or 'hard' for both seats, or one per seat. aiCache: the hard AI's decisions from earlier replays of this game.
+  function createGame({ decks, seed, pool, human = null, answers = [], record = true, setup = null, first = null, ai = 'normal', aiCache = null }) {
     const rng = makeRng(seed == null ? Date.now() : seed);
     const G = { rng, seed, pool, turn: 0, active: 0, first: 0, players: [], frames: [], record, over: false, winner: null, reason: '',
-      nextId: 1, human, answers, qi: 0, setup, stadium: null, stadiumOwner: null, phase: 'setup', forcedFirst: first };
+      nextId: 1, human, answers, qi: 0, setup, stadium: null, stadiumOwner: null, phase: 'setup', forcedFirst: first, aiCache, plan: null };
     decks.forEach((d, i) => {
+      const level = Array.isArray(ai) ? ai[i] : d.ai || ai;
       const P = { i, name: d.name, persona: PERSONAS[d.archetype] ? d.archetype : 'midrange', deck: [], hand: [], discard: [], prizes: [], active: null, bench: [],
-        taken: 0, turns: 0, mulligans: 0, flags: {}, boosts: [], koTurn: -9, stats: { damage: 0, kos: 0, trainers: 0, energy: 0, abilities: 0 } };
+        ai: level === 'hard' ? 'hard' : 'normal', prizeCount: d.prizes || 6,
+        taken: 0, turns: 0, mulligans: 0, flags: {}, boosts: [], koTurn: -9, stats: { damage: 0, kos: 0, trainers: 0, energy: 0, abilities: 0, best: 0 } };
       G.players.push(P);
       const su = setup && setup.players && setup.players[i];
       const mk = (def) => newCard(G, typeof def === 'string' ? pool.get(def) : def, i);
@@ -503,7 +509,7 @@
       return amount;
     }
     target.dmg += amount;
-    if (ctx.P && target.owner !== ctx.P.i) ctx.P.stats.damage += amount;
+    if (ctx.P && target.owner !== ctx.P.i) { ctx.P.stats.damage += amount; if (amount > ctx.P.stats.best) ctx.P.stats.best = amount; }
     emit(G, 'damage', `${label || ''}${amount} damage to ${td.name}.`, { hl: [target.id], hits: [[target.id, amount]] });
     if (ctx.isAttack && isActive(G, target) && target.owner !== ctx.P.i) afterHit(G, ctx, target);
     return amount;
@@ -756,7 +762,7 @@
       }
       case 'switch': {
         if (!P.active || !P.bench.length) break;
-        const b = pickMon(G, P, P.bench, 'switchIn', (m) => promoteScore(G, P, m));
+        const b = pickMon(G, P, P.bench, 'switchIn', (m) => (P.flags.switchTo === m.id ? 1000 : 0) + promoteScore(G, P, m));
         if (b) switchActive(G, P, b);
         break;
       }
@@ -1420,7 +1426,7 @@
     takeFrom(P.hand, choice.active);
     P.active = newMon(G, P, choice.active); P.active.since = -1;
     for (const c of choice.bench) { const m = toBench(G, P, c); m.since = -1; }
-    for (let i = 0; i < 6 && P.deck.length; i++) P.prizes.push(P.deck.pop());
+    for (let i = 0; i < P.prizeCount && P.deck.length; i++) P.prizes.push(P.deck.pop());
   }
   function setupGame(G) {
     const [A, B] = G.players;
@@ -1432,7 +1438,7 @@
     else {
       const winner = G.rng.int(2);
       const W = G.players[winner];
-      const goFirst = isHuman(G, W) ? !!ask(G, { type: 'first', reason: 'coin' }).first : PERSONAS[W.persona].first;
+      const goFirst = isHuman(G, W) ? !!ask(G, { type: 'first', reason: 'coin' }).first : W.ai === 'hard' || PERSONAS[W.persona].first;
       first = goFirst ? winner : 1 - winner;
       emit(G, 'coin', `${W.name} wins the coin flip and chooses to go ${goFirst ? 'first' : 'second'}.`, { who: W.i });
     }
@@ -1528,7 +1534,7 @@
       case 'stadium': useStadium(G, P); return;
       case 'retreat': {
         const old = P.active;
-        const b = pickMon(G, P, P.bench, 'retreatTo', (x) => promoteScore(G, P, x));
+        const b = pickMon(G, P, P.bench, 'retreatTo', (x) => (P.flags.switchTo === x.id ? 1000 : 0) + promoteScore(G, P, x));
         const cost = retreatCost(G, old);
         if (cost) {
           const chosen = pickCards(G, P, old.energy.slice(), cost, cost, 'retreatCost', (x) => x.sort((p, q) => (needs(old).includes(p.def.provides) ? 1 : 0) - (needs(old).includes(q.def.provides) ? 1 : 0)), { mon: old.id });
@@ -1647,6 +1653,186 @@
     });
     return worst >= hpLeft(G, m);
   }
+  /* ---------- The hard AI: plan the turn on copies of the game ----------
+     The normal AI makes each choice by rules of thumb. The hard AI first plays its turn out on copies of the game: the
+     normal turn, and turns that differ in one choice (another Supporter, another Energy target, switching or staying,
+     another gust target or attack), each followed by the opponent's reply. It can't see hidden cards: in every copy the
+     opponent's hand, both decks and both sets of Prize cards are reshuffled from what it doesn't know. It then plays the
+     line that left it best placed on average. */
+  // A choice among options listed best first. Options are named (a card, a Pokémon, a target), so a plan means the same
+  // choice in every copy of the game; skip adds "none". Without a plan, or when the planned option isn't there, the first.
+  function optKey(P, x) {
+    if (x == null) return '-';
+    if (typeof x !== 'object') return String(x);
+    if (x.def) return x.def.name;
+    if (x.stack) return 'm' + x.id;
+    if (x.k) { const c = x.c != null ? P.hand.find((h) => h.id === x.c) : null; return `${x.k}:${c ? c.def.name : ''}>${x.m != null ? x.m : ''}`; }
+    return '?';
+  }
+  function planPick(G, P, tag, list, skip) {
+    if (!list.length) return null;
+    if (G.planFor !== P.i) return list[0];
+    const occ = G.planUse[tag] || 0;
+    G.planUse[tag] = occ + 1;
+    if (G.planLog) G.planLog.push({ tag, occ, keys: list.map((x) => optKey(P, x)).concat(skip ? ['-'] : []) });
+    const want = G.plan && G.plan[tag] && G.plan[tag][occ];
+    if (want == null) return list[0];
+    if (want === '-') return skip ? null : list[0];
+    const hit = list.find((x) => optKey(P, x) === want);
+    return hit !== undefined ? hit : list[0];
+  }
+  // A copy of the game to try things on. Card definitions and the pool are shared; nothing is recorded.
+  function cloneGame(G) {
+    const seen = new Map();
+    const cp = (x, key) => {
+      if (x === null || typeof x !== 'object') return x;
+      if (key === 'pool' || key === 'setup' || key === 'answers' || key === 'aiCache' || x.__d) return x;
+      if (key === 'frames') return [];
+      if (seen.has(x)) return seen.get(x);
+      if (Array.isArray(x)) { const a = new Array(x.length); seen.set(x, a); for (let i = 0; i < x.length; i++) a[i] = cp(x[i]); return a; }
+      if (x instanceof Map || x instanceof Set) { const y = new x.constructor(x); seen.set(x, y); return y; }
+      if (typeof x.next === 'function' && typeof x.s === 'number') { const r = makeRng(1); r.s = x.s; seen.set(x, r); return r; }
+      const o = {};
+      seen.set(x, o);
+      for (const k in x) o[k] = cp(x[k], k);
+      return o;
+    };
+    const C = cp(G);
+    C.record = false; C.human = null; C.sim = true; C.plan = null; C.planLog = null; C.planUse = {};
+    return C;
+  }
+  // Reshuffles what player i can't see: the opponent's hand, deck and Prize cards together, and its own deck and Prize cards.
+  function determinize(C, i, seed) {
+    const r = makeRng(seed);
+    const me = C.players[i], O = C.players[1 - i];
+    const theirs = r.shuffle(O.hand.concat(O.deck, O.prizes));
+    const h = O.hand.length, z = O.prizes.length;
+    O.hand = theirs.slice(0, h); O.prizes = theirs.slice(h, h + z); O.deck = theirs.slice(h + z);
+    const mine = r.shuffle(me.deck.concat(me.prizes));
+    const z2 = me.prizes.length;
+    me.prizes = mine.slice(0, z2); me.deck = mine.slice(z2);
+    C.rng = simRng(C, seed);
+  }
+  // In a copy, chance (coins, shuffles) starts afresh each turn from the copy's seed, so lines that differ in one choice
+  // still meet the same luck on later turns and can be compared fairly
+  const mix32 = (x) => { x ^= x >>> 16; x = Math.imul(x, 0x85ebca6b); x ^= x >>> 13; x = Math.imul(x, 0xc2b2ae35); x ^= x >>> 16; return x >>> 0; };
+  function simRng(C, seed) {
+    const r = makeRng(seed), step = r.next;
+    let at = null;
+    r.next = () => { if (C.turn !== at) { at = C.turn; r.s = mix32((seed ^ Math.imul(C.turn + 1, 0x9e3779b1)) >>> 0) || 1; } return step(); };
+    return r;
+  }
+  // How good a position is for player i: Prize cards above all, then the board, then who threatens a Knock Out.
+  function evalPos(G, i) {
+    if (G.over) return G.winner === i ? 100000 : G.winner == null ? 0 : -100000;
+    const P = G.players[i], O = G.players[1 - i];
+    let v = 150 * (O.prizes.length - P.prizes.length);
+    const side = (Q) => mons(Q).reduce((s2, m) => {
+      const d = top(m), hp = maxHp(G, m) || 1, left = Math.max(0, hp - m.dmg);
+      return s2 + 24 * (left / hp) * d.prizes + 7 * m.energy.length + 6 * d.stage + (m.tool ? 3 : 0);
+    }, 0);
+    v += side(P) - side(O);
+    if (P.active && O.active) {
+      const mine = bestAttackOn(G, P, P.active, O.active);
+      if (mine.ko) v += 45 * top(O.active).prizes; else if (mine.i >= 0) v += 8;
+      const theirs = bestAttackOn(G, O, O.active, P.active);
+      if (theirs.ko) v -= 45 * top(P.active).prizes;
+    }
+    if (!P.bench.length) v -= 40;
+    if (!O.bench.length) v += 25;
+    v += 2.5 * Math.min(P.hand.length, 8) - 2 * Math.min(O.hand.length, 8);
+    if (P.deck.length < 5) v -= 12 * (5 - P.deck.length);
+    return v;
+  }
+  function hashStr(str) { let h = 2166136261; for (let k = 0; k < str.length; k++) { h ^= str.charCodeAt(k); h = Math.imul(h, 16777619); } return h >>> 0; }
+  // screen: every line is first tried briefly; the most promising ones are then played out in full against more shuffles
+  const HARD = { samples: 16, alts: 3, cands: 10, depth: 40, z: 1, win: 1000, pairs: 2, screen: { samples: 6, depth: 2, keep: 3 } };
+  // Only choices that can't all be made in the same turn are worth trying another way
+  const VARY = { supporter: 1, energy: 1, gust: 1, attack: 1, switch: 1, switchTo: 1, bench: 1 };
+  function searchPlan(G, P) {
+    const base = hashStr(`${G.seed}:${G.turn}:${P.i}:${G.qi}`);
+    // its turn, then the opponent's reply, its own next turn and so on, up to `depth` turns on
+    const turnOut = (C, depth) => {
+      aiTurn(C, C.players[P.i]);
+      for (let t = 0; t < depth && !C.over; t++) {
+        endTurn(C);
+        if (C.over) return;
+        startTurn(C);
+        if (C.over) return;
+        aiTurn(C, C.players[C.active]);
+      }
+      if (!C.over) endTurn(C);
+    };
+    const value = (C) => C.over ? (C.winner === P.i ? 1 : C.winner == null ? 0 : -1) * HARD.win : evalPos(C, P.i);
+    // The normal line, to see which choices this turn has
+    const probe = cloneGame(G);
+    determinize(probe, P.i, base);
+    probe.planFor = P.i; probe.planLog = []; probe.planUse = {}; probe.plan = {};
+    aiTurn(probe, probe.players[P.i]);
+    let plans = [null];
+    for (const d of probe.planLog) {
+      if (d.keys.length < 2 || !VARY[d.tag]) continue;
+      // benching another Basic first changes little; not benching at all might
+      const alts = d.tag === 'bench' ? d.keys.slice(-1) : d.keys.slice(1, 1 + HARD.alts);
+      for (const key of alts) {
+        if (plans.length >= HARD.cands) break;
+        plans.push({ [d.tag]: { [d.occ]: key } });
+      }
+    }
+    if (HARD.trace) HARD.trace.plans += plans.length;
+    if (plans.length === 1) return {};
+    // every line meets the same shuffles of the unknown cards
+    const tryAll = (list, samples, depth, salt) => {
+      const vals = list.map(() => []);
+      for (let sN = 0; sN < samples; sN++) {
+        const seed = mix32((base + sN * 7919 + salt) >>> 0);
+        list.forEach((plan, k) => {
+          const C = cloneGame(G);
+          determinize(C, P.i, seed);
+          C.planFor = P.i; C.plan = plan || {}; C.planUse = {};
+          try { turnOut(C, depth); } catch (e) { if (!(e instanceof NeedInput)) throw e; }
+          vals[k].push(value(C));
+        });
+      }
+      // each line against the normal one, shuffle by shuffle
+      return vals.map((v) => {
+        const d = v.map((x, i) => x - vals[0][i]);
+        const n = d.length, mean = d.reduce((a, b) => a + b, 0) / n;
+        const sd = Math.sqrt(d.reduce((a, b) => a + (b - mean) * (b - mean), 0) / Math.max(1, n - 1));
+        return { mean, lower: mean - HARD.z * sd / Math.sqrt(n) };
+      });
+    };
+    if (HARD.screen && plans.length > HARD.screen.keep + 1) {
+      const quick = tryAll(plans, HARD.screen.samples, HARD.screen.depth, 0);
+      const order = plans.map((p, k) => k).slice(1).sort((a, b) => quick[b].mean - quick[a].mean).slice(0, HARD.screen.keep);
+      const top3 = order.map((k) => plans[k]);
+      // two changes together, when they are about different choices (an Energy for the Pokémon it switches to, say)
+      const pairs = [];
+      if (HARD.pairs) for (let a = 0; a < top3.length; a++) for (let b = a + 1; b < top3.length; b++) {
+        const ta = Object.keys(top3[a])[0], tb = Object.keys(top3[b])[0];
+        if (ta !== tb && quick[order[a]].mean > 0 && quick[order[b]].mean > 0) pairs.push({ ...top3[a], ...top3[b] });
+      }
+      plans = [null].concat(top3, pairs.slice(0, HARD.pairs || 0));
+    }
+    // a line replaces the normal one only when it does better by more than the luck of the shuffles could explain
+    const res = tryAll(plans, HARD.samples, HARD.depth, 104729);
+    let best = {}, bv = 0;
+    for (let k = 1; k < plans.length; k++) if (res[k].mean > 0 && res[k].lower > bv) { bv = res[k].lower; best = plans[k]; }
+    if (HARD.trace) { const t = Object.keys(best)[0] || 'normal'; HARD.trace[t] = (HARD.trace[t] || 0) + 1; }
+    if (HARD.log && Object.keys(best).length) {
+      const tag = Object.keys(best)[0], occ = Object.keys(best[tag])[0], d = probe.planLog.find((x) => x.tag === tag && String(x.occ) === occ);
+      HARD.log.push({ turn: G.turn, me: P.name, vs: opp(G, P).name, tag, normal: d && d.keys[0], chosen: best[tag][occ], gain: Math.round(bv), keys: d && d.keys });
+    }
+    return best;
+  }
+  function hardTurn(G, P) {
+    const key = `${G.turn}:${P.i}:${G.qi}:${hashStr(JSON.stringify(G.answers.slice(0, G.qi)))}`;
+    let plan = G.aiCache ? G.aiCache[key] : null;
+    if (!plan) { plan = searchPlan(G, P); if (G.aiCache) G.aiCache[key] = plan; }
+    G.plan = plan; G.planFor = P.i; G.planUse = {};
+    try { aiTurn(G, P); } finally { G.plan = null; G.planFor = null; }
+  }
+
   function aiTurn(G, P) {
     const O = opp(G, P);
     const persona = PERSONAS[P.persona];
@@ -1660,7 +1846,7 @@
       // 1. Basic Pokémon onto the Bench
       const benches = has('bench');
       if (benches.length && P.bench.length < persona.bench) {
-        const best = benches.map((a) => card(a.c)).sort((a, b) => cardNeed(G, P, b.def) - cardNeed(G, P, a.def))[0];
+        const best = planPick(G, P, 'bench', benches.map((a) => card(a.c)).sort((a, b) => cardNeed(G, P, b.def) - cardNeed(G, P, a.def)), true);
         if (best && act({ k: 'bench', c: best.id })) { did = true; continue; }
       }
       // 2. Evolve (Rare Candy first when it skips a Stage)
@@ -1696,11 +1882,15 @@
       // 4. Items that find things
       const items = has('play', (a) => card(a.c).def.trainer === 'item');
       const useful = items.map((a) => [a, itemValue(G, P, card(a.c))]).filter(([, v]) => v > 0).sort((x, y) => y[1] - x[1]);
-      if (useful.length) { act(useful[0][0]); did = true; continue; }
+      if (useful.length) { const it = planPick(G, P, 'item', useful.map((x) => x[0]), false); act(it); did = true; continue; }
       // 5. A Supporter that draws or searches (gusts wait for the attack)
-      if (P.flags.supporter !== G.turn) {
+      if (P.flags.supporter !== G.turn && P.flags.skipSup !== G.turn) {
         const sups = has('play', (a) => card(a.c).def.trainer === 'supporter').map((a) => [a, supporterValue(G, P, card(a.c))]).filter(([, v]) => v > 0).sort((x, y) => y[1] - x[1]);
-        if (sups.length) { act(sups[0][0]); did = true; continue; }
+        if (sups.length) {
+          const sp = planPick(G, P, 'supporter', sups.map((x) => x[0]), true);
+          if (sp) { act(sp); did = true; continue; }
+          P.flags.skipSup = G.turn;
+        }
       }
       // 6. Stadium
       const st = has('play', (a) => card(a.c).def.trainer === 'stadium');
@@ -1718,10 +1908,11 @@
     // 8. Energy
     const ens = actions(G, P).filter((a) => a.k === 'energy');
     if (ens.length) {
-      let best = null, bv = -Infinity;
-      for (const a of ens) { const v = energyTargetScore(G, P, findMon(G, a.m), card(a.c).def) + cardNeed(G, P, card(a.c).def) * 0.05; if (v > bv) { bv = v; best = a; } }
+      const scored = ens.map((a, k) => [a, energyTargetScore(G, P, findMon(G, a.m), card(a.c).def) + cardNeed(G, P, card(a.c).def) * 0.05, k]).sort((x, y) => y[1] - x[1] || x[2] - y[2]);
       const handFuel = mons(P).some((x) => energyAppetite(top(x)) === 'hand');
-      if (best && bv > (handFuel ? 2 : -1)) act(best);
+      const ok = scored.filter(([, v]) => v > (handFuel ? 2 : -1)).map((x) => x[0]);
+      const pick = ok.length ? planPick(G, P, 'energy', ok, true) : null;
+      if (pick) act(pick);
     }
     if (G.over) return;
     // second pass for things the energy unlocked (abilities, items)
@@ -1828,23 +2019,24 @@
     const A = P.active;
     if (!A || !P.bench.length) return;
     const O = opp(G, P);
+    if (!O.active) return;
     const here = bestAttack(G, P);
     const stuck = here.i < 0 || A.cond.r === 'asleep' || A.cond.r === 'paralyzed';
-    let best = null, bv = -Infinity;
-    for (const b of P.bench) {
-      if (!O.active) continue;
-      const e = bestAttackOn(G, P, b, O.active);
-      const v = e.i >= 0 ? e.score : -50 + promoteScore(G, P, b);
-      if (v > bv) { bv = v; best = b; }
-    }
-    if (!best) return;
+    const ranked = P.bench.map((b) => { const e = bestAttackOn(G, P, b, O.active); return [b, e.i >= 0 ? e.score : -50 + promoteScore(G, P, b)]; }).sort((x, y) => y[1] - x[1]);
+    const bv = ranked[0][1];
     const gain = bv - (stuck ? -40 : here.score);
     const doomed = threatened(G, P, A) && top(A).prizes >= 2 && P.bench.some((b) => top(b).prizes < top(A).prizes);
     const want = gain > 25 * PERSONAS[P.persona].hold || (stuck && bv > -20) || (doomed && here.score < 100);
-    if (!want) return;
+    // the hard AI may also try staying put when it would move, or moving when it would stay
+    const moveIt = planPick(G, P, 'switch', want ? ['move', 'stay'] : ['stay', 'move'], false) === 'move';
+    if (!moveIt || !(canRetreat(G, P) || P.hand.some((c) => c.def.trainer === 'item' && c.def.fx && c.def.fx.length === 1 && c.def.fx[0].k === 'switch'))) return;
+    // and bring in another Pokémon than the one that hits hardest
+    const to = planPick(G, P, 'switchTo', ranked.map((x) => x[0]), false);
+    P.flags.switchTo = to.id;
     const sw = P.hand.find((c) => c.def.trainer === 'item' && c.def.fx && c.def.fx.length === 1 && c.def.fx[0].k === 'switch' && trainerPlayable(G, P, c));
-    if (sw && (!canRetreat(G, P) || retreatCost(G, A) >= 1)) { doAction(G, P, { k: 'play', c: sw.id }); return; }
-    if (canRetreat(G, P) && (retreatCost(G, A) <= 1 || stuck || gain > 60)) doAction(G, P, { k: 'retreat' });
+    if (sw && (!canRetreat(G, P) || retreatCost(G, A) >= 1)) doAction(G, P, { k: 'play', c: sw.id });
+    else if (canRetreat(G, P) && (retreatCost(G, A) <= 1 || stuck || gain > 60 || (G.plan && !want))) doAction(G, P, { k: 'retreat' });
+    P.flags.switchTo = null;
   }
   function aiGustAndAttack(G, P) {
     const O = opp(G, P);
@@ -1854,9 +2046,18 @@
     const gusts = actions(G, P).filter((a) => a.k === 'play' && card(a.c).def.fx && card(a.c).def.fx.some((f) => f.k === 'gust' || (f.k === 'flip' && f.heads.some((g) => g.k === 'gust'))));
     if (gusts.length && O.bench.length && P.active && here.i >= 0) {
       let target = null, tv = here.ko ? 100 * top(O.active).prizes : 0;
+      const ko = [];
       for (const b of O.bench) {
         const e = bestAttackOn(G, P, P.active, b);
+        if (e.ko) ko.push([b, 100 * top(b).prizes * PERSONAS[P.persona].gust]);
         if (e.ko && 100 * top(b).prizes * PERSONAS[P.persona].gust > tv) { tv = 100 * top(b).prizes * PERSONAS[P.persona].gust; target = b; }
+      }
+      // the hard AI can weigh every Knock Out a gust would set up, or not gusting at all
+      if (ko.length) {
+        const order = ko.sort((x, y) => y[1] - x[1]).map((x) => x[0]);
+        const list = target ? [target].concat(order.filter((b) => b !== target), ['none']) : ['none'].concat(order);
+        const g = planPick(G, P, 'gust', list, false);
+        target = g === 'none' ? null : g;
       }
       if (target) {
         const g = gusts.sort((a, b) => (card(a.c).def.trainer === 'item' ? 0 : 1) - (card(b.c).def.trainer === 'item' ? 0 : 1))[0];
@@ -1868,7 +2069,13 @@
     const choose = actions(G, P).find((a) => a.k === 'play' && card(a.c).def.trainer === 'supporter' && card(a.c).def.fx && card(a.c).def.fx[0].k === 'choose');
     if (choose && O.active && top(O.active).ex && bestAttack(G, P).i >= 0) { doAction(G, P, choose); if (G.over) return; }
     const now = bestAttack(G, P);
-    if (now.i >= 0 && now.score > -5) { doAction(G, P, { k: 'attack', i: now.i }); return; }
+    if (now.i >= 0 && now.score > -5) {
+      // the hard AI can also try its other attacks
+      const others = G.plan ? top(P.active).atks.map((a, i) => i).filter((i) => i !== now.i && canAttackWith(G, P, P.active, i)) : [];
+      const i = others.length ? planPick(G, P, 'attack', [now.i].concat(others), false) : now.i;
+      doAction(G, P, { k: 'attack', i });
+      return;
+    }
   }
 
   /* ---------- Human turns ---------- */
@@ -1898,7 +2105,7 @@
       startTurn(G);
       if (G.over) break;
       const P = G.players[G.active];
-      if (isHuman(G, P)) humanTurn(G, P); else aiTurn(G, P);
+      if (isHuman(G, P)) humanTurn(G, P); else if (P.ai === 'hard' && !G.sim) hardTurn(G, P); else aiTurn(G, P);
       if (G.over) break;
       if (G.stopAfter != null && G.turn >= G.stopAfter) break;
       endTurn(G);
@@ -2000,5 +2207,6 @@
   return {
     loadPool, createGame, runGame, play, actions, doAction, NeedInput, snap, makeRng, resolveDeck, checkDeck, buildDeck,
     pokemonScore, canPay, shortfall, retreatCost, maxHp, top, mons, PERSONAS, TYPES, MAX_TURNS, BENCH, COND_WORD,
+    HARD, cloneGame, evalPos,
   };
 });

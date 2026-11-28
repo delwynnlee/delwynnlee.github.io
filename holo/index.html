@@ -6,13 +6,21 @@
 <title>Holo: search every Pokémon card</title>
 <meta name="description" content="Search every English Pokémon TCG card by name, type, attack, rarity, set and format.">
 <meta name="theme-color" content="#161b33">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="dark light">
+<meta property="og:title" content="Holo: search every Pokémon card">
+<meta property="og:description" content="Search every English Pokémon TCG card by name, type, attack, rarity, set and format, then battle with them in the Arena.">
+<meta property="og:image" content="https://delwynnlee.github.io/holo/img/og-cards.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Holo">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="img/favicon-64.png" type="image/png" sizes="64x64">
+<link rel="apple-touch-icon" href="img/icon-180.png">
+<link rel="stylesheet" href="theme.css?v=1">
+<script src="ui.js?v=1"></script>
 <link rel="preload" href="cards.json?v=2026-11-20" as="fetch" crossorigin>
 <link rel="preload" href="fonts/anybody.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/cabin.woff2" as="font" type="font/woff2" crossorigin>
@@ -31,19 +39,6 @@
 @font-face { font-family: Cabin; src: url(fonts/cabin-italic.woff2) format("woff2"); font-style: italic; font-weight: 400 700; font-stretch: 75% 100%; font-display: swap; }
 
 :root {
-  --binder: #161b33;
-  --pocket: #1f2546;
-  --raised: #29305a;
-  --hover: rgba(205, 212, 255, .07);
-  --sleeve: rgba(205, 212, 255, .12);
-  --sleeve-2: rgba(205, 212, 255, .24);
-  --pearl: #edf0fb;
-  --mist: #a7afd0;
-  --dim: #8189ae;
-  --cyan: #8ef3e5; --violet: #b9a2ff; --pink: #ff9fd1; --sun: #ffe08a;
-  --gold: #ecc970;
-  --foil: linear-gradient(100deg, var(--cyan), var(--violet) 36%, var(--pink) 68%, var(--sun));
-  --legal: #7fd6a6; --banned: #f2907f;
   --display: Anybody, "Arial Black", system-ui, sans-serif;
   --body: Cabin, "Gill Sans", "Gill Sans MT", system-ui, -apple-system, "Segoe UI", sans-serif;
   --card-r: 4.76% / 3.41%;
@@ -53,7 +48,6 @@
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-l: env(safe-area-inset-left, 0px);
   --safe-r: env(safe-area-inset-right, 0px);
-  color-scheme: dark;
 }
 .t-G { --tc: #6dbb5a; } .t-R { --tc: #ef6a3e; } .t-W { --tc: #4aa3e8; } .t-L { --tc: #f5cf3c; }
 .t-P { --tc: #b071d9; } .t-F { --tc: #cf7f43; } .t-D { --tc: #33606b; } .t-M { --tc: #a7b0b8; }
@@ -62,7 +56,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body {
-  margin: 0; background: var(--binder); color: var(--pearl); overflow-x: clip;
+  margin: 0; background: var(--bg); color: var(--text); overflow-x: clip;
   font: 400 16px/1.45 var(--body); font-stretch: 100%;
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
   min-height: 100vh; min-height: 100dvh;
@@ -78,73 +72,69 @@ img { display: block; max-width: 100%; }
 .muted { color: var(--mist); }
 .fine { font-size: 13px; color: var(--dim); }
 
-/* ---------- Header ---------- */
+/* ---------- Header: the name and tabs as on every page (theme.css), then the search and this page's buttons ---------- */
 .top {
   position: sticky; top: 0; z-index: 30;
   padding: calc(8px + var(--safe-t)) calc(14px + var(--safe-r)) 10px calc(14px + var(--safe-l));
-  background: color-mix(in srgb, var(--binder) 90%, transparent);
-  -webkit-backdrop-filter: blur(14px) saturate(1.3); backdrop-filter: blur(14px) saturate(1.3);
-  border-bottom: 1px solid var(--sleeve);
-  display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "mark tabs help" "search search search";
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "mark nav theme" "search search search";
   align-items: center; column-gap: 12px; row-gap: 8px;
 }
-.mark {
-  grid-area: mark; text-decoration: none; line-height: 1;
-  font: 900 30px/1 var(--display); font-stretch: 150%; letter-spacing: -.01em;
-  background: var(--foil); background-size: 220% 100%; background-position: var(--sx, 30%) 0;
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-  padding: 2px 2px 4px; transition: background-position .5s var(--ease);
-}
-.tabs { grid-area: tabs; display: flex; gap: 4px; justify-self: end; min-width: 0; }
-.tab {
-  text-decoration: none; padding: 7px 11px; border-radius: 999px; font-size: 15px; font-weight: 600; color: var(--mist);
-  display: inline-flex; align-items: center; gap: 6px;
-}
-.tab:hover { color: var(--pearl); background: var(--hover); }
-.tab[aria-current="page"] { color: var(--pearl); background: var(--pocket); box-shadow: inset 0 0 0 1px var(--sleeve); }
-.tab .n { font: 800 12px/1 var(--display); font-stretch: 80%; padding: 3px 6px 2px; border-radius: 999px; background: var(--raised); color: var(--pearl); }
+.mark { grid-area: mark; }
+.nav { grid-area: nav; }
+.top .ui-menu-btn { grid-area: theme; width: 40px; height: 40px; border-radius: 12px; display: inline-grid; place-items: center; padding: 0; }
 .iconbtn {
-  width: 36px; height: 36px; border-radius: 50%; border: 0; background: transparent; color: var(--mist);
+  width: 36px; height: 36px; border-radius: 50%; border: 0; background: transparent; color: var(--muted);
   display: inline-grid; place-items: center; padding: 0;
 }
-.iconbtn:hover { background: var(--hover); color: var(--pearl); }
+.iconbtn:hover { background: var(--hover); color: var(--text); }
 .iconbtn svg { width: 20px; height: 20px; }
-.help-btn { grid-area: help; }
-.search { grid-area: search; display: flex; gap: 8px; align-items: center; }
+.search { grid-area: search; display: flex; gap: 8px; align-items: center; min-width: 0; }
 .field {
   flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0;
-  background: var(--pocket); border: 1px solid var(--sleeve-2); border-radius: 12px; padding: 0 6px 0 12px; height: 46px;
+  background: var(--sunken); border: 1px solid var(--line); box-shadow: var(--sh-in); border-radius: 12px; padding: 0 6px 0 12px; height: 46px;
+  transition: border-color .15s, box-shadow .15s;
 }
-.field:focus-within { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(142, 243, 229, .14); }
-.field svg { width: 18px; height: 18px; flex: none; color: var(--mist); }
+.field:hover { border-color: var(--line-strong); }
+.field:focus-within { border-color: var(--accent); box-shadow: var(--sh-in), 0 0 0 3px var(--accent-soft); }
+.field svg { width: 18px; height: 18px; flex: none; color: var(--faint); }
 .field input {
   flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; outline: none;
   font-size: 17px; letter-spacing: .005em;
 }
-.field input::placeholder { color: var(--dim); }
+.field input::placeholder { color: var(--faint); }
 .field input::-webkit-search-cancel-button { display: none; }
 .clear { visibility: hidden; }
 .field.has-text .clear { visibility: visible; }
-.filters-btn {
-  height: 46px; border-radius: 12px; border: 1px solid var(--sleeve-2); background: var(--pocket); padding: 0 14px;
-  display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px;
+/* This page's own buttons: the filters (phones), a random card, the sets, the saved cards, search tips */
+.filters-btn, .sub {
+  height: 46px; border-radius: 12px; padding: 0 13px; text-decoration: none; flex: none;
+  display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; white-space: nowrap;
 }
-.filters-btn svg { width: 18px; height: 18px; color: var(--mist); }
-.filters-btn .n { font: 800 12px/1 var(--display); font-stretch: 80%; padding: 3px 6px 2px; border-radius: 999px; background: var(--pearl); color: var(--binder); }
-
-@media (max-width: 420px) {
-  .top { column-gap: 6px; }
-  .mark { font-size: 27px; }
-  .tab { padding: 7px 9px; }
-  .tabs { gap: 0; }
-  .help-btn { width: 32px; }
+.filters-btn svg, .sub svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
+.filters-btn .n, .sub .n { font: 800 12px/1 var(--display); font-stretch: 80%; padding: 3px 6px 2px; border-radius: 999px; background: var(--solid-grad); color: var(--on-solid); }
+.sub[aria-current="page"] { background: var(--sunken); box-shadow: var(--sh-in); }
+.help-btn { flex: none; }
+@media (max-width: 1180px) { .sub .lbl { display: none; } .sub { padding: 0 11px; } }
+@media (max-width: 520px) {
+  .top { column-gap: 8px; padding-left: calc(10px + var(--safe-l)); padding-right: calc(10px + var(--safe-r)); }
+  .search { gap: 6px; }
+  .filters-btn { padding: 0 11px; }
+  .filters-btn .lbl { display: none; }
+  .filters-btn, .sub { height: 44px; }
+  .field { height: 44px; }
+  .help-btn { display: none; }
 }
-@media (max-width: 439px) { .tab[data-tab="search"] { display: none; } }
 @media (min-width: 900px) {
-  .top { grid-template-columns: var(--rail) minmax(0, 720px) 1fr auto; grid-template-areas: "mark search tabs help"; padding-top: calc(12px + var(--safe-t)); padding-bottom: 12px; column-gap: 24px; }
-  .mark { font-size: 34px; }
+  .top { grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-areas: "mark nav search theme"; padding-top: calc(10px + var(--safe-t)); padding-bottom: 10px; column-gap: 20px; }
   .filters-btn { display: none; }
 }
+
+/* ---------- The start page's title, over the painted scene ---------- */
+.intro { margin: 0 0 8px; }
+.intro h1 { margin: 0; font: 900 clamp(36px, 5vw, 64px)/.95 var(--display); font-stretch: 135%; letter-spacing: -.02em; max-width: 15ch; }
+.intro p { margin: 0; max-width: 56ch; color: var(--muted); font-size: 17px; }
+body[data-art] .intro.art-title { padding-top: 22px; }
+@media (max-width: 640px) { body[data-art] .intro.art-title { padding-top: 150px; } .intro p { font-size: 16px; } }
 
 /* ---------- Layout ---------- */
 .layout { display: block; }
@@ -528,17 +518,16 @@ main { padding: 12px calc(14px + var(--safe-r)) calc(40px + var(--safe-b)) calc(
 </style>
 </head>
 <body>
+<div class="grain" aria-hidden="true"></div>
 <header class="top" id="top">
-  <a class="mark" href="#" id="home" aria-label="Holo, all cards">holo</a>
-  <nav class="tabs" aria-label="Sections">
-    <a class="tab" href="#" data-tab="search" aria-current="page">Search</a>
-    <a class="tab" href="#tab=sets" data-tab="sets">Sets</a>
-    <a class="tab" href="#tab=saved" data-tab="saved">Saved <span class="n" id="saved-n" hidden></span></a>
-    <a class="tab" href="arena/">Arena</a>
+  <a class="mark" href="#" id="home" aria-label="Holo, all cards"><span class="word">holo</span></a>
+  <nav class="nav" aria-label="Sections">
+    <a class="tab" href="#" data-tab="search" aria-current="page">Cards</a>
+    <a href="arena/">Arena</a>
+    <a href="arena/#decks" hidden>Decks</a>
+    <a href="arena/#career" hidden>Career</a>
+    <a href="arena/#journal" hidden>Journal</a>
   </nav>
-  <button class="iconbtn help-btn" id="help-open" aria-label="Search tips" title="Search tips">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.4-2.7 4"/><circle cx="12" cy="17.6" r=".6" fill="currentColor"/></svg>
-  </button>
   <form class="search" id="search" role="search" autocomplete="off">
     <label class="field" id="field">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>
@@ -548,17 +537,37 @@ main { padding: 12px calc(14px + var(--safe-r)) calc(40px + var(--safe-b)) calc(
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="m7 7 10 10M17 7 7 17"/></svg>
       </button>
     </label>
-    <button type="button" class="filters-btn" id="filters-open" aria-haspopup="dialog">
+    <button type="button" class="filters-btn ghost" id="filters-open" aria-haspopup="dialog">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
-      Filters <span class="n" id="filters-n" hidden></span>
+      <span class="lbl">Filters</span> <span class="n" id="filters-n" hidden></span>
+    </button>
+    <button type="button" class="sub ghost" id="random" title="Open a random card that matches your search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3.5"/><circle cx="9" cy="9" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="9" r="1.2" fill="currentColor" stroke="none"/><circle cx="9" cy="15" r="1.2" fill="currentColor" stroke="none"/></svg>
+      <span class="lbl">Random</span>
+    </button>
+    <a class="tab sub ghost" href="#tab=sets" data-tab="sets" title="Sets">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="11" height="15" rx="2"/><path d="M8 3.5h10.5a2 2 0 0 1 2 2V17"/></svg>
+      <span class="lbl">Sets</span>
+    </a>
+    <a class="tab sub ghost" href="#tab=saved" data-tab="saved" title="Saved cards">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h10a1 1 0 0 1 1 1v16l-6-4-6 4v-16a1 1 0 0 1 1-1z"/></svg>
+      <span class="lbl">Saved</span> <span class="n" id="saved-n" hidden></span>
+    </a>
+    <button type="button" class="iconbtn help-btn" id="help-open" aria-label="Search tips" title="Search tips">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.4-2.7 4"/><circle cx="12" cy="17.6" r=".6" fill="currentColor"/></svg>
     </button>
   </form>
+  <button type="button" class="icon-btn ui-menu-btn" id="themeBtn" aria-label="Appearance"></button>
 </header>
 
 <div class="layout">
   <aside class="rail" id="rail" aria-label="Filters"></aside>
   <main id="main">
     <section id="view-search" aria-label="Search results">
+      <section class="intro art-title" id="intro" hidden>
+        <h1>Find any Pokémon card.</h1><span class="ornament" aria-hidden="true"></span>
+        <p>Every English card from 1999 to today. Type a name, an attack or an Ability, or tap a filter; open a card to see it catch the light.</p>
+      </section>
       <div class="try" id="try" hidden>
         <p>Try a search</p>
         <div class="opts" id="try-opts"></div>
@@ -1328,6 +1337,9 @@ function renderSearch() {
   const n = R.list.length;
   $('#count').innerHTML = n ? `<b>${fmt(n)}</b> ${n === 1 ? 'card' : 'cards'}${R.unique ? ', one printing each' : ''}` : 'No cards';
   $('#try').hidden = !!(state.q || fq);
+  // The start page gets the painted scene and a title; a search goes straight to the cards
+  $('#intro').hidden = !!(state.q || fq);
+  if (state.q || fq) delete document.body.dataset.art; else document.body.dataset.art = 'cards';
   const act = activeFilters();
   $('#active').hidden = !act.length;
   $('#active').innerHTML = act.map(a => `<span class="chip">${esc(a.label)}<button type="button" data-rm="${esc(a.g)}" data-id="${esc(a.id)}" aria-label="Remove ${esc(a.label)}">${ICON_X}</button></span>`).join('') +
@@ -1776,8 +1788,10 @@ function renderHelp() {
    Views, events, start
    ============================================================ */
 function renderTabs() {
-  $$('.tab[data-tab]').forEach(t => { if (t.dataset.tab === state.tab) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); });
+  $$('.tab[data-tab]').forEach(t => { if (t.dataset.tab === state.tab || t.dataset.tab === 'search') t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); });
   $('#view-search').hidden = state.tab !== 'search';
+  if (state.tab !== 'search') delete document.body.dataset.art;
+  else if (!$('#intro').hidden) document.body.dataset.art = 'cards';
   $('#view-sets').hidden = state.tab !== 'sets';
   $('#view-saved').hidden = state.tab !== 'saved';
   $('.layout').dataset.tab = state.tab;
@@ -1859,6 +1873,12 @@ $('#filters-open').addEventListener('click', () => { openSheet('fsheet'); update
 $('#filters-done').addEventListener('click', () => { closeSheets(); window.scrollTo(0, 0); });
 $('#filters-reset').addEventListener('click', () => { clearFilters(); $('#fsheet-body').innerHTML = filtersHTML(); updateShowBtn(); });
 $('#help-open').addEventListener('click', () => openSheet('help'));
+// A random card from what the search shows (every card when it shows nothing)
+$('#random').addEventListener('click', () => {
+  if (!DB) return;
+  const list = state.tab === 'search' && R.list.length ? R.list : DB.cards;
+  openCard(list[Math.floor(Math.random() * list.length)]);
+});
 $('#setq').addEventListener('input', () => renderSets());
 $('#ci-prev').addEventListener('click', () => step(-1));
 $('#ci-next').addEventListener('click', () => step(1));
@@ -1925,6 +1945,7 @@ addEventListener('popstate', route);
 addEventListener('hashchange', route);
 // Wordmark catches the light as the pointer moves.
 $('#top').addEventListener('pointermove', e => { if (e.pointerType === 'mouse') $('#home').style.setProperty('--sx', (e.clientX / innerWidth * 100).toFixed(1) + '%'); });
+if (window.UI) UI.menu.mount($('#themeBtn'));
 
 const io = new IntersectionObserver(es => { if (es.some(x => x.isIntersecting) && state.tab === 'search') more(); }, { rootMargin: '1400px 0px' });
 io.observe($('#more'));

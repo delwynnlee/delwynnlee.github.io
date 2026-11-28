@@ -1,0 +1,260 @@
+/* Holo's two looks, shared by the card browser and the Arena.
+   Dark is the night binder: indigo pages, pearl text, holographic foil. Light is the same binder by day: lavender pearl
+   pages and deep indigo ink. Both use the same layers, from the page up:
+     --bg       the page
+     --sunken   wells you type or drag in (search boxes, sliders, segmented tracks)
+     --surface  panels and tiles that sit on the page
+     --overlay  dialogs and sheets that float over everything
+     --raised   buttons and other things you press
+   Each layer has an edge (--line), a lit top edge (--hi) and a shadow (--sh-1..3), and colors also exist as "r g b"
+   triples (--bg-rgb...) for translucent versions: rgb(var(--bg-rgb) / .9).
+   The older names the pages were written with (--binder, --pocket, --pearl, --mist, --dim, --sleeve...) point at
+   these, so both themes reach every rule. ui.js sets <html data-theme="dark|light"> before the page draws. */
+:root, :root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #161b33; --bg-rgb: 22 27 51;
+  --sunken: #10142a; --sunken-rgb: 16 20 42;
+  --surface: #1f2546; --surface-rgb: 31 37 70;
+  --overlay: #252c53; --overlay-rgb: 37 44 83;
+  --raised: #2a315c; --raised-rgb: 42 49 92;
+  --raised-2: #353d6e;
+  --text: #edf0fb; --text-rgb: 237 240 251;
+  --muted: #a7afd0;
+  --faint: #8189ae;
+  --hover: rgb(var(--text-rgb) / .07);
+  --line: rgb(var(--text-rgb) / .12);
+  --line-strong: rgb(var(--text-rgb) / .25);
+  --hi: rgb(255 255 255 / .08);
+  --cyan: #8ef3e5; --violet: #b9a2ff; --pink: #ff9fd1; --sun: #ffe08a; --gold: #ecc970;
+  --foil: linear-gradient(100deg, var(--cyan), var(--violet) 36%, var(--pink) 68%, var(--sun));
+  --accent: #b9a2ff;
+  --accent-soft: rgb(185 162 255 / .2);
+  --sh-1: inset 0 1px 0 var(--hi), 0 1px 1px rgb(0 0 0 / .45), 0 2px 6px rgb(0 0 0 / .25);
+  --sh-2: inset 0 1px 0 var(--hi), 0 2px 4px rgb(0 0 0 / .32), 0 10px 26px rgb(0 0 0 / .3);
+  --sh-3: inset 0 1px 0 var(--hi), 0 24px 70px rgb(0 0 0 / .6);
+  --sh-in: inset 0 2px 4px rgb(0 0 0 / .45), inset 0 0 0 1px rgb(0 0 0 / .25);
+  --sh-lift: inset 0 1px 0 var(--hi), 0 6px 12px rgb(0 0 0 / .3), 0 18px 40px rgb(0 0 0 / .32);
+  --sh-bar: 0 1px 0 rgb(0 0 0 / .45), 0 6px 18px rgb(0 0 0 / .2);
+  --btn: linear-gradient(180deg, #333b6b, #272e58);
+  --btn-hover: linear-gradient(180deg, #3c457a, #2d3562);
+  --btn-press: linear-gradient(180deg, #1c2244, #242b52);
+  --solid-grad: linear-gradient(180deg, #ffffff, #dde2f6);
+  --solid-hover: linear-gradient(180deg, #ffffff, #e8ebfa);
+  --on-solid: #161b33;
+  --scrim: rgb(8 10 24 / .7);
+  --chrome: rgb(var(--bg-rgb) / .88);
+  --mat: #1a2040; --mat-rgb: 26 32 64;
+  --mat-img: url("/holo/img/playmat-dark.webp");
+  --back-img: url("/holo/img/cardback.webp");
+  --well: rgb(var(--text-rgb) / .05);
+  --grain-op: .45;
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --good: #7fd6a6; --bad: #f2907f; --ok: #7fd6a6; --warn: #ffd27a; --hurt: #f2907f;
+  --legal: #7fd6a6; --banned: #f2907f;
+  --p0: #8ef3e5; --p1: #ff9fd1;
+  /* The names the pages were first written with */
+  --binder: var(--bg); --pocket: var(--surface); --pearl: var(--text); --mist: var(--muted); --dim: var(--faint);
+  --sleeve: var(--line); --sleeve-2: var(--line-strong);
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #ecebf5; --bg-rgb: 236 235 245;
+  --sunken: #e1dfee; --sunken-rgb: 225 223 238;
+  --surface: #f7f6fc; --surface-rgb: 247 246 252;
+  --overlay: #fbfaff; --overlay-rgb: 251 250 255;
+  --raised: #ffffff; --raised-rgb: 255 255 255;
+  --raised-2: #fdfcff;
+  --text: #1b2042; --text-rgb: 27 32 66;
+  --muted: #4c5278;
+  --faint: #737899;
+  --hover: rgb(var(--text-rgb) / .055);
+  --line: rgb(var(--text-rgb) / .13);
+  --line-strong: rgb(var(--text-rgb) / .27);
+  --hi: rgb(255 255 255 / .95);
+  --cyan: #11998c; --violet: #6d4fd8; --pink: #d2468b; --sun: #c28410; --gold: #a87a12;
+  --foil: linear-gradient(100deg, #12a394, #6d4fd8 36%, #d2468b 68%, #cf8d0d);
+  --accent: #6d4fd8;
+  --accent-soft: rgb(109 79 216 / .15);
+  --sh-1: inset 0 1px 0 var(--hi), 0 1px 1px rgb(40 35 90 / .14), 0 2px 5px rgb(40 35 90 / .08);
+  --sh-2: inset 0 1px 0 var(--hi), 0 2px 4px rgb(40 35 90 / .09), 0 10px 24px rgb(40 35 90 / .11);
+  --sh-3: 0 24px 70px rgb(30 25 70 / .28), 0 2px 6px rgb(30 25 70 / .1);
+  --sh-in: inset 0 2px 3px rgb(40 35 90 / .14), inset 0 0 0 1px rgb(40 35 90 / .06);
+  --sh-lift: inset 0 1px 0 var(--hi), 0 6px 12px rgb(40 35 90 / .11), 0 18px 36px rgb(40 35 90 / .14);
+  --sh-bar: 0 1px 0 rgb(40 35 90 / .09), 0 6px 16px rgb(40 35 90 / .07);
+  --btn: linear-gradient(180deg, #ffffff, #efeef8);
+  --btn-hover: linear-gradient(180deg, #ffffff, #f6f5fc);
+  --btn-press: linear-gradient(180deg, #e6e4f2, #f0eff8);
+  --solid-grad: linear-gradient(180deg, #2f3768, #1b2042);
+  --solid-hover: linear-gradient(180deg, #3a4378, #222850);
+  --on-solid: #f7f6fc;
+  --scrim: rgb(30 28 60 / .4);
+  --chrome: rgb(var(--surface-rgb) / .9);
+  --mat: #e6e4f2; --mat-rgb: 230 228 242;
+  --mat-img: url("/holo/img/playmat-light.webp");
+  --well: rgb(var(--text-rgb) / .045);
+  --grain-op: .4;
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .2 0 0 0 0 .15 0 0 0 0 .4 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --good: #1d7f4d; --bad: #bd3d2c; --ok: #2c9a62; --warn: #c08a12; --hurt: #cf4a3a;
+  --legal: #1d7f4d; --banned: #bd3d2c;
+  --p0: #12a394; --p1: #d2468b;
+}
+
+/* ---------- The paper, the header, and how controls look ---------- */
+.grain { position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: var(--grain-op); background-image: var(--grain); }
+.top {
+  background: var(--chrome); border-bottom: 1px solid var(--line); box-shadow: var(--sh-bar);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
+}
+/* The name: foil letters, with the crest beside them where there's room */
+.mark {
+  flex: none; text-decoration: none; line-height: 1; display: inline-flex; align-items: center; gap: 10px;
+  font: 900 30px/1 var(--display); font-stretch: 150%; letter-spacing: -.01em; padding: 2px 2px 4px; border-radius: 8px;
+}
+.mark .word {
+  background: var(--foil); background-size: 220% 100%; background-position: var(--sx, 30%) 0;
+  -webkit-background-clip: text; background-clip: text; color: transparent; transition: background-position .5s var(--ease, ease);
+}
+.mark:hover .word { background-position: 90% 0; }
+.mark::before { content: ""; width: 30px; height: 30px; flex: none; border-radius: 9px; background: url("/holo/img/crest.webp") center / cover; box-shadow: 0 2px 8px rgb(0 0 0 / .3); }
+.nav { display: flex; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.nav::-webkit-scrollbar { display: none; }
+.nav a { flex: none; text-decoration: none; color: var(--muted); font: 600 15px/1 var(--body); padding: 10px 13px; border-radius: 10px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.nav a:hover { color: var(--text); background: var(--hover); }
+.nav a[aria-current="page"] { color: var(--text); background: var(--btn); box-shadow: inset 0 0 0 1px var(--line), var(--sh-1); }
+.top .ui-menu-btn { flex: none; }
+@media (max-width: 640px) {
+  .mark { font-size: 25px; }
+  .mark::before { display: none; }
+  .nav { gap: 1px; }
+  .nav a { padding: 9px 7px; font-size: 14.5px; }
+  .top .ui-menu-btn { width: 36px; height: 36px; border-radius: 10px; }
+}
+/* On a phone the five tabs need the room: the name shrinks to its crest */
+@media (max-width: 440px) {
+  .mark .word { display: none; }
+  .mark::before { display: block; width: 32px; height: 32px; }
+  .nav a { padding: 9px 6px; font-size: 14px; }
+}
+@media (max-width: 360px) { .nav a { padding: 9px 4px; font-size: 13.5px; } }
+
+/* Raised controls: lit from above, pressed into a well */
+:is(.pill, .ghost, .icon-btn, .chip, .btn-ghost) {
+  color: var(--text); background: var(--btn); border: 1px solid var(--line-strong); box-shadow: var(--sh-1);
+  transition: background-color .15s, border-color .15s, box-shadow .15s, color .15s;
+}
+:is(.pill, .ghost, .icon-btn, .chip, .btn-ghost):hover:where(:not(:disabled)) { background: var(--btn-hover); }
+:is(.pill, .ghost, .icon-btn, .chip, .btn-ghost):active:where(:not(:disabled)) { background: var(--btn-press); box-shadow: var(--sh-in); }
+:is(.pill, .ghost, .icon-btn, .chip, .btn-ghost):disabled { box-shadow: none; }
+.icon-btn { border-color: transparent; background: transparent; box-shadow: none; }
+.icon-btn:hover:where(:not(:disabled)) { background: var(--hover); }
+.icon-btn.raised, .top .ui-menu-btn { background: var(--btn); border: 1px solid var(--line-strong); box-shadow: var(--sh-1); }
+:is(.ghost, .icon-btn, .btn-ghost)[aria-pressed="true"] { background: var(--sunken); box-shadow: var(--sh-in); }
+.pill-solid, .pill[aria-pressed="true"], .chip[aria-pressed="true"] { background: var(--solid-grad); color: var(--on-solid); border-color: transparent; }
+:is(.pill-solid, .pill[aria-pressed="true"], .chip[aria-pressed="true"]):hover:where(:not(:disabled)) { background: var(--solid-hover); }
+:is(.pill-solid, .pill[aria-pressed="true"], .chip[aria-pressed="true"]):active:where(:not(:disabled)) { background: var(--solid-grad); box-shadow: inset 0 2px 4px rgb(0 0 0 / .28); }
+/* A segmented choice: a well, with the chosen one raised out of it */
+.seg { background: var(--sunken); border: 1px solid var(--line); box-shadow: var(--sh-in); }
+.seg button { border: 0; background: transparent; color: var(--muted); }
+.seg button:hover { color: var(--text); }
+.seg button[aria-pressed="true"] { background: var(--btn); color: var(--text); box-shadow: inset 0 0 0 1px var(--line-strong), var(--sh-1); }
+.link-btn { color: var(--violet); }
+.link-btn:hover { color: var(--text); }
+@media (forced-colors: active) {
+  .chip[aria-pressed="true"], .pill[aria-pressed="true"], .seg button[aria-pressed="true"], .ghost[aria-pressed="true"], .icon-btn[aria-pressed="true"] { outline: 2px solid CanvasText; }
+}
+
+/* ---------- The appearance menu (ui.js builds it) ---------- */
+.ui-menu-btn svg { width: 20px; height: 20px; }
+.ui-menu {
+  position: fixed; z-index: 90; min-width: 220px; padding: 6px; border-radius: 14px;
+  background: var(--overlay); border: 1px solid var(--line-strong); box-shadow: var(--sh-3); color: var(--text);
+  animation: ui-pop .16s cubic-bezier(.2, .75, .15, 1);
+}
+.ui-menu .ui-mh { margin: 6px 10px 4px; font: 700 12.5px/1.2 var(--body); color: var(--faint); }
+.ui-menu button {
+  display: flex; align-items: center; gap: 11px; width: 100%; min-height: 42px; padding: 0 12px; border: 0; border-radius: 10px;
+  background: transparent; color: var(--text); font: 500 15.5px/1.2 var(--body); text-align: left;
+}
+.ui-menu button svg { width: 19px; height: 19px; flex: none; color: var(--muted); }
+.ui-menu button:hover, .ui-menu button:focus-visible { background: var(--hover); outline: none; }
+.ui-menu button[aria-checked="true"] { background: var(--accent-soft); }
+.ui-menu button[aria-checked="true"] svg { color: var(--accent); }
+.ui-menu button .ui-tick { margin-left: auto; width: 16px; height: 16px; color: var(--accent); visibility: hidden; }
+.ui-menu button[aria-checked="true"] .ui-tick { visibility: visible; }
+.ui-menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 4px; }
+.ui-menu kbd, .ui-keys kbd {
+  display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 6px;
+  font: 700 12.5px/1 var(--body); color: var(--text); background: var(--btn); border: 1px solid var(--line-strong); box-shadow: 0 1px 0 var(--line-strong);
+}
+.ui-menu button kbd { margin-left: auto; }
+@keyframes ui-pop { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
+
+/* ---------- Keyboard shortcuts sheet ---------- */
+.ui-keys { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: 18px; color: var(--text); }
+.ui-keys-scrim { position: absolute; inset: 0; background: var(--scrim); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+.ui-keys-box {
+  position: relative; width: min(640px, 100%); max-height: calc(100dvh - 36px); overflow: auto; padding: 22px 24px 18px;
+  background: var(--overlay); border: 1px solid var(--line-strong); border-radius: 20px; box-shadow: var(--sh-3);
+  animation: ui-pop .2s cubic-bezier(.2, .75, .15, 1);
+}
+.ui-keys h2 { margin: 0 44px 4px 0; font: 800 24px/1.15 var(--display); font-stretch: 112%; }
+.ui-keys > .ui-keys-box > p { margin: 0 0 8px; color: var(--muted); font-size: 14.5px; }
+.ui-keys h3 { margin: 16px 0 6px; font: 700 13px/1.2 var(--body); color: var(--faint); }
+.ui-keys dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 7px 16px; margin: 0; align-items: center; }
+.ui-keys dt { display: flex; gap: 4px; flex-wrap: wrap; }
+.ui-keys dd { margin: 0; color: var(--text); font-size: 15px; }
+.ui-keys .ui-x { position: absolute; top: 14px; right: 14px; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; }
+.ui-keys .ui-x svg { width: 20px; height: 20px; }
+
+/* ---------- Painted art (img/: one luminous gouache style, a night and a daytime version of each scene) ----------
+   body[data-art] puts a page's scene into its background: behind the header and the title, out to the screen's edges,
+   fading into the page below. On a wide screen the scene sits to the right and the title's side stays calm; on a phone
+   the title moves down below it (.art-title). */
+body[data-art] {
+  --art-h: 520px;
+  --art-veil: 1;
+  background:
+    linear-gradient(90deg, rgb(var(--bg-rgb) / var(--art-veil)) 0, rgb(var(--bg-rgb) / calc(var(--art-veil) * .88)) 24%, rgb(var(--bg-rgb) / calc(var(--art-veil) * .4)) 44%, rgb(var(--bg-rgb) / 0) 64%) top / 100% var(--art-h) no-repeat,
+    linear-gradient(rgb(var(--bg-rgb) / .1), rgb(var(--bg-rgb) / 0) calc(var(--art-h) * .28), rgb(var(--bg-rgb) / .6) calc(var(--art-h) * .74), var(--bg) var(--art-h)),
+    var(--art) var(--art-x, 64%) top / max(100%, calc(var(--art-h) * 2.34)) auto no-repeat,
+    var(--bg);
+}
+body[data-art="cards"] { --art: url("/holo/img/hero-cards-dark.webp"); --art-x: 70%; }
+body[data-art="arena"] { --art: url("/holo/img/hero-arena-dark.webp"); --art-x: 76%; }
+body[data-art="decks"] { --art: url("/holo/img/hero-decks-dark.webp"); --art-x: 78%; }
+body[data-art="learn"] { --art: url("/holo/img/hero-learn-dark.webp"); --art-x: 74%; }
+body[data-art="journal"] { --art: url("/holo/img/hero-journal-dark.webp"); --art-x: 72%; }
+body[data-art="career"] { --art: url("/holo/img/hero-career-dark.webp"); --art-x: 74%; }
+body[data-art="finals"] { --art: url("/holo/img/hero-finals-dark.webp"); --art-x: 76%; }
+:root[data-theme="light"] body[data-art="cards"] { --art: url("/holo/img/hero-cards-light.webp"); }
+:root[data-theme="light"] body[data-art="arena"] { --art: url("/holo/img/hero-arena-light.webp"); }
+:root[data-theme="light"] body[data-art="decks"] { --art: url("/holo/img/hero-decks-light.webp"); }
+:root[data-theme="light"] body[data-art="learn"] { --art: url("/holo/img/hero-learn-light.webp"); }
+:root[data-theme="light"] body[data-art="journal"] { --art: url("/holo/img/hero-journal-light.webp"); }
+:root[data-theme="light"] body[data-art="career"] { --art: url("/holo/img/hero-career-light.webp"); }
+:root[data-theme="light"] body[data-art="finals"] { --art: url("/holo/img/hero-finals-light.webp"); }
+/* Over a scene the header lets more of it through (it blurs whatever scrolls under it) */
+body[data-art] .top { background: rgb(var(--bg-rgb) / .62); }
+body[data-art] .art-title { padding-top: 34px; }
+body[data-art] .art-title h1 { text-shadow: 0 2px 20px rgb(var(--bg-rgb) / .85), 0 0 2px rgb(var(--bg-rgb) / .5); }
+body[data-art] .art-title p { text-shadow: 0 1px 12px rgb(var(--bg-rgb) / .95); }
+@media (max-width: 640px) {
+  body[data-art] { --art-h: 380px; --art-veil: 0; }
+  body[data-art] .art-title { padding-top: 150px; }
+}
+/* A flourish under a title, in the foil */
+.ornament { display: block; width: min(300px, 76%); aspect-ratio: 900 / 69; margin: 12px 0 12px; background: var(--foil); opacity: .9;
+  -webkit-mask: url("/holo/img/ornament.webp") left center / contain no-repeat; mask: url("/holo/img/ornament.webp") left center / contain no-repeat; }
+.ornament.center { margin-left: auto; margin-right: auto; -webkit-mask-position: center; mask-position: center; }
+/* A painted roundel: a lesson, an empty page, the end of a game */
+.medal { display: block; flex: none; border-radius: 50%; box-shadow: 0 8px 24px rgb(0 0 0 / .38); }
+.medal.free { border-radius: 0; box-shadow: none; filter: drop-shadow(0 8px 18px rgb(0 0 0 / .3)); }
+:root[data-theme="light"] .medal { box-shadow: 0 8px 22px rgb(40 35 90 / .22); }
+:root[data-theme="light"] .medal.free { box-shadow: none; filter: drop-shadow(0 8px 16px rgb(40 35 90 / .2)); }
+
+/* ---------- Paging between cards or decks: the drag follows your finger, and springs back if you let go early ---------- */
+.ui-paging { transition: transform .22s cubic-bezier(.2, .75, .15, 1), opacity .22s; }
+@media (prefers-reduced-motion: reduce) {
+  .ui-paging { transition: none; }
+  .ui-menu, .ui-keys-box { animation: none; }
+}

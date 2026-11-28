@@ -137,7 +137,8 @@ function deckByKey(key) {
   return null;
 }
 const newSeed = () => (Math.random() * 2 ** 31) >>> 0;
-const forEngine = (d, name) => ({ name: name || d.name, archetype: d.archetype, cards: d.cards });
+// The engine needs the name, plan and cards; the table also wants the types and the face card for its two halves
+const forEngine = (d, name) => ({ name: name || d.name, archetype: d.archetype, cards: d.cards, types: d.types, face: d.face, prizes: d.prizes });
 function mirrorSafe(d0, d1) {
   return [forEngine(d0), forEngine(d1, d0.name === d1.name ? `${d1.name} (mirror)` : d1.name)];
 }
@@ -145,8 +146,9 @@ function mirrorSafe(d0, d1) {
 /* ============================================================
    4. Lobby state and the address bar
    ============================================================ */
-const S = { view: 'lobby', seats: [null, null], active: 0, src: 'claude', gen: { types: ['R'], arch: 'aggro' }, recent: [], sim: null };
-const KEY = { seats: 'holo.arena.seats.v1', recent: 'holo.arena.recent.v1', play: 'holo.arena.play.v1', hands: 'holo.arena.hands.v1', speed: 'holo.arena.speed.v1', tut: 'holo.arena.tut.v1' };
+const KEY = { seats: 'holo.arena.seats.v1', recent: 'holo.arena.recent.v1', play: 'holo.arena.play.v1', hands: 'holo.arena.hands.v1', speed: 'holo.arena.speed.v1', tut: 'holo.arena.tut.v1', ai: 'holo.arena.ai.v1' };
+const S = { view: 'lobby', seats: [null, null], active: 0, src: 'claude', gen: { types: ['R'], arch: 'aggro' }, recent: [], sim: null, ai: store.get(KEY.ai, 'hard') === 'normal' ? 'normal' : 'hard' };
+function renderAi() { $$('#aiSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.ai === S.ai))); }
 const saveSeats = () => store.set(KEY.seats, S.seats);
 function hashFor() {
   if (S.view === 'learn') return '#learn';
@@ -373,12 +375,20 @@ function youText(t) {
   }).join(' ');
 }
 const say = (text) => (W.mode === 'play' ? youText(text) : text);
+// The painted scene at the top of each page (theme.css); a game has the playmat instead
+const ART = { lobby: 'arena', decks: 'decks', learn: 'learn', journal: 'journal', career: 'career', finals: 'finals' };
+const VIEWS = ['lobby', 'decks', 'learn', 'finals', 'career', 'journal', 'watch'];
+// Where each page was scrolled to, so coming back to a long list finds the same place
+const SCROLL = {};
+try { history.scrollRestoration = 'manual'; } catch { /* old browsers */ }
 function setView(view, push) {
   const was = S.view;
+  if (was !== 'watch') SCROLL[was] = window.scrollY;
   S.view = view;
-  $('#lobby').hidden = view !== 'lobby';
-  $('#learn').hidden = view !== 'learn';
-  $('#watch').hidden = view !== 'watch';
+  for (const v of VIEWS) $(`#${v}`).hidden = v !== view;
+  if (ART[view]) document.body.dataset.art = ART[view]; else delete document.body.dataset.art;
+  const tab = view === 'learn' || view === 'finals' || (view === 'watch' && !TU.on) ? 'lobby' : view;
+  $$('#nav [data-nav]').forEach((a) => { if (a.dataset.nav === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   document.body.classList.toggle('watching', view === 'watch');
   document.body.classList.toggle('in-game', view === 'watch');
   const back = $('#toLobby');
@@ -389,7 +399,7 @@ function setView(view, push) {
   if (view === 'lobby') { renderResume(); renderLearnBtn(); renderSeats(); }
   if (view === 'learn') renderLessons();
   if (view === 'watch') requestAnimationFrame(measure);
-  if (was !== view) window.scrollTo(0, 0);
+  if (was !== view) window.scrollTo(0, view !== 'watch' && SCROLL[view] ? SCROLL[view] : 0);
   syncHash(push);
 }
 function headerHeight() { document.documentElement.style.setProperty('--hdr', `${$('#top').offsetHeight}px`); }
@@ -461,10 +471,24 @@ function showHand(p) {
   if (W.mode === 'play') return p === 0;
   return W.hands;
 }
+const TYPE_HEX = { G: '#6dbb5a', R: '#ef6a3e', W: '#4aa3e8', L: '#f5cf3c', P: '#b071d9', F: '#cf7f43', D: '#4f8796', M: '#a7b0b8', Y: '#ec94c6', N: '#c4a43c', C: '#c9c6bb' };
+// Each half washes from its deck's first type into its second; a mirror match gives the top half a quieter wash
+function deckColors(p) {
+  const t = (W.decks[p] && W.decks[p].types) || [];
+  const t0 = (W.decks[0] && W.decks[0].types) || [];
+  const c = TYPE_HEX[t[0]] || 'var(--violet)';
+  if (p === 1 && t[0] && t[0] === t0[0]) return [TYPE_HEX[t[1]] || 'var(--muted)', 'var(--muted)'];
+  return [c, TYPE_HEX[t[1]] || c];
+}
 function buildSides() {
   for (const p of [0, 1]) {
     const el = T.sides[p];
+    const [c1, c2] = deckColors(p);
+    el.style.setProperty('--pc', c1);
+    el.style.setProperty('--pc2', c2);
+    const face = W.decks[p] && W.decks[p].face ? def(W.decks[p].face) : null;
     el.innerHTML = `
+      <div class="side-art" aria-hidden="true">${face ? `<img src="${esc(srcs(face, false)[0])}" alt="" data-def="${esc(face.id)}" data-big="0" data-try="0" decoding="async">` : ''}</div>
       <div class="hand-zone"><div class="hand" data-zone="hand"></div></div>
       <div class="bench" data-zone="bench"></div>
       <div class="prizes" data-zone="prizes" aria-label="Prize cards"></div>
@@ -607,6 +631,7 @@ function renderSide(p, ps, f) {
 function renderMid(f) {
   const s = f.s;
   const who = f.k === 'start' || f.turn === 0 ? null : s.active;
+  T.sides.forEach((el, p) => el.classList.toggle('now', who === p));
   T.turnchip.className = `turnchip${who === 1 ? ' p1' : ''}`;
   T.turnchip.innerHTML = f.turn === 0 || s.turn === 0 ? 'Setup' : `Turn ${s.turn}<span class="who">${esc(who === 0 && W.mode === 'play' ? 'you' : names()[who])}</span>`;
   // Stadium
@@ -808,13 +833,20 @@ function showBanner() {
     acts = '<button type="button" class="pill pill-solid" data-b="again">Watch again</button><button type="button" class="pill" data-b="newGame">New game</button><button type="button" class="pill" data-b="lobby">Lobby</button>';
   }
   const sub = TU.on && r.winner === 0 ? esc(TU.lesson.outro || say(r.reason)) : esc(say(r.reason));
-  T.banner.innerHTML = `<h2>${esc(TU.on && r.winner === 0 ? 'Lesson complete' : title)}</h2><p>${sub}</p><div class="acts">${acts}</div>`;
+  const seal = r.winner == null ? 'draw' : W.mode === 'play' && r.winner !== 0 ? 'lost' : 'won';
+  const st = r.stats;
+  const row = (label, k) => `<tr><td>${label}</td><td>${nf.format(st[0][k])}</td><td>${nf.format(st[1][k])}</td></tr>`;
+  const table = st && !TU.on ? `<table class="stats"><thead><tr><th></th><th>${esc(W.mode === 'play' ? 'You' : r.names[0])}</th><th>${esc(r.names[1])}</th></tr></thead><tbody>`
+    + `${row('Prize cards taken', 'taken')}${row('Damage dealt', 'damage')}${row('Knocked Out', 'kos')}${row('Biggest hit', 'best')}${row('Trainers played', 'trainers')}${row('Energy attached', 'energy')}</tbody></table>` : '';
+  T.banner.innerHTML = `<img class="medal seal" src="../img/${seal}.webp" alt="" width="96" height="96"><h2>${esc(TU.on && r.winner === 0 ? 'Lesson complete' : title)}</h2><p>${sub}</p>`
+    + `<span class="ornament center" aria-hidden="true"></span>${table}<div class="acts">${acts}</div>`;
   T.banner.hidden = false;
 }
 
 /* ---------- Watching a game ---------- */
 function replayOf(G, decks) {
-  return { frames: G.frames, names: decks.map((d) => d.name), winner: G.winner, reason: G.reason, turns: G.turn, first: G.first };
+  const stats = G.players.map((P) => Object.assign({ taken: P.taken || 0, left: P.prizes.length }, P.stats));
+  return { frames: G.frames, names: decks.map((d) => d.name), winner: G.winner, reason: G.reason, turns: G.turn, first: G.first, stats };
 }
 function watch(seed, opts = {}) {
   const d0 = deckByKey(S.seats[0]), d1 = deckByKey(S.seats[1]);
@@ -985,7 +1017,9 @@ function playStart(seed, answers, opts = {}) {
   const both = opts.decks || mirrorSafe(d0, d1);
   const labels = both.map((d) => d.name);
   const decks = [Object.assign({}, both[0], { name: 'You' }), both[1]];
-  Object.assign(PL, { on: true, keys: opts.decks ? null : S.seats.slice(), decks, labels, setup: opts.setup || null, first: opts.first != null ? opts.first : null, seed, answers: (answers || []).slice(), req: null, done: false, shown: -1, skip: null, toastTurn: 0 });
+  // Lessons are written for the normal AI; a game picks its level when it starts and keeps it when resumed
+  const ai = opts.lesson ? 'normal' : opts.ai || S.ai;
+  Object.assign(PL, { on: true, keys: opts.decks ? null : S.seats.slice(), decks, labels, ai, memo: opts.memo || {}, t0: Date.now(), setup: opts.setup || null, first: opts.first != null ? opts.first : null, seed, answers: (answers || []).slice(), req: null, done: false, shown: -1, skip: null, toastTurn: 0 });
   W.mode = 'play';
   W.seed = seed;
   W.decks = decks;
@@ -1007,7 +1041,7 @@ function endPlay() {
   $('#cSkip').hidden = true;
 }
 function runGame() {
-  return A.play({ decks: PL.decks, seed: PL.seed, pool: DATA.pool, human: 0, answers: PL.answers, record: true, setup: PL.setup, first: PL.first });
+  return A.play({ decks: PL.decks, seed: PL.seed, pool: DATA.pool, human: 0, answers: PL.answers, record: true, setup: PL.setup, first: PL.first, ai: [null, PL.ai], aiCache: PL.memo });
 }
 function advance(animate, first) {
   let r;
@@ -1047,7 +1081,7 @@ function runFrames(i, end, done) {
 }
 function settle() {
   const r = W.replay;
-  if (PL.keys) store.set(KEY.play, { v: 1, a: PL.keys[0], b: PL.keys[1], seed: PL.seed, answers: PL.answers, turn: PL.done ? r.turns : PL.req.turn, names: PL.labels, at: Date.now(), done: PL.done || undefined });
+  if (PL.keys) store.set(KEY.play, { v: 2, a: PL.keys[0], b: PL.keys[1], seed: PL.seed, answers: PL.answers, ai: PL.ai, memo: PL.ai === 'hard' ? PL.memo : undefined, turn: PL.done ? r.turns : PL.req.turn, names: PL.labels, at: Date.now(), done: PL.done || undefined });
   if (PL.done) {
     setUi('over');
     showBanner();
@@ -1356,12 +1390,14 @@ function renderResume() {
   box.hidden = false;
   box.innerHTML = `<p><b>Game in progress</b> <span>${esc(s.names[0])} against ${esc(s.names[1])}, turn ${s.turn || 1}.</span></p><button type="button" class="pill pill-solid" data-b="resume">${icon('play')}Resume</button><button type="button" class="link-btn" data-b="discardSaved">Forget it</button>`;
 }
+// A saved game keeps the AI it started with (games saved before there was a choice were against the normal AI)
+const savedOpts = (sv) => ({ ai: sv.ai === 'hard' ? 'hard' : 'normal', memo: sv.memo || null });
 function resumeSaved() {
   const s = savedPlay();
   if (!s) return;
   S.seats = [s.a, s.b];
   saveSeats();
-  playStart(s.seed, s.answers);
+  playStart(s.seed, s.answers, savedOpts(s));
 }
 
 /* ============================================================
@@ -1373,9 +1409,20 @@ const lessonById = (id) => TUTOR.LESSONS.find((x) => x.id === id);
 const tutDone = () => new Set((store.get(KEY.tut, null) || { done: [] }).done);
 const coachOn = () => TU.on && !!TU.exp;
 function markLessonDone(id) { const d = tutDone(); d.add(id); store.set(KEY.tut, { done: [...d] }); }
+const LESSON_ART = { 'first-attack': 'first', 'pokemon-ex': 'ex' };
+const lessonArt = (id) => `../img/lesson-${LESSON_ART[id] || id}.webp`;
 function renderLearnBtn() {
   const done = tutDone().size, n = TUTOR.LESSONS.length;
-  $('#learnBtn').innerHTML = `${icon('cap')}<span><b>Learn to play</b><span>${done ? `${done} of ${n} lessons done` : `${n} short lessons, about 15 minutes`}</span></span>`;
+  const head = done ? (done < n ? 'Continue the lessons' : 'Lessons complete') : 'New to the Pokémon TCG?';
+  $('#learnBtn').innerHTML = `<img class="medal" src="../img/lesson-learn.webp" alt="" width="46" height="46"><span><b>${head}</b><span>${done ? `${done} of ${n} lessons done` : `Learn to play in ${n} short lessons`}</span></span>`;
+  renderFinalsBtn();
+}
+function renderFinalsBtn() {
+  const b = $('#finalsBtn');
+  if (!b) return;
+  const FIN = window.ARENA_FINALS;
+  b.hidden = !FIN;
+  if (FIN && typeof finalsBtnHTML === 'function') b.innerHTML = finalsBtnHTML();
 }
 function renderLessons() {
   const done = tutDone();
@@ -1383,7 +1430,9 @@ function renderLessons() {
   for (const l of TUTOR.LESSONS) { let g = groups.find((x) => x.name === l.group); if (!g) groups.push(g = { name: l.group, items: [] }); g.items.push(l); }
   $('#lessons').innerHTML = groups.map((g) => `<section class="lsn-group"><h2>${esc(g.name)}</h2><div class="lsn-list">${g.items.map((l) => {
     const k = TUTOR.LESSONS.indexOf(l) + 1;
-    return `<button type="button" class="lsn${done.has(l.id) ? ' done' : ''}" data-lesson="${esc(l.id)}"><span class="no">${done.has(l.id) ? icon('check') : k}</span><b>${esc(l.title)}<small>${esc(l.time)}</small></b><span>${esc(l.blurb)}</span></button>`;
+    const next = !done.has(l.id) && TUTOR.LESSONS.find((x) => !done.has(x.id)) === l;
+    return `<button type="button" class="lsn${done.has(l.id) ? ' done' : ''}${next ? ' next' : ''}" data-lesson="${esc(l.id)}"><span class="lmedal"><img class="medal" src="${lessonArt(l.id)}" alt="" width="66" height="66" loading="lazy"><span class="no">${done.has(l.id) ? icon('check') : k}</span></span>`
+      + `<span class="lt"><b>${esc(l.title)}<small>${esc(next ? 'Up next' : l.time)}</small></b><span>${esc(l.blurb)}</span></span></button>`;
   }).join('')}</div></section>`).join('');
 }
 function goLessons(push = true) { endLesson(); setView('learn', push); }
@@ -1489,8 +1538,23 @@ function onButton(name) {
     default:
   }
 }
+// A tab: the page it names; tapped again, back to the top of that page
+function goNav(v) {
+  if (S.view === v) { window.scrollTo({ top: 0, behavior: reduceMotion.matches ? 'auto' : 'smooth' }); return; }
+  if (v === 'lobby') { if (S.view === 'watch' && TU.on) endLesson(); setView('lobby', true); return; }
+  const open = { decks: window.openLibrary, career: window.openCareer, journal: window.openJournal }[v];
+  if (typeof open === 'function') open(true);
+}
 function wire() {
-  $('#toLobby').addEventListener('click', () => { if (S.view === 'watch' && TU.on) goLessons(true); else setView('lobby', true); });
+  if (window.UI) UI.menu.mount($('#themeBtn'));
+  $('#nav').addEventListener('click', (e) => {
+    const a = e.target.closest('[data-nav]');
+    if (!a || a.dataset.nav === 'cards' || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+    e.preventDefault();
+    goNav(a.dataset.nav);
+  });
+  $('#aiSeg').addEventListener('click', (e) => { const b = e.target.closest('[data-ai]'); if (!b) return; S.ai = b.dataset.ai; store.set(KEY.ai, S.ai); renderAi(); });
+  $('#toLobby').addEventListener('click', () => { if (S.view === 'watch' && TU.on) goLessons(true); else setView(S.backTo || 'lobby', true); });
   $('#learnBtn').addEventListener('click', () => goLessons(true));
   $('#lessons').addEventListener('click', (e) => { const b = e.target.closest('[data-lesson]'); if (b) lessonStart(b.dataset.lesson); });
   $('#playBtn').addEventListener('click', () => playStart(newSeed(), []));
@@ -1611,7 +1675,7 @@ function route() {
   saveSeats();
   if (h.play != null) {
     const s = savedPlay();
-    if (s && s.seed === h.play && s.a === S.seats[0] && s.b === S.seats[1]) playStart(s.seed, s.answers, { replace: true });
+    if (s && s.seed === h.play && s.a === S.seats[0] && s.b === S.seats[1]) playStart(s.seed, s.answers, Object.assign(savedOpts(s), { replace: true }));
     else playStart(h.play, [], { replace: true });
     return;
   }
@@ -1645,6 +1709,7 @@ async function boot() {
   renderButtons();
   renderPick();
   renderSeats();
+  renderAi();
   renderLearnBtn();
   route();
 }
