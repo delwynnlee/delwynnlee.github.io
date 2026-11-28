@@ -94,7 +94,7 @@
 1 Mossborn Hydra`) },
         { id: 'sos-larsen', player: 'Christoffer Larsen', from: 'Denmark', archetype: 'Selesnya Landfall', arch: 'aggro', won: false, face: 'Earthbender Ascension',
           goal: 'Win the mirror for Larsen, who lost it narrowly.',
-          plan: 'The same Selesnya Landfall deck with two more Surraks and one more Mossborn Hydra. Make every land drop count.',
+          plan: 'Steuer’s Selesnya Landfall deck, one card apart: a second Surrak in place of an Icetill Explorer. Make every land drop count.',
           main: L(`2 Surrak, Elusive Hunter
 2 Plains
 4 Earthbender Ascension
@@ -199,7 +199,7 @@
 4 Spirebluff Canal`) },
         { id: 'w31-shibata', player: 'Akira Shibata', from: 'Japan', archetype: 'Izzet Lessons', arch: 'control', won: false, face: "Stormchaser's Talent",
           goal: 'Win the mirror for Shibata. He lost 0–3.',
-          plan: 'Izzet Lessons with an extra Boomerang Basics, two Opts, Torch the Tower and a Roaring Furnace in place of some Lessons.',
+          plan: 'Manfield’s Izzet Lessons, six cards apart: two Opts, a fourth Boomerang Basics, a second It’ll Quench Ya!, Torch the Tower and Roaring Furnace, for two Iroh’s Demonstrations, a Gran-Gran, a Firebending Lesson, an Abandon Attachments and an Island.',
           main: L(`2 Opt
 6 Island
 4 Stormchaser's Talent
