@@ -19,8 +19,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" href="../img/favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="../img/icon-180.png">
-<link rel="stylesheet" href="../theme.css?v=1">
+<link rel="stylesheet" href="../theme.css?v=2">
 <script src="../ui.js?v=1"></script>
+<script src="../glossary.js?v=1"></script>
 <link rel="preload" href="cards.json?v=2026-11-20" as="fetch" crossorigin>
 <link rel="preload" href="../fonts/anybody.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="../fonts/cabin.woff2" as="font" type="font/woff2" crossorigin>
@@ -877,10 +878,16 @@ img { display: block; max-width: 100%; }
 .scrim { position: fixed; inset: 0; z-index: 40; background: var(--scrim); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); animation: fade .2s; }
 @keyframes fade { from { opacity: 0; } }
 .insp {
-  position: fixed; z-index: 41; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(720px, calc(100vw - 24px)); max-height: calc(100dvh - 24px);
-  overflow: auto; border-radius: 22px; background: var(--overlay); border: 1px solid var(--line-strong); box-shadow: var(--sh-3);
-  display: grid; grid-template-columns: minmax(0, 270px) minmax(0, 1fr); gap: 20px; padding: 20px;
+  position: fixed; z-index: 41; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(740px, calc(100vw - 24px)); max-height: calc(100dvh - 24px);
+  overflow: auto; overscroll-behavior: contain; border-radius: 22px; background: var(--overlay); border: 1px solid var(--line-strong); box-shadow: var(--sh-3); padding: 20px;
+  touch-action: pan-y pinch-zoom;
 }
+.insp-page { display: grid; grid-template-columns: minmax(0, 270px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.insp .big { position: sticky; top: 0; }
+.insp-nav { display: flex; align-items: center; gap: 4px; min-width: 0; margin: -8px 48px 12px -8px; }
+.insp-nav .icon-btn { width: 38px; height: 38px; border-radius: 11px; }
+.insp-pos { min-width: 0; padding: 0 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font: 600 14px/1.2 var(--body); font-variant-numeric: tabular-nums; }
+.insp-pos b { color: var(--text); font-weight: 800; }
 .insp .big .card { --w: 100%; width: 100%; box-shadow: 0 10px 30px rgba(0, 0, 0, .5); }
 .insp h2 { margin: 0; font: 800 24px/1.1 var(--display); font-stretch: 110%; padding-right: 36px; }
 .insp .line { margin: 6px 0 0; color: var(--muted); font-size: 14.5px; }
@@ -900,8 +907,13 @@ img { display: block; max-width: 100%; }
 .insp .stack { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 .insp .stack .card { --w: 46px; }
 @media (max-width: 600px) {
-  .insp { grid-template-columns: 1fr; top: auto; bottom: 0; transform: translateX(-50%); width: 100vw; border-radius: 22px 22px 0 0; max-height: 92dvh; padding: 16px 16px calc(18px + var(--safe-b)); }
-  .insp .big { width: min(58vw, 230px); justify-self: center; }
+  /* a phone gets the whole screen: the card on top, its text below, and what you can do with it pinned to the bottom */
+  .insp { inset: 0; transform: none; width: 100vw; height: 100dvh; max-height: none; border: 0; border-radius: 0; padding: calc(var(--safe-t) + 60px) 14px calc(var(--safe-b) + 18px); animation: fade .2s; }
+  .insp-page { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .insp .big { position: static; width: min(64vw, 270px); justify-self: center; }
+  .insp .x { position: fixed; top: calc(var(--safe-t) + 10px); right: 10px; z-index: 3; }
+  .insp-nav { position: fixed; z-index: 3; top: calc(var(--safe-t) + 10px); left: 10px; max-width: calc(100vw - 74px); margin: 0; padding: 3px; border-radius: 14px; border: 1px solid var(--line); background: rgb(var(--overlay-rgb) / .9); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: var(--sh-1); }
+  .insp .acts { position: sticky; bottom: calc(-18px - var(--safe-b)); z-index: 2; margin: 16px -14px 0; padding: 18px 14px calc(14px + var(--safe-b)); background: linear-gradient(180deg, rgb(var(--overlay-rgb) / 0), var(--overlay) 18px); }
 }
 .sheet {
   position: fixed; z-index: 41; left: 50%; bottom: 0; transform: translateX(-50%); width: min(760px, 100vw); max-height: 88dvh; display: flex; flex-direction: column;
@@ -1078,6 +1090,6 @@ img { display: block; max-width: 100%; }
 <script src="journal.js?v=2"></script>
 <script src="career.js?v=1"></script>
 <script src="finals.js?v=1"></script>
-<script src="app.js?v=3"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

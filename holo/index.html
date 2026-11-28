@@ -19,8 +19,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" href="img/favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="img/icon-180.png">
-<link rel="stylesheet" href="theme.css?v=1">
+<link rel="stylesheet" href="theme.css?v=2">
 <script src="ui.js?v=1"></script>
+<script src="glossary.js?v=1"></script>
 <link rel="preload" href="cards.json?v=2026-11-20" as="fetch" crossorigin>
 <link rel="preload" href="fonts/anybody.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/cabin.woff2" as="font" type="font/woff2" crossorigin>
@@ -1481,6 +1482,33 @@ const SUB_LABEL = { 'ex': 'ex', 'mega': 'Mega', 'tera': 'Tera', 'v': 'V', 'vmax'
   'ultra beast': 'Ultra Beast', 'ancient': 'Ancient', 'future': 'Future', 'rapid strike': 'Rapid Strike', 'single strike': 'Single Strike',
   'fusion strike': 'Fusion Strike', 'team plasma': 'Team Plasma', 'eternamax': 'Eternamax', "rocket's secret machine": "Rocket's Secret Machine",
   'goldenrod game corner': 'Goldenrod Game Corner' };
+// The terms on a card worth explaining: in its text, and what kind of card it is
+const GLOSS_SUB = { 'ex': 'pokemon-ex', 'Tera': 'tera', 'ACE SPEC': 'ace-spec', 'V': 'pokemon-v', 'VMAX': 'vmax', 'GX': 'pokemon-gx', 'EX': 'pokemon-ex-old', 'Radiant': 'radiant', 'Prism Star': 'prism' };
+function glossFor(c) {
+  if (!window.Gloss) return [];
+  const text = [c.trait ? c.trait[1] : '', ...c.abil.map(a => a.text), ...c.atk.map(a => a.text), ...c.rules].filter(Boolean).join('\n');
+  const mega = c.subsRaw.includes('MEGA') || c.subsRaw.includes('Mega');
+  const extra = c.subsRaw.map(x => GLOSS_SUB[x]).filter(Boolean).map(x => (x === 'pokemon-ex' && mega ? 'mega-ex' : x));
+  if (c.abil.some(a => !a.k)) extra.push('ability');
+  return Gloss.find(text, extra, [c.name]);
+}
+function glossHTML(found) {
+  const main = found.filter(t => !t.more), more = found.filter(t => t.more);
+  const row = t => `<div class="gl" data-gl="${esc(t.id)}"><dt>${esc(t.k)}</dt><dd>${esc(t.d)}</dd></div>`;
+  return `<div class="gloss">${main.length ? `<p class="gl-h">What the terms mean</p><dl>${main.map(row).join('')}</dl>` : ''}`
+    + `${more.length ? `<details class="gl-more"><summary><b>${main.length ? 'More terms' : 'Terms'} on this card</b><span>${more.map(t => esc(t.k)).join(', ')}</span></summary><dl>${more.map(row).join('')}</dl></details>` : ''}</div>`;
+}
+// A tapped term: open its meaning and point at it
+function showGloss(id) {
+  const row = document.querySelector(`#ci-info .gl[data-gl="${CSS.escape(id)}"]`);
+  if (!row) return;
+  const det = row.closest('details');
+  if (det) det.open = true;
+  row.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  row.classList.remove('hit');
+  void row.offsetWidth;
+  row.classList.add('hit');
+}
 function infoHTML(c) {
   const s = c.set, h = [];
   h.push(`<header class="ci-head"><h2 id="ci-name">${esc(c.name)}</h2>` +
@@ -1491,13 +1519,18 @@ function infoHTML(c) {
   if (c.level === 'X') tags.push('<span class="tag">LV.X</span>');
   if (tags.length) h.push(`<div class="tags">${tags.join('')}</div>`);
 
+  // terms worth explaining are underlined once each, and explained under the text
+  const found = glossFor(c);
+  const gl = { found, used: new Set() };
+  const tx = (t) => (found.length ? Gloss.mark(esc(t), gl.found, gl.used) : esc(t));
   const blocks = [];
-  if (c.trait) blocks.push(`<div class="block abil"><p class="k">Ancient Trait</p><b>${esc(c.trait[0])}</b><p>${esc(c.trait[1])}</p></div>`);
-  for (const a of c.abil) blocks.push(`<div class="block abil"><p class="k">${['Ability', 'Poké-Power', 'Poké-Body', 'Pokémon Power'][a.k] || 'Ability'}</p><b>${esc(a.name)}</b>${a.text ? `<p>${esc(a.text)}</p>` : ''}</div>`);
-  for (const a of c.atk) blocks.push(`<div class="block"><div class="atk-top"><span class="pips">${a.cost ? pipsHTML(a.cost) : '<span class="muted" style="font-size:14px">Free</span>'}</span><b>${esc(a.name)}</b>${a.dmg ? `<span class="dmg">${esc(a.dmg)}</span>` : ''}</div>${a.text ? `<p>${esc(a.text)}</p>` : ''}</div>`);
-  if (c.kind !== 0 && c.rules.length) blocks.push(`<div class="block">${c.rules.map(r => `<p class="${REMINDER.test(r) ? 'reminder' : ''}">${esc(r)}</p>`).join('')}</div>`);
-  if (c.kind === 0 && c.rules.length) blocks.push(`<div class="block">${c.rules.map(r => `<p class="reminder">${esc(r)}</p>`).join('')}</div>`);
+  if (c.trait) blocks.push(`<div class="block abil"><p class="k">Ancient Trait</p><b>${esc(c.trait[0])}</b><p>${tx(c.trait[1])}</p></div>`);
+  for (const a of c.abil) blocks.push(`<div class="block abil"><p class="k">${['Ability', 'Poké-Power', 'Poké-Body', 'Pokémon Power'][a.k] || 'Ability'}</p><b>${esc(a.name)}</b>${a.text ? `<p>${tx(a.text)}</p>` : ''}</div>`);
+  for (const a of c.atk) blocks.push(`<div class="block"><div class="atk-top"><span class="pips">${a.cost ? pipsHTML(a.cost) : '<span class="muted" style="font-size:14px">Free</span>'}</span><b>${esc(a.name)}</b>${a.dmg ? `<span class="dmg">${esc(a.dmg)}</span>` : ''}</div>${a.text ? `<p>${tx(a.text)}</p>` : ''}</div>`);
+  if (c.kind !== 0 && c.rules.length) blocks.push(`<div class="block">${c.rules.map(r => `<p class="${REMINDER.test(r) ? 'reminder' : ''}">${tx(r)}</p>`).join('')}</div>`);
+  if (c.kind === 0 && c.rules.length) blocks.push(`<div class="block">${c.rules.map(r => `<p class="reminder">${tx(r)}</p>`).join('')}</div>`);
   if (blocks.length) h.push(`<div class="blocks">${blocks.join('')}</div>`);
+  if (found.length) h.push(glossHTML(found));
 
   if (c.kind === 0) {
     const wr = list => list.length ? list.map(x => `${pipsHTML(x[0])}<span><span class="op">${esc(x[1].replace('-', '−'))}</span>${esc(x.slice(2))}</span>`).join(' ') : '<span class="none">None</span>';
@@ -1885,6 +1918,8 @@ $('#ci-next').addEventListener('click', () => step(1));
 
 document.addEventListener('click', e => {
   const t = e.target;
+  const kt = t.closest('#ci-info .kwt');
+  if (kt) { showGloss(kt.dataset.gl); return; }
   if (t.closest('[data-close]')) {
     if (t.closest('#insp')) closeCard(); else closeSheets();
     return;
@@ -1939,8 +1974,15 @@ document.addEventListener('keydown', e => {
     if (e.key === 'ArrowRight') step(1);
     return;
   }
-  if (e.key === '/' && !typingNow) { e.preventDefault(); $('#q').focus(); $('#q').select(); }
+  if (e.key === '/' && !typingNow) { e.preventDefault(); $('#q').focus(); $('#q').select(); return; }
+  // the arrows move between the cards in the results; Enter opens the one you're on
+  if (window.UI && /^Arrow/.test(e.key) && !typingNow && e.target.closest && e.target.closest('#results [data-i], #saved [data-open]')) UI.arrows(e, $$('#results [data-i], #saved [data-open]'));
 });
+if (window.UI) UI.keys.set(() => [
+  { title: 'Anywhere', rows: [[['?'], 'These shortcuts'], [['/'], 'Search the cards'], [['Esc'], "Close the card or panel that's open"]] },
+  { title: 'Results', rows: [[['←', '↑', '→', '↓'], 'Move between the cards'], [['Enter'], "Open the one you're on"]] },
+  { title: "A card you've opened", rows: [[['←', '→'], 'The card before or after it in the results']] },
+]);
 addEventListener('popstate', route);
 addEventListener('hashchange', route);
 // Wordmark catches the light as the pointer moves.

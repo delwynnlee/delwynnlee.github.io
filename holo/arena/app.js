@@ -1573,12 +1573,14 @@ window.libExtra = () => FIN.FINALS.flatMap((f) => f.decks.map((d) => finalsDeck(
    ============================================================ */
 const INSP = $('#insp'), SCRIM = $('#scrim');
 let inspReturn = null;
-function cardText(d) {
+// gl: { found, used } from the glossary, so each explained term is underlined once
+function cardText(d, gl) {
   const out = [];
-  for (const a of d.abil || []) out.push(`<div class="block"><p class="k">Ability</p><b>${esc(a.name)}</b>${a.text ? `<p>${esc(a.text)}</p>` : ''}</div>`);
-  for (const a of d.atks || []) out.push(`<div class="block"><div class="atk-top"><span class="pips">${a.cost ? pipsHTML(a.cost) : '<span class="muted">Free</span>'}</span><b>${esc(a.name)}</b>${a.base || a.mod ? `<span class="dmg">${a.base || ''}${esc(a.mod || '')}</span>` : ''}</div>${a.text ? `<p>${esc(a.text)}</p>` : ''}</div>`);
-  for (const a of d.tmAtks || []) out.push(`<div class="block"><div class="atk-top"><span class="pips">${a.cost ? pipsHTML(a.cost) : '<span class="muted">Free</span>'}</span><b>${esc(a.name)}</b>${a.base ? `<span class="dmg">${a.base}</span>` : ''}</div>${a.text ? `<p>${esc(a.text)}</p>` : ''}</div>`);
-  if (d.kind !== 0 && d.text) out.push(`<div class="block"><p>${esc(d.text)}</p></div>`);
+  const tx = (t) => (gl ? Gloss.mark(esc(t), gl.found, gl.used) : esc(t));
+  for (const a of d.abil || []) out.push(`<div class="block"><p class="k">Ability</p><b>${esc(a.name)}</b>${a.text ? `<p>${tx(a.text)}</p>` : ''}</div>`);
+  for (const a of d.atks || []) out.push(`<div class="block"><div class="atk-top"><span class="pips">${a.cost ? pipsHTML(a.cost) : '<span class="muted">Free</span>'}</span><b>${esc(a.name)}</b>${a.base || a.mod ? `<span class="dmg">${a.base || ''}${esc(a.mod || '')}</span>` : ''}</div>${a.text ? `<p>${tx(a.text)}</p>` : ''}</div>`);
+  for (const a of d.tmAtks || []) out.push(`<div class="block"><div class="atk-top"><span class="pips">${a.cost ? pipsHTML(a.cost) : '<span class="muted">Free</span>'}</span><b>${esc(a.name)}</b>${a.base ? `<span class="dmg">${a.base}</span>` : ''}</div>${a.text ? `<p>${tx(a.text)}</p>` : ''}</div>`);
+  if (d.kind !== 0 && d.text) out.push(`<div class="block"><p>${tx(d.text)}</p></div>`);
   if (d.kind === 0) {
     const w = (d.weak || []).map((x) => `${pipHTML(x.t)} ${esc(x.v)}`).join(' ') || 'none';
     const r = (d.res || []).map((x) => `${pipHTML(x.t)} ${x.v}`).join(' ') || 'none';
@@ -1586,10 +1588,79 @@ function cardText(d) {
   }
   return out.join('');
 }
+// The terms worth explaining on a card: those in its text, and those it is (a Pokémon ex, an ACE SPEC, a Tera Pokémon)
+function glossFor(d) {
+  if (!window.Gloss) return [];
+  const text = [].concat((d.abil || []).map((a) => a.text), (d.atks || []).map((a) => a.text), (d.tmAtks || []).map((a) => a.text), d.kind !== 0 ? [d.text] : []).filter(Boolean).join('\n');
+  const extra = [d.mega ? 'mega-ex' : d.ex ? 'pokemon-ex' : null, d.tera ? 'tera' : null, d.ace ? 'ace-spec' : null, d.tmAtks ? 'tm' : null, d.kind === 2 && !d.basicEnergy ? 'special-energy' : null, d.abil && d.abil.length ? 'ability' : null].filter(Boolean);
+  return Gloss.find(text, extra, [d.name]);
+}
+// What the terms on a card mean, under its text; everyday game words wait behind "More terms"
+function glossHTML(found) {
+  if (!found.length) return '';
+  const main = found.filter((t) => !t.more), more = found.filter((t) => t.more);
+  const row = (t) => `<div class="gl" data-gl="${esc(t.id)}"><dt>${esc(t.k)}</dt><dd>${esc(t.d)}</dd></div>`;
+  return `<div class="gloss">${main.length ? `<p class="gl-h">What the terms mean</p><dl>${main.map(row).join('')}</dl>` : ''}`
+    + `${more.length ? `<details class="gl-more"><summary><b>${main.length ? 'More terms' : 'Terms'} on this card</b><span>${more.map((t) => esc(t.k)).join(', ')}</span></summary><dl>${more.map(row).join('')}</dl></details>` : ''}</div>`;
+}
+// A tapped term: open its meaning and point at it
+function showGloss(id) {
+  const row = INSP.querySelector(`.gl[data-gl="${CSS.escape(id)}"]`);
+  if (!row) return;
+  const det = row.closest('details');
+  if (det) det.open = true;
+  row.scrollIntoView({ block: 'nearest', behavior: reduceMotion.matches ? 'auto' : 'smooth' });
+  row.classList.remove('hit');
+  void row.offsetWidth;
+  row.classList.add('hit');
+}
+// What you can page through from a card: the rest of its row or hand on the table, the deck it's in, the cards to
+// choose from, or the other key cards
+const INS = { page: null, from: null };
+function pageSet(src) {
+  if (!src || !src.isConnected) return { items: [], i: 0, label: '' };
+  const shown = (el) => el.getClientRects().length > 0 && !el.closest('[hidden]');
+  let items = [], label = '';
+  const side = src.closest('.side[data-p]');
+  if (side && src.matches('.mon')) { items = $$('.mon', side); label = `${W.mode === 'play' && side.dataset.p === '0' ? 'Your' : `${names()[+side.dataset.p]}'s`} Pokémon`; }
+  else if (side && src.matches('[data-card]')) { items = $$('[data-card]', side).filter((el) => !el.classList.contains('back')); label = `${W.mode === 'play' && side.dataset.p === '0' ? 'Your' : `${names()[+side.dataset.p]}'s`} hand`; }
+  else if (src.matches('[data-zoomdef]')) { items = $$('[data-zoomdef]', SHEET); label = SH.opts ? SH.opts.title : ''; }
+  else if (src.closest('#dvCards')) { items = $$('[data-zoom]', $('#dvCards')); label = $('#dvName') ? $('#dvName').textContent : ''; }
+  else if (src.closest('.dv-keys, .cr-new, .rw-cards')) { const box = src.closest('.dv-keys, .cr-new, .rw-cards'); items = $$('[data-zoom]', box); label = box.matches('.rw-cards') ? 'This pack' : box.matches('.cr-new') ? 'Latest cards' : 'Key cards'; }
+  items = items.filter(shown);
+  const i = items.indexOf(src);
+  return i < 0 ? { items: [], i: 0, label } : { items, i, label };
+}
+// Open a card from the element it is shown by, with whatever you could do with it right now
+function inspectEl(el) {
+  if (el.matches('.mon')) return inspectMon(+el.dataset.mon, el);
+  if (el.matches('[data-card]')) {
+    const id = +el.dataset.card;
+    if (PL.on && W.mode === 'play' && el.closest('.side[data-p="0"]')) return inspectHand(id, el);
+    const f = curFrame();
+    for (const ps of f.s.p) { const h = ps.hand.find(([x]) => x === id); if (h) return openInspector({ def: def(h[1]), from: el }); }
+    return;
+  }
+  if (el.dataset.zoomdef) return openInspector({ def: def(el.dataset.zoomdef), from: el });
+  if (el.dataset.zoom) return openInspector({ def: def(el.dataset.zoom), from: el });
+}
+// Turn to the card before or after the open one (d: -1 or 1), or to card i (Home and End). Past either end it nudges.
+function pageInspector(d, i, viaBtn) {
+  const pg = INS.page;
+  if (!pg) return;
+  const to = i != null ? i : pg.i + d;
+  const dir = to > pg.i ? 1 : -1;
+  const pageEl = () => INSP.querySelector('.insp-page');
+  if (to < 0 || to >= pg.items.length || to === pg.i || !pg.items[to].isConnected) { if (window.UI && pageEl()) UI.slide(pageEl(), d || dir, true); return; }
+  inspectEl(pg.items[to]);
+  if (window.UI && pageEl()) UI.slide(pageEl(), dir);
+  if (viaBtn) { const b = INSP.querySelector(`[data-page="${dir}"]`); (b && !b.disabled ? b : INSP.querySelector(`[data-page="${-dir}"]`) || INSP.querySelector('.x')).focus({ preventScroll: true }); }
+}
 function openInspector(opts) {
-  // opts: { def, mon (snapshot), acts: [{label, html, a}], why, title }
+  // opts: { def, mon (snapshot), acts: [{label, html, a}], why, from (what was tapped: paging goes from there) }
   const d = opts.def;
-  inspReturn = document.activeElement;
+  const was = !INSP.hidden;
+  if (!was) inspReturn = document.activeElement;
   const m = opts.mon;
   const state = [];
   if (m) {
@@ -1598,31 +1669,50 @@ function openInspector(opts) {
     if (m.t) state.push(`<span>${esc(def(m.t).name)} attached</span>`);
     for (const c of m.c || []) state.push(`<span>${A.COND_WORD[c]}</span>`);
   }
+  const found = glossFor(d);
+  const gl = found.length ? { found, used: new Set() } : null;
+  const pg = pageSet(opts.from || (was ? null : inspReturn));
+  INS.page = pg.items.length > 1 ? pg : null;
+  INS.from = opts.from || null;
+  const nav = INS.page ? `<div class="insp-nav"><button type="button" class="icon-btn" data-page="-1" aria-label="Previous card"${pg.i <= 0 ? ' disabled' : ''}>${icon('prev')}</button>`
+    + `<span class="insp-pos"><b>${pg.i + 1}</b> of ${pg.items.length}${pg.label ? ` · ${esc(pg.label)}` : ''}</span>`
+    + `<button type="button" class="icon-btn" data-page="1" aria-label="Next card"${pg.i >= pg.items.length - 1 ? ' disabled' : ''}>${icon('next')}</button></div>` : '';
   const hp = d.kind === 0 ? ` <span class="pips">${pipsHTML(d.types)}</span>` : '';
-  INSP.innerHTML = `<div class="big">${cardHTML(d, { big: true })}</div>
-    <div><h2 id="inspName">${esc(d.name)}</h2><p class="line">${esc(stageLine(d))}${d.kind === 0 ? `, ${d.hp} HP` : ''}${hp}</p>
+  const acts = opts.acts && opts.acts.length ? `<div class="acts">${opts.acts.map((x, k) => `<button type="button" class="pill${k === 0 ? ' pill-solid' : ''}" data-act="${k}">${x.html || esc(x.label)}</button>`).join('')}</div>` : '';
+  const page = `<div class="insp-page"><div class="big">${cardHTML(d, { big: true })}</div>
+    <div class="insp-info"><h2 id="inspName">${esc(d.name)}</h2><p class="line">${esc(stageLine(d))}${d.kind === 0 ? `, ${d.hp} HP` : ''}${hp}</p>
     ${state.length ? `<div class="state">${state.join('')}</div>` : ''}
     ${m && m.st ? `<div class="stack">${m.st.map((x) => cardHTML(def(x), { alt: def(x).name })).join('')}</div>` : ''}
-    ${cardText(d)}
-    ${opts.acts && opts.acts.length ? `<div class="acts">${opts.acts.map((x, k) => `<button type="button" class="pill${k === 0 ? ' pill-solid' : ''}" data-act="${k}">${x.html || esc(x.label)}</button>`).join('')}</div>` : ''}
-    ${opts.why ? `<p class="why">${esc(opts.why)}</p>` : ''}</div>
-    <button type="button" class="icon-btn x" data-close="1" aria-label="Close">${icon('x')}</button>`;
+    ${cardText(d, gl)}
+    ${glossHTML(found)}
+    ${opts.why ? `<p class="why">${esc(opts.why)}</p>` : ''}
+    ${acts}</div></div>`;
+  if (was && INSP.querySelector('.insp-page')) {
+    // Turning to another card: the bar and the page change, the dialog stays
+    const on = INSP.querySelector('.insp-nav');
+    if (on) on.remove();
+    INSP.querySelector('.insp-page').outerHTML = page;
+    if (nav) INSP.insertAdjacentHTML('afterbegin', nav);
+    INSP.scrollTop = 0;
+  } else INSP.innerHTML = `${nav}${page}<button type="button" class="icon-btn x" data-close="1" aria-label="Close">${icon('x')}</button>`;
   INSP._acts = opts.acts || [];
-  const was = !INSP.hidden;
   INSP.hidden = false;
   SCRIM.hidden = false;
   if (!was && window.UI) UI.overlay.open('insp', () => closeInspector(true));
-  const btn = INSP.querySelector('[data-act="0"]') || INSP.querySelector('[data-close]');
-  btn.focus({ preventScroll: true });
+  if (!was) { const btn = INSP.querySelector('[data-act="0"]') || INSP.querySelector('[data-close]'); btn.focus({ preventScroll: true }); }
 }
 function closeInspector(viaHistory) {
   if (INSP.hidden) return;
   INSP.hidden = true;
   if ($('#sheet').hidden) SCRIM.hidden = true;
   INSP.innerHTML = '';
+  INS.page = null;
   if (viaHistory !== true && window.UI) UI.overlay.closed('insp');
-  if (inspReturn && inspReturn.isConnected) inspReturn.focus({ preventScroll: true });
+  // focus goes back to the card you ended on, if you paged
+  const back = INS.from && INS.from.isConnected ? INS.from : inspReturn;
+  if (back && back.isConnected) back.focus({ preventScroll: true });
   inspReturn = null;
+  INS.from = null;
 }
 function snapMon(f, id) {
   for (const ps of f.s.p) {
@@ -1899,21 +1989,21 @@ function whyNot(d) {
   if (d.fx && d.fx[0] && d.fx[0].k === 'rareCandy') return "Rare Candy needs a Stage 2 card in your hand and a Basic Pokémon that has been in play since before this turn. It can't be used on your first turn.";
   return "This card can't do anything right now.";
 }
-function inspectHand(id) {
+function inspectHand(id, from) {
   const f = curFrame();
   const h = f.s.p[0].hand.find(([x]) => x === id);
   if (!h) return;
   const d = def(h[1]);
   const acts = optsForCard(id).map((a) => ({ a, label: actLabel(a) }));
-  openInspector({ def: d, acts, why: acts.length ? '' : whyNot(d) });
+  openInspector({ def: d, acts, why: acts.length ? '' : whyNot(d), from });
 }
-function inspectMon(id) {
+function inspectMon(id, from) {
   const f = curFrame();
   const m = snapMon(f, id);
   if (!m) return;
   const mine = monOwner(f, id) === 0 && W.mode === 'play';
   const acts = mine ? optsForMon(id).map((a) => ({ a, label: actLabel(a), html: a.k === 'attack' ? `${atkHTML(a)}` : null })) : [];
-  openInspector({ def: def(m.d), mon: m, acts });
+  openInspector({ def: def(m.d), mon: m, acts, from });
 }
 function renderPlaybar() {
   const req = PL.req;
@@ -2230,15 +2320,13 @@ function onBoardClick(e) {
   if (monB) {
     const id = +monB.dataset.mon;
     if (PL.on && PL.ui === 'target' && PL.req.ids.includes(id)) { answer({ type: 'target', id }); return; }
-    inspectMon(id);
+    inspectMon(id, monB);
     return;
   }
   const hc = t.closest('[data-card]');
   if (hc) {
     const id = +hc.dataset.card;
-    if (PL.on && W.mode === 'play' && hc.closest('.side[data-p="0"]')) { inspectHand(id); return; }
-    const f = curFrame();
-    for (const ps of f.s.p) { const h = ps.hand.find(([x]) => x === id); if (h) { openInspector({ def: def(h[1]) }); return; } }
+    inspectEl(hc);
   }
 }
 function onButton(name) {
@@ -2310,7 +2398,7 @@ function wire() {
   });
   L.seats.addEventListener('click', (e) => {
     const z = e.target.closest('[data-zoom]');
-    if (z) { openInspector({ def: def(z.dataset.zoom) }); return; }
+    if (z) { openInspector({ def: def(z.dataset.zoom), from: z }); return; }
     const dv = e.target.closest('[data-dv]');
     if (dv) { openDeckView(dv.dataset.dv, dv, 'lobby'); return; }
     const l = e.target.closest('[data-list]');
@@ -2379,7 +2467,7 @@ function wire() {
     const p = e.target.closest('[data-crpartner]');
     if (p) { careerSave(CAR.newRun(p.dataset.crpartner)); renderCareer(); window.scrollTo({ top: 0 }); return; }
     const z = e.target.closest('[data-zoom]');
-    if (z) { openInspector({ def: def(z.dataset.zoom) }); return; }
+    if (z) { openInspector({ def: def(z.dataset.zoom), from: z }); return; }
     const b = e.target.closest('[data-cr]');
     if (!b) return;
     const run = careerRun();
@@ -2402,7 +2490,7 @@ function wire() {
     const t = e.target.closest('[data-take]');
     if (t) { takeReward(+t.dataset.take); return; }
     const z = e.target.closest('[data-zoom]');
-    if (z) openInspector({ def: def(z.dataset.zoom) });
+    if (z) openInspector({ def: def(z.dataset.zoom), from: z });
   });
   // the journal
   $('#journalBody').addEventListener('click', (e) => {
@@ -2428,13 +2516,15 @@ function wire() {
     if (md) { DV.mode = md.dataset.dvmode; store.set('holo.arena.dvmode.v1', DV.mode); renderDeckCards(deckByKey(DV.key)); return; }
     if (e.target.closest('[data-dvcopy]')) { const ok = await copyText(deckText(deckByKey(DV.key))); pageToast(ok ? 'List copied. Paste it into Pokémon TCG Live to build the deck.' : "The list couldn't be copied here."); return; }
     const z = e.target.closest('[data-zoom]');
-    if (z) { openInspector({ def: def(z.dataset.zoom) }); return; }
+    if (z) { openInspector({ def: def(z.dataset.zoom), from: z }); return; }
     const st = e.target.closest('[data-dvseat]');
     if (st) { S.active = +st.dataset.dvseat; setSeat(DV.key); closeDeckView(); return; }
     const pl = e.target.closest('[data-dvplay]');
     if (pl) libPlay(DV.key, pl.dataset.dvplay);
   });
   if (window.UI) {
+    UI.swipe(INSP, { ignore: () => !INS.page, move: (dx, paged) => { const el = INSP.querySelector('.insp-page'); if (el && INS.page) UI.drag(el, dx, INS.page.i > 0, INS.page.i < INS.page.items.length - 1, paged); }, swipe: (dir) => pageInspector(dir) });
+    UI.wheel(INSP, { ignore: () => !INS.page, swipe: (dir) => pageInspector(dir) });
     UI.swipe(dvb, {
       ignore: () => !DV.set || !INSP.hidden,
       move: (dx, paged) => UI.drag($('#deckView .dv-box'), dx, DV.set && DV.set.i > 0, DV.set && DV.set.i < DV.set.items.length - 1, paged),
@@ -2485,13 +2575,17 @@ function wire() {
   // inspector and sheet
   INSP.addEventListener('click', (e) => {
     if (e.target.closest('[data-close]')) { closeInspector(); return; }
+    const pgb = e.target.closest('[data-page]');
+    if (pgb) { pageInspector(+pgb.dataset.page, null, true); return; }
+    const kt = e.target.closest('.kwt');
+    if (kt) { showGloss(kt.dataset.gl); return; }
     const b = e.target.closest('[data-act]');
     if (b) { const x = INSP._acts[+b.dataset.act]; closeInspector(); if (x && x.a) answer({ type: 'act', a: x.a }); }
   });
   SCRIM.addEventListener('click', () => { if (!INSP.hidden) closeInspector(); else if (SH.opts && SH.opts.readOnly) closeSheet(); });
   SHEET.addEventListener('click', (e) => {
     const z = e.target.closest('[data-zoomdef]');
-    if (z) { openInspector({ def: def(z.dataset.zoomdef) }); return; }
+    if (z) { openInspector({ def: def(z.dataset.zoomdef), from: z }); return; }
     const c = e.target.closest('[data-ch]');
     if (c && !c.dataset.ro) { toggleChoice(isNaN(+c.dataset.ch) ? c.dataset.ch : +c.dataset.ch); return; }
     const a = e.target.closest('[data-sh]');
@@ -2501,18 +2595,48 @@ function wire() {
     else if (a.dataset.sh === 'ok' && valid()) { const sel = SH.sel.slice(); const done = SH.opts.done; closeSheet(); done(sel); }
   });
   document.addEventListener('keydown', (e) => {
+    if (!INSP.hidden && INS.page && !e.target.closest('input, textarea') && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); pageInspector(e.key === 'ArrowLeft' ? -1 : 1); return; }
+      if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); pageInspector(0, e.key === 'Home' ? 0 : INS.page.items.length - 1); return; }
+    }
     if (e.key === 'Escape') { if (!INSP.hidden) { closeInspector(); return; } if (!$('#deckView').hidden) { closeDeckView(); return; } if (!$('#crReward').hidden) { closeReward(); return; } if (SH.opts && SH.opts.readOnly) { closeSheet(); return; } if (T.logpane.classList.contains('open')) closeLog(); return; }
+    const arrow = /^Arrow(Left|Right|Up|Down)$/.test(e.key) && !e.metaKey && !e.ctrlKey && !e.altKey;
     if (!$('#deckView').hidden && INSP.hidden && !e.target.closest('input, textarea')) {
+      // on one of the deck's cards the arrows move between its cards; anywhere else ← → turn to the next deck
+      if (arrow && e.target.closest('#dvCards [data-zoom]') && window.UI && UI.arrows(e, $$('#dvCards [data-zoom]'))) return;
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); pageDeck(e.key === 'ArrowLeft' ? -1 : 1); }
       return;
     }
-    if (S.view !== 'watch' || !INSP.hidden || !SHEET.hidden || e.target.closest('input, textarea')) return;
+    if (!INSP.hidden || !SHEET.hidden || e.target.closest('input, textarea, select') || (window.UI && UI.keys.isOpen())) return;
+    // '/' searches the decks
+    if (e.key === '/' && !e.metaKey && !e.ctrlKey) { e.preventDefault(); if (S.view !== 'decks') openLibrary(true); const q = $('#libQ'); if (q) { q.focus(); q.select(); } return; }
+    // lists of decks, lessons and finals: the arrows move between them
+    if (arrow && S.view !== 'watch' && window.UI) {
+      const lists = { lobby: '#pickBody .tile', decks: '#libBody .lib-tile', learn: '#lessons [data-lesson]', finals: '#finalsBody [data-fplay]:not([disabled]), #finalsBody [data-fdeck]' };
+      const sel = lists[S.view];
+      if (sel && e.target.closest && e.target.matches(sel)) { UI.arrows(e, $$(sel)); return; }
+    }
+    if (S.view !== 'watch') return;
+    // on the table: the arrows move between the cards in play and in the hands; Enter or I reads the one you're on
+    const onCard = e.target.closest && e.target.closest('#board .mon, #board [data-card]');
+    if (arrow && onCard && window.UI) { UI.arrows(e, $$('#board .mon, #board [data-card]').filter((x) => x.getClientRects().length && !x.classList.contains('back'))); return; }
+    if ((e.key === 'i' || e.key === 'I') && onCard && !e.metaKey && !e.ctrlKey) { e.preventDefault(); inspectEl(onCard); return; }
+    if ((e.key === 'l' || e.key === 'L') && !e.metaKey && !e.ctrlKey) { e.preventDefault(); if (T.logpane.classList.contains('open')) closeLog(); else openLog(); return; }
     if (W.mode === 'watch') {
       if (e.key === ' ' && !e.target.closest('button')) { e.preventDefault(); W.playing ? stop() : play(); }
       else if (e.key === 'ArrowRight') { e.preventDefault(); e.shiftKey ? jumpTurn(1) : step(1); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); e.shiftKey ? jumpTurn(-1) : step(-1); }
-    } else if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); undo(); }
+      else if ((e.key === 'h' || e.key === 'H') && !e.metaKey && !e.ctrlKey) { e.preventDefault(); T.hands.click(); }
+    } else if (((e.metaKey || e.ctrlKey) && e.key === 'z') || (e.key === 'z' && !e.metaKey && !e.ctrlKey && !e.altKey)) { e.preventDefault(); undo(); }
   });
+  if (window.UI) UI.keys.set(() => [
+    { title: 'Anywhere', rows: [[['?'], 'These shortcuts'], [['/'], 'Search the decks'], [['Esc'], "Close the card, deck or log that's open"]] },
+    { title: 'Lists of decks, lessons and finals', rows: [[['←', '↑', '→', '↓'], 'Move between them'], [['Enter'], "Open the one you're on"]] },
+    { title: "A card you've opened", rows: [[['←', '→'], 'The card before or after it: on the same side of the table, in the same hand or deck, or among the same choices'], [['Home', 'End'], 'The first or last of them']] },
+    { title: "A deck you've opened", rows: [[['←', '→'], 'The deck before or after it in the list'], [['←', '↑', '→', '↓'], "Move between its cards, once you're on one"]] },
+    { title: 'Watching a game', rows: [[['Space'], 'Play or pause'], [['←', '→'], 'Step back or forward'], [['Shift', '←', '→'], 'A turn back or forward'], [['H'], 'Show or hide the hands'], [['L'], 'The game log']] },
+    { title: 'Playing a game', rows: [[['←', '↑', '→', '↓'], 'Move between the cards on the table and in your hand'], [['Enter'], "Read the card you're on, with what you can do with it"], [['Z'], 'Undo'], [['L'], 'The game log']] },
+  ]);
   let rz = 0;
   addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => { headerHeight(); measure(); if (S.view === 'journal' && $('#jrLine')) renderJournal(); }); });
   // Back closes whatever is open on top (a card, a deck) before it leaves the page
