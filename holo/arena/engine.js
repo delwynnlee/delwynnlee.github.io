@@ -19,13 +19,15 @@
     for (const raw of json.cards) {
       const def = compileCard(raw);
       if (!def.ok) continue;
+      if (raw.std) def.std = true;
       Object.defineProperty(def, '__d', { value: true });
       defs.set(def.id, def);
       if (!byName.has(def.name)) byName.set(def.name, []);
       byName.get(def.name).push(def);
     }
     const alias = json.alias || {};
-    return { defs, byName, alias, built: json.built, get: (id) => defs.get(id) || defs.get(alias[id]), list: [...defs.values()] };
+    const sets = (json.sets || []).map((x) => Object.assign({}, x, { ids: new Set(x.ids) }));
+    return { defs, byName, alias, built: json.built, sets, get: (id) => defs.get(id) || defs.get(alias[id]), list: [...defs.values()] };
   }
 
   /* ============================================================
@@ -2380,11 +2382,21 @@
     return problems;
   }
   // Build a 60-card deck around one or two types from the playable pool.
-  function buildDeck(pool, { types, archetype = 'midrange', seed = 1, name } = {}) {
+  // How much a Trainer helps a deck it's added to, for filling a deck from a smaller set of cards
+  function trainerRank(d) {
+    const f = (d.fx || [])[0] || {};
+    if (d.trainer === 'supporter') return ['draw', 'drawTo', 'shuffleHand', 'discardHand', 'iono', 'judge'].includes(f.k) ? 10 : f.k === 'gust' ? 8 : ['pokeSearch', 'cardSearch', 'benchSearch', 'energySearch', 'crispin'].includes(f.k) ? 7 : 3;
+    if (d.trainer === 'item') return ['pokeSearch', 'benchSearch', 'cardSearch'].includes(f.k) ? 8 : f.k === 'switch' ? 6 : ['energySearch', 'recover', 'recoverEnergy', 'rod'].includes(f.k) ? 5 : f.k === 'gust' || f.k === 'flip' ? 4 : f.k === 'heal' ? 3 : f.k === 'rareCandy' ? 0 : 2;
+    if (d.trainer === 'tool') return d.tool && d.tool.k === 'tm' ? 1 : 3;
+    return d.trainer === 'stadium' ? 2 : 1;
+  }
+  // allow: only cards it accepts go in (Standard, or one set's cards); Basic Energy always can
+  function buildDeck(pool, { types, archetype = 'midrange', seed = 1, name, allow } = {}) {
     const rng = makeRng(seed);
+    const ok = (d) => !allow || (d.kind === 2 && d.basicEnergy) || allow(d);
     const T = types && types.length ? types : [Object.keys(TYPES)[rng.int(8)]];
     const fits = (d) => !!d.types && [...d.types].some((t) => T.includes(t) || t === 'C') && [...d.types].every((t) => T.includes(t) || t === 'C');
-    const pkmn = pool.list.filter((d) => d.kind === 0 && fits(d) && d.atks.every((a) => [...a.cost].every((ch) => ch === 'C' || T.includes(ch))));
+    const pkmn = pool.list.filter((d) => d.kind === 0 && ok(d) && fits(d) && d.atks.every((a) => [...a.cost].every((ch) => ch === 'C' || T.includes(ch))));
     const byName = new Map();
     for (const d of pkmn) { if (!byName.has(d.name) || pokemonScore(d) > pokemonScore(byName.get(d.name))) byName.set(d.name, d); }
     const basics = [...byName.values()].filter((d) => d.stage === 0);
@@ -2415,7 +2427,7 @@
       pokeCount += k;
     }
     const hasStage2 = picked.some(([, d]) => d.stage === 2);
-    const T1 = (name) => (pool.byName.get(name) || [])[0];
+    const T1 = (name) => (pool.byName.get(name) || []).find(ok);
     const trainers = [];
     const add = (k, n) => {
       const d = T1(n);
@@ -2429,6 +2441,27 @@
     if (archetype === 'control') { add(2, 'Crushing Hammer'); add(1, 'Judge'); }
     if (archetype === 'aggro') { add(2, 'Maximum Belt'); }
     add(1, "Hero's Cape"); add(2, 'Nemona'); add(2, 'Earthen Vessel');
+    // From a smaller set of cards the staples may be missing: fill with the most useful Trainers there are, then more Pokémon
+    if (allow) {
+      const left = () => 60 - pokeCount - trainers.reduce((s, [x]) => s + x, 0);
+      const have = new Set(trainers.map(([, d]) => d.name));
+      const extra = pool.list.filter((d) => d.kind === 1 && ok(d) && !have.has(d.name) && trainerRank(d) >= 2 && !(d.fx && d.fx[0] && d.fx[0].k === 'rareCandy' && !hasStage2))
+        .map((d) => [trainerRank(d) + rng.next(), d]).sort((a, b) => b[0] - a[0]);
+      for (const [r, d] of extra) {
+        if (left() <= 14) break;
+        if (d.ace && trainers.some(([, x]) => x.ace)) continue;
+        have.add(d.name);
+        trainers.push([d.ace ? 1 : Math.min(r >= 7 ? 4 : r >= 5 ? 3 : 2, left() - 14), d]);
+      }
+      for (const l of lines) {
+        if (left() <= 16) break;
+        if (l.cards.some((c) => used.has(c.name))) continue;
+        const counts = l.cards.length === 3 ? [3, 2, 2] : l.cards.length === 2 ? [3, 2] : [2];
+        l.cards.forEach((c, i) => { picked.push([counts[i], c]); used.add(c.name); });
+        pokeCount += counts.reduce((s, x) => s + x, 0);
+      }
+      for (const pk of picked) { if (left() <= 16) break; const more = Math.min(4 - pk[0], left() - 16); if (more > 0) { pk[0] += more; pokeCount += more; } }
+    }
     const nonEnergy = pokeCount + trainers.reduce((s, [x]) => s + x, 0);
     const energyCount = 60 - nonEnergy;
     const energyTypes = T.filter((t) => t !== 'C' && t !== 'Y' && t !== 'N');
@@ -2442,7 +2475,7 @@
   }
 
   return {
-    loadPool, createGame, runGame, play, actions, doAction, NeedInput, snap, makeRng, resolveDeck, checkDeck, buildDeck,
+    loadPool, createGame, runGame, play, actions, doAction, NeedInput, snap, makeRng, resolveDeck, checkDeck, buildDeck, trainerRank,
     pokemonScore, canPay, shortfall, retreatCost, maxHp, top, mons, PERSONAS, TYPES, MAX_TURNS, BENCH, COND_WORD,
     HARD, cloneGame, evalPos,
   };

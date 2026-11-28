@@ -127,20 +127,68 @@ function claudeDeck(spec) {
   const d = A.resolveDeck(DATA.pool, spec);
   return finishDeck(d, { key, by: 'claude' });
 }
-function genDeck(types, archetype, seed) {
-  const key = `g.${types.join('')}.${archetype}.${seed}`;
+/* ---------- Which cards: all of them, Standard, or one set ---------- */
+const poolSet = (code) => (DATA.pool && DATA.pool.sets.find((x) => x.code === code)) || null;
+const poolOk = (pool) => pool === 'all' || pool === 'std' || !!poolSet(pool);
+function poolAllow(pool) {
+  if (pool === 'std') return (d) => !!d.std;
+  const set = poolSet(pool);
+  return set ? (d) => set.ids.has(d.id) : null;
+}
+// Which cards a deck key was built from
+function poolOfKey(key) {
+  let m;
+  if ((m = /^g\.[A-Z]{1,2}\.[a-z]+\.\d+\.([A-Za-z0-9]{2,6})$/.exec(key || ''))) return m[1];
+  if ((m = /^p\.([A-Za-z0-9]{2,6})\./.exec(key || ''))) return m[1];
+  return 'all';
+}
+function poolName(pool) { return pool === 'all' ? 'All cards' : pool === 'std' ? 'Standard' : (poolSet(pool) || {}).name || pool; }
+function poolCards(pool) { const ok = poolAllow(pool); return ok ? DATA.pool.list.filter((d) => ok(d) || (d.kind === 2 && d.basicEnergy)) : DATA.pool.list; }
+function genDeck(types, archetype, seed, pool = 'all') {
+  const key = `g.${types.join('')}.${archetype}.${seed}${pool !== 'all' ? `.${pool}` : ''}`;
   if (DECKS.has(key)) return DECKS.get(key);
-  const d = A.buildDeck(DATA.pool, { types, archetype, seed });
+  if (!poolOk(pool)) return null;
+  const d = A.buildDeck(DATA.pool, { types, archetype, seed, allow: poolAllow(pool) });
   const face = def(d.face);
-  const blurb = `${listWords(types.map((t) => TYPES[t]))} Pokémon played ${ARCH[archetype].toLowerCase()}, drafted by the generator${face ? ` around ${face.name}` : ''}.`;
-  return finishDeck(d, { key, by: 'gen', blurb, seed });
+  const from = pool === 'all' ? '' : pool === 'std' ? ' from Standard cards' : ` from ${poolName(pool)}`;
+  const blurb = `${listWords(types.map((t) => TYPES[t]))} Pokémon played ${ARCH[archetype].toLowerCase()}, drafted by the generator${from}${face ? ` around ${face.name}` : ''}.`;
+  return finishDeck(d, { key, by: 'gen', blurb, seed, pool });
+}
+// A ready-made deck for Standard or one set: the generator's best build in one type, the same every time
+function readyDeck(pool, t) {
+  const key = `p.${pool}.${t}`;
+  if (DECKS.has(key)) return DECKS.get(key);
+  if (!poolOk(pool) || pool === 'all') return null;
+  let seed = 7;
+  for (const ch of key) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+  const d = A.buildDeck(DATA.pool, { types: [t], archetype: 'midrange', seed, allow: poolAllow(pool) });
+  // named for its strongest Pokémon of that type, not a Colorless helper
+  const face = d.cards.filter((x) => x.kind === 0 && x.types.includes(t)).sort((a, b) => A.pokemonScore(b) - A.pokemonScore(a))[0];
+  if (!face) return null;
+  d.face = face.id;
+  const from = pool === 'std' ? 'Standard-legal' : `${poolName(pool)}`;
+  return finishDeck(Object.assign(d, { name: `${face.name} deck` }), { key, by: 'ready', pool,
+    blurb: `${TYPES[t]} Pokémon from ${from === 'Standard-legal' ? 'the cards legal in Standard' : from}, built by the generator around ${face.name}.` });
+}
+// The ready-made decks of a pool: Claude's for all the cards, one a type for Standard and for each set
+function poolDecks(pool) {
+  if (pool === 'all') return window.ARENA_DECKS.map((x) => deckByKey(`c.${x.id}`)).filter(Boolean);
+  const out = [];
+  for (const t of PICK_TYPES) {
+    const n = poolCards(pool).filter((d) => d.kind === 0 && d.types.includes(t)).length;
+    if (n < 6) continue;
+    const d = readyDeck(pool, t);
+    if (d && d.size === 60 && !out.some((x) => x.name === d.name)) out.push(d);
+  }
+  return out;
 }
 function deckByKey(key) {
   if (!key || typeof key !== 'string') return null;
   if (DECKS.has(key)) return DECKS.get(key);
   let m;
   if ((m = /^c\.([a-z0-9-]+)$/.exec(key))) { const spec = window.ARENA_DECKS.find((x) => x.id === m[1]); return spec ? claudeDeck(spec) : null; }
-  if ((m = /^g\.([GRWLPFDM]{1,2})\.(aggro|midrange|control)\.(\d{1,10})$/.exec(key))) return genDeck([...m[1]], m[2], +m[3]);
+  if ((m = /^g\.([GRWLPFDM]{1,2})\.(aggro|midrange|control)\.(\d{1,10})(?:\.([A-Za-z0-9]{2,6}))?$/.exec(key))) return genDeck([...m[1]], m[2], +m[3], m[4] || 'all');
+  if ((m = /^p\.([A-Za-z0-9]{2,6})\.([GRWLPFDM])$/.exec(key))) return readyDeck(m[1], m[2]);
   if (key === 'cr.me' && window.careerMe) return careerMe();
   if ((m = /^cr\.(\d{1,2})$/.exec(key)) && window.careerFoe) return careerFoe(+m[1]);
   if (window.finalsDeck && /^f\./.test(key)) return finalsDeck(key);
@@ -157,9 +205,11 @@ function mirrorSafe(d0, d1) {
    4. Lobby state and the address bar
    ============================================================ */
 const KEY = { seats: 'holo.arena.seats.v1', recent: 'holo.arena.recent.v1', play: 'holo.arena.play.v1', hands: 'holo.arena.hands.v1', speed: 'holo.arena.speed.v1', tut: 'holo.arena.tut.v1', ai: 'holo.arena.ai.v1' };
-const S = { view: 'lobby', seats: [null, null], active: 0, src: 'claude', gen: { types: ['R'], arch: 'aggro' }, recent: [], sim: null, ai: store.get(KEY.ai, 'hard') === 'normal' ? 'normal' : 'hard' };
+const S = { view: 'lobby', pool: 'all', seats: [null, null], active: 0, src: 'claude', gen: { types: ['R'], arch: 'aggro' }, recent: [], sim: null, ai: store.get(KEY.ai, 'hard') === 'normal' ? 'normal' : 'hard' };
 function renderAi() { $$('#aiSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.ai === S.ai))); }
-const saveSeats = () => store.set(KEY.seats, S.seats);
+const seatsKey = (pool) => (pool === 'all' ? KEY.seats : `holo.arena.seats.${pool}.v1`);
+const recentKey = (pool) => (pool === 'all' ? KEY.recent : `holo.arena.recent.${pool}.v1`);
+const saveSeats = () => store.set(seatsKey(S.pool), S.seats);
 function hashFor() {
   if (S.view === 'learn') return '#learn';
   if (S.view === 'decks') return '#decks';
@@ -190,7 +240,7 @@ function readHash() {
    ============================================================ */
 const L = { boot: $('#boot'), body: $('#lobbyBody'), seats: $('#seats'), sim: $('#sim'), pickBody: $('#pickBody'), pickTitle: $('#pickTitle'), pickHint: $('#pickHint') };
 const seatName = (i) => `Player ${i + 1}`;
-const BY = { claude: 'Designed by Claude', gen: 'Built by the generator', career: 'Victory Road', finals: 'As registered at Worlds' };
+const BY = { claude: 'Designed by Claude', gen: 'Built by the generator', ready: 'Ready-made', career: 'Victory Road', finals: 'As registered at Worlds' };
 function metaHTML(d) {
   return `<div class="deck-meta"><span class="pips">${pipsHTML(d.types.join(''))}</span><span class="arch">${ARCH[d.archetype]}</span><span>${BY[d.by] || ''}</span></div>`;
 }
@@ -239,8 +289,9 @@ function markTile(t) {
 }
 function renderPick() {
   $$('#srcSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.src === S.src)));
+  $('#srcSeg [data-src="claude"]').textContent = S.pool === 'all' ? "Claude's decks" : 'Ready-made';
   if (S.src === 'claude') {
-    const ds = window.ARENA_DECKS.map((x) => deckByKey(`c.${x.id}`)).filter(Boolean);
+    const ds = poolDecks(S.pool);
     L.pickBody.innerHTML = `<div class="deck-grid">${ds.map(tileHTML).join('')}</div>`;
   } else {
     const recent = S.recent.map(deckByKey).filter(Boolean);
@@ -248,7 +299,7 @@ function renderPick() {
     L.pickBody.innerHTML = `<div class="gen">
       <div class="gen-box">
         <h3>Build a deck</h3>
-        <p>The generator drafts from all ${nf.format(DATA.pool.list.length)} playable cards: the strongest evolution lines in your types, a stack of Trainers to find and power them, and the right Basic Energy. Every build is different.</p>
+        <p>The generator drafts from ${S.pool === 'all' ? `all ${nf.format(DATA.pool.list.length)} playable cards` : S.pool === 'std' ? `the ${nf.format(poolCards('std').length)} playable cards legal in Standard` : `the ${nf.format(poolCards(S.pool).filter((d) => !(d.kind === 2 && d.basicEnergy)).length)} playable cards of ${esc(poolName(S.pool))}, plus Basic Energy`}: the strongest evolution lines in your types, the Trainers to find and power them, and the right Basic Energy. Every build is different.</p>
         <p class="gen-label" id="genTypesLbl">Types, one or two</p>
         <div class="types" role="group" aria-labelledby="genTypesLbl">${PICK_TYPES.map((t) => `<button type="button" data-t="${t}" aria-pressed="${g.types.includes(t)}" aria-label="${TYPES[t]}">${pipHTML(t)}</button>`).join('')}</div>
         <p class="gen-label" id="genArchLbl">Plan</p>
@@ -276,6 +327,35 @@ function setSeat(key) {
   renderSeats();
   syncHash(false);
 }
+// The Cards row: all the cards, Standard, or one set's cards for both decks
+function renderPool() {
+  const row = $('#poolChips');
+  if (!row || !DATA.pool) return;
+  const chip = (code, name, sub) => `<button type="button" class="setchip" data-pool="${esc(code)}" aria-pressed="${S.pool === code}"><b>${esc(name)}</b><span>${sub}</span></button>`;
+  const sets = DATA.pool.sets.map((x) => chip(x.code, x.name, `${x.ids.size} of ${x.total} cards, ${x.date.slice(0, 4)}`));
+  row.innerHTML = chip('all', 'All cards', `${nf.format(DATA.pool.list.length)} cards`) + chip('std', 'Standard', `${nf.format(poolCards('std').length)} cards`) + sets.join('');
+  const set = poolSet(S.pool);
+  $('#poolNote').textContent = S.pool === 'all' ? `Decks come from every Scarlet & Violet and Mega Evolution card the Arena can play.`
+    : S.pool === 'std' ? 'Both decks use only cards legal in Standard today: regulation mark H and later, and Basic Energy.'
+      : `Both decks use only the cards of ${set.name} the Arena can play, plus Basic Energy.`;
+  const on = row.querySelector('[aria-pressed="true"]');
+  if (on && (on.offsetLeft + on.offsetWidth > row.scrollLeft + row.clientWidth || on.offsetLeft < row.scrollLeft)) row.scrollLeft = on.offsetLeft - row.offsetLeft - 12;
+}
+// Seats and recent builds follow the cards: each pool keeps its own, and a new pool starts with two of its decks
+function setPool(pool, seats) {
+  if (!poolOk(pool)) pool = 'all';
+  const changed = S.pool !== pool;
+  S.pool = pool;
+  store.set('holo.arena.pool.v1', pool);
+  const fits = (k) => !!k && poolOfKey(k) === pool && !!deckByKey(k);
+  const saved = seats || store.get(seatsKey(pool), null);
+  const ready = poolDecks(pool).map((d) => d.key);
+  const defs = pool === 'all' ? [`c.${window.ARENA_DECKS[0].id}`, `c.${window.ARENA_DECKS[2].id}`] : [ready[0], ready[Math.min(2, ready.length - 1)]];
+  S.seats = [0, 1].map((i) => (saved && (fits(saved[i]) || (seats && deckByKey(saved[i]))) ? saved[i] : defs[i]));
+  S.recent = store.get(recentKey(pool), []).filter(fits);
+  if (changed) { S.active = 0; S.sim = null; L.sim.hidden = true; S.src = 'claude'; }
+  renderPool();
+}
 function renderButtons() {
   $('#playBtn').innerHTML = `${icon('play')}<span>Play as Player 1</span>`;
   $('#watchBtn').innerHTML = `${icon('eye')}<span>Watch AI vs AI</span>`;
@@ -291,14 +371,14 @@ function buildFromPanel(random) {
     arch = Object.keys(ARCH)[Math.floor(Math.random() * 3)];
     S.gen = { types, arch };
   }
-  const d = genDeck(types, arch, newSeed());
+  const d = genDeck(types, arch, newSeed(), S.pool);
   S.recent = [d.key].concat(S.recent.filter((k) => k !== d.key)).slice(0, 5);
-  store.set(KEY.recent, S.recent);
+  store.set(recentKey(S.pool), S.recent);
   setSeat(d.key);
   renderPick();
 }
 function randomMatchup() {
-  const ids = window.ARENA_DECKS.map((x) => `c.${x.id}`);
+  const ids = poolDecks(S.pool).map((d) => d.key);
   const a = ids[Math.floor(Math.random() * ids.length)];
   let b = a;
   while (b === a) b = ids[Math.floor(Math.random() * ids.length)];
@@ -563,6 +643,9 @@ function monEl(o, p) {
     el.dataset.sig = sig;
   }
   el.classList.remove('rot-asleep', 'rot-paralyzed', 'rot-confused');
+  const dd = def(o.d);
+  el.classList.toggle('star', !!(dd.ex || dd.mega));
+  el.classList.toggle('mega', !!dd.mega);
   const rot = (o.c || []).find((c) => c === 'asleep' || c === 'paralyzed' || c === 'confused');
   if (rot) el.classList.add(`rot-${rot}`);
   el.setAttribute('aria-label', monLabel(o, p));
@@ -704,6 +787,23 @@ function coinToast(f) {
   setTimeout(() => el.remove(), Math.max(900, 1500 / W.speed));
 }
 const c0 = (c) => (c === 'heads' ? 'Heads' : 'Tails');
+// A Pokémon ex or Mega Evolution Pokémon ex arriving gets an entrance: the card rises in a burst of light over the table
+function showEntrance(f) {
+  if (reduceMotion.matches || (f.k !== 'evolve' && f.k !== 'bench') || !f.hl || !f.hl.length) return;
+  const m = snapMon(f, f.hl[0]);
+  const d = m && def(m.d);
+  if (!d || !(d.ex || d.mega)) return;
+  const who = f.who != null ? f.who : monOwner(f, m.id);
+  const mine = who === 0 && W.mode === 'play';
+  let el = $('#entrance');
+  if (!el) { el = document.createElement('div'); el.id = 'entrance'; el.className = 'entrance'; el.setAttribute('aria-hidden', 'true'); T.board.appendChild(el); }
+  const from = m.st && m.st.length ? def(m.st[m.st.length - 1]) : null;
+  const what = f.k === 'evolve' && from ? `${d.mega ? 'Mega Evolves' : 'Evolves'} from ${from.name}` : 'Joins the Bench';
+  el.className = `entrance on${d.mega ? ' mega' : ''}${mine ? ' mine' : ''}`;
+  el.innerHTML = `<i class="en-rays"></i><div class="en-card">${cardHTML(d, { alt: '' })}</div><p class="en-name">${esc(d.name)}</p><p class="en-sub">${esc(what)}</p>`;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.className = 'entrance'; el.innerHTML = ''; }, Math.max(1300, 2100 / W.speed));
+}
 function showPlayed(f) {
   if (!f.card || (f.k !== 'trainer' && f.k !== 'stadium')) return;
   const d = def(f.card[1]);
@@ -743,7 +843,7 @@ function render(i, animate = true) {
         { duration: Math.max(220, 480 / W.speed), easing: 'cubic-bezier(.2,.75,.15,1)' });
     }
   }
-  if (animate && i === prev + 1) { effects(f, frames[prev]); showPlayed(f); }
+  if (animate && i === prev + 1) { effects(f, frames[prev]); showPlayed(f); showEntrance(f); }
   else if (!animate || Math.abs(i - prev) > 1) { T.played.classList.add('fade'); }
   // banner at the end
   if (f.k === 'end' && W.mode === 'watch') showBanner();
@@ -2407,6 +2507,12 @@ function wire() {
     if (s) { S.active = +s.dataset.seat; renderSeats(); }
   });
   $('#srcSeg').addEventListener('click', (e) => { const b = e.target.closest('[data-src]'); if (!b) return; S.src = b.dataset.src; renderPick(); });
+  $('#poolChips').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-pool]');
+    if (!b || b.dataset.pool === S.pool) return;
+    setPool(b.dataset.pool);
+    renderSeats(); renderPick(); syncHash(false);
+  });
   L.pickBody.addEventListener('click', (e) => {
     const t = e.target.closest('.tile');
     if (t) { setSeat(t.dataset.key); return; }
@@ -2650,6 +2756,8 @@ function route() {
   if (location.hash === '#finals') { openFinals(false); return; }
   if (h.lesson && lessonById(h.lesson)) { lessonStart(h.lesson, true); return; }
   if (h.learn || location.hash === '#learn') { setView('learn', false); return; }
+  // a link's decks bring their cards with them
+  if (h.a && h.b && poolOfKey(h.a.key) !== S.pool) setPool(poolOfKey(h.a.key), [h.a.key, h.b.key]);
   if (h.a) S.seats[0] = h.a.key;
   if (h.b) S.seats[1] = h.b.key;
   saveSeats();
@@ -2672,7 +2780,7 @@ async function boot() {
   headerHeight();
   wire();
   try {
-    const res = await fetch('cards.json?v=2026-11-29');
+    const res = await fetch('cards.json?v=2026-11-29b');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     DATA.pool = A.loadPool(json);
@@ -2682,10 +2790,7 @@ async function boot() {
     return;
   }
   $('#poolCount').textContent = nf.format(DATA.pool.list.length);
-  const saved = store.get(KEY.seats, null);
-  const defs = [`c.${window.ARENA_DECKS[0].id}`, `c.${window.ARENA_DECKS[2].id}`];
-  S.seats = [0, 1].map((i) => (saved && deckByKey(saved[i]) ? saved[i] : defs[i]));
-  S.recent = store.get(KEY.recent, []).filter((k) => deckByKey(k));
+  setPool(store.get('holo.arena.pool.v1', 'all'));
   L.boot.hidden = true;
   L.body.hidden = false;
   renderButtons();
