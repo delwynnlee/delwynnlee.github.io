@@ -950,6 +950,18 @@ svg.i .fill { fill: currentColor; }
   body.in-game .gback { display: inline-flex; width: 34px; height: 34px; border-radius: 10px; }
 }
 /* ---------- Career ---------- */
+/* The journeys side by side: the one on show pressed in the accent */
+.cr-pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 8px; }
+.cr-pj { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 8px 14px 8px 8px; border-radius: 16px; border: 1px solid var(--line); background: var(--btn); box-shadow: var(--sh-1); color: inherit; font: inherit; text-align: left; cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; }
+.cr-pj:where(:not(:disabled)):hover { border-color: var(--line-strong); background: var(--btn-hover); }
+.cr-pj:active { transform: translateY(1px); }
+.cr-pj[aria-pressed="true"] { border-color: var(--m); background: color-mix(in srgb, var(--m) 12%, var(--surface)); box-shadow: inset 0 0 0 1px var(--m), var(--sh-1); }
+.cr-pj-art { flex: none; width: 52px; height: 52px; border-radius: 12px; background: var(--raised) center 20% / cover no-repeat; }
+.cr-pj[aria-pressed="false"] .cr-pj-art { filter: saturate(.7); }
+.cr-pj-tx { min-width: 0; }
+.cr-pj-tx b { display: block; font: 800 17px/1.2 var(--serif); }
+.cr-pj-tx span { display: block; margin-top: 2px; color: var(--muted); font-size: 13px; line-height: 1.3; }
+.cr-pick + .cr-hero { margin-top: 12px; }
 .cr-hero { position: relative; isolation: isolate; overflow: hidden; display: flex; align-items: flex-end; min-height: 230px; margin-top: 8px; padding: 26px 22px 20px; border-radius: 22px; border: 1px solid var(--line-strong); background: var(--raised) center 20% / cover no-repeat; box-shadow: var(--sh-2); }
 .cr-hero::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgb(var(--bg-rgb) / .15), rgb(var(--bg-rgb) / .93) 70%); }
 .cr-hero-in { width: 100%; }
@@ -1015,6 +1027,10 @@ svg.i .fill { fill: currentColor; }
 .rw-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .rw-pack .pill { justify-content: center; }
 .rw-hint { margin: 12px 0 0; color: var(--faint); font-size: 13.5px; }
+.rw-gift { margin-top: 16px; padding: 14px; border-radius: 18px; border: 1px solid color-mix(in srgb, var(--m) 55%, transparent); background: color-mix(in srgb, var(--m) 10%, var(--surface)); box-shadow: var(--sh-1); }
+.rw-gift h3 { margin: 0; font: 800 19px/1.2 var(--serif); }
+.rw-gift p { margin: 4px 0 12px; font: 400 15.5px/1.45 var(--serif); max-width: 62ch; }
+.rw-gift .rw-cards { max-width: 520px; }
 .rw-done { margin-top: 6px; }
 .rw-h { margin: 16px 0 8px; font: 700 13px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .rw-chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1101,6 +1117,10 @@ svg.i .fill { fill: currentColor; }
 .jr-foot { margin: 22px 0 0; display: flex; justify-content: center; }
 
 @media (max-width: 640px) {
+  .cr-pj { flex-direction: column; align-items: stretch; gap: 8px; padding: 8px; }
+  .cr-pj-art { width: 100%; height: 64px; }
+  .cr-pj-tx b { font-size: 15.5px; }
+  .cr-pj-tx span { font-size: 12.5px; }
   .cr-hero { min-height: 250px; padding: 20px 16px 16px; border-radius: 18px; }
   .cr-hero h1 { font-size: 34px; }
   .cr-next { grid-template-columns: minmax(0, 1fr); }
@@ -1303,8 +1323,8 @@ svg.i .fill { fill: currentColor; }
 <script src="sets.js?v=4"></script>
 <script src="tutorial.js?v=4"></script>
 <script src="glossary.js?v=8"></script>
-<script src="career.js?v=1"></script>
-<script src="journal.js?v=1"></script>
+<script src="career.js?v=2"></script>
+<script src="journal.js?v=2"></script>
 <script>
 'use strict';
 /* ============================================================
@@ -1920,7 +1940,7 @@ function listHTML(d) {
   }).join('')}</div>`;
 }
 function metaHTML(d) {
-  return `<div class="deck-meta"><span class="cols" aria-label="${d.colors.map((c) => COLOR_NAME[c]).join(' and ')}">${colorsHTML(d.colors)}</span><span class="arch">${ARCH_LABEL[d.archetype]}</span>${d.commander ? `<span class="cmd-name">${icon('star')}${esc(cmdrsOf(d).map((c) => c.name).join(' and '))}</span>` : ''}<span class="by">${d.by === 'career' ? (d.key === 'cr.me' ? 'Your career deck' : 'Career villain') : d.by === 'claude' ? 'Designed by Claude' : d.by === 'wotc' ? `Official ${d.off ? esc(d.off.type) : 'Jumpstart pair'}` : 'Built by the generator'}${d.set ? ` · ${esc(shortSet(d.set))}` : ''}${d.off && d.off.year ? ` · ${d.off.year}` : ''}</span></div>`;
+  return `<div class="deck-meta"><span class="cols" aria-label="${d.colors.map((c) => COLOR_NAME[c]).join(' and ')}">${colorsHTML(d.colors)}</span><span class="arch">${ARCH_LABEL[d.archetype]}</span>${d.commander ? `<span class="cmd-name">${icon('star')}${esc(cmdrsOf(d).map((c) => c.name).join(' and '))}</span>` : ''}<span class="by">${d.by === 'career' ? (/^cr\.(\w+\.)?me$/.test(d.key) ? 'Your career deck' : 'Career villain') : d.by === 'claude' ? 'Designed by Claude' : d.by === 'wotc' ? `Official ${d.off ? esc(d.off.type) : 'Jumpstart pair'}` : 'Built by the generator'}${d.set ? ` · ${esc(shortSet(d.set))}` : ''}${d.off && d.off.year ? ` · ${d.off.year}` : ''}</span></div>`;
 }
 function renderSeats() {
   const parts = [0, 1].map((i) => {
@@ -2600,7 +2620,7 @@ function setView(view, push) {
     endPlay();
     mu.hidden = true;
     back.hidden = true;
-    document.title = view === 'career' ? 'Career: Cloud’s Journey' : 'Journal: Arena';
+    document.title = view === 'career' ? `Career: ${CAR.journey(crJ()).title}` : 'Journal: Arena';
     closeLog();
   } else if (view === 'learn') {
     stop();
@@ -3160,7 +3180,8 @@ function showBanner() {
   const won = r.winner;
   const playing = W.mode === 'play';
   const crk = playing && PL.career != null ? PL.career : null;
-  const title = crk != null && won === 0 ? (crk === CAR.STAGES.length - 1 ? 'Sephiroth is defeated' : `Stage ${crk + 1} cleared`) : won == null ? 'A draw' : playing && won === 0 ? 'You win' : `${r.players[won].name} wins`;
+  const CJ = crk != null ? CAR.journey(PL.cj || 'cloud') : null;
+  const title = crk != null && won === 0 ? (crk === CJ.stages.length - 1 ? CJ.beaten : `Stage ${crk + 1} cleared`) : won == null ? 'A draw' : playing && won === 0 ? 'You win' : `${r.players[won].name} wins`;
   const cmdName = won != null && r.players[won].cmd ? r.defs[r.players[won].cmd.d].name : 'their commander';
   const why = won == null ? (r.reason === 'turns' ? `Nobody broke through in ${r.turns} turns.` : 'Both players fell at once.')
     : r.reason === 'decked' ? `${r.players[1 - won].name} ran out of cards on turn ${r.turns}.`
@@ -3177,7 +3198,7 @@ function showBanner() {
     <table class="stats"><thead><tr><th></th><th>${playing ? 'You' : esc(r.players[0].name)}</th><th>${esc(r.players[1].name)}</th></tr></thead>
     <tbody>${row('Damage dealt', st('damage'))}${row('Creatures killed', st('kills'))}${row('Spells cast', st('cast'))}${row('Life gained', st('gained'))}${row('Life left', r.players.map((p) => p.life))}${r.format === 'commander' ? row('Commander damage taken', r.players.map((p) => p.cmdDmg || 0)) : ''}</tbody></table>
     <div class="acts">
-      ${crk != null ? (won === 0 ? (crk === CAR.STAGES.length - 1 ? `<button type="button" class="pill pill-solid" data-act="career">${icon('star')}Finish the journey</button>` : `<button type="button" class="pill pill-solid" data-act="crreward">${icon('sparkle')}Choose your reward</button><button type="button" class="pill" data-act="career">Back to the journey</button>`)
+      ${crk != null ? (won === 0 ? (crk === CJ.stages.length - 1 ? `<button type="button" class="pill pill-solid" data-act="career">${icon('star')}Finish the journey</button>` : `<button type="button" class="pill pill-solid" data-act="crreward">${icon('sparkle')}Choose your reward</button><button type="button" class="pill" data-act="career">Back to the journey</button>`)
         : `<button type="button" class="pill pill-solid" data-act="crretry">${icon('swords')}Try again</button><button type="button" class="pill" data-act="career">Back to the journey</button>`)
       : TU.on ? `<button type="button" class="pill pill-solid" data-act="relesson">${icon('first')}${TU.lesson.practice ? 'Play again' : 'Replay the lesson'}</button>
       <button type="button" class="pill" data-act="lessons">All lessons</button>` : playing ? `<button type="button" class="pill pill-solid" data-act="playagain">${icon('swords')}Play again</button>
@@ -3447,7 +3468,7 @@ function playStart(seed, answers, opts = {}) {
   // Lessons are written for the normal AI; a game picks its level when it starts and keeps it when resumed
   const ai = opts.lesson ? 'normal' : opts.ai || S.ai;
   const decks = opts.decks || mirrorSafe(d0, d1);
-  Object.assign(PL, { legacy: !!opts.legacy, prePick: null, held: null, on: true, keys: opts.decks ? null : S.seats.slice(), decks: ai === 'hard' ? [decks[0], Object.assign({}, decks[1], { ai })] : decks, ai, memo: opts.memo || {}, career: opts.career != null ? opts.career : null, t0: Date.now(), setup: opts.setup || null, seed, answers: (answers || []).slice(), req: null, done: false, shown: -1, pend: null, skip: null, imgs: false, toastTurn: 0 });
+  Object.assign(PL, { legacy: !!opts.legacy, prePick: null, held: null, on: true, keys: opts.decks ? null : S.seats.slice(), decks: ai === 'hard' ? [decks[0], Object.assign({}, decks[1], { ai })] : decks, ai, memo: opts.memo || {}, career: opts.career != null ? opts.career : null, cj: opts.career != null ? opts.cj || 'cloud' : null, t0: Date.now(), setup: opts.setup || null, seed, answers: (answers || []).slice(), req: null, done: false, shown: -1, pend: null, skip: null, imgs: false, toastTurn: 0 });
   W.mode = 'play';
   W.seed = seed;
   W.decks = PL.decks;
@@ -3602,7 +3623,7 @@ function closeSpotlight(run) {
 // it ended, but no longer waits in the lobby. Lessons aren't saved.
 function persistGame(r) {
   if (PL.keys) store.set('arena.play.v1', { v: PL.legacy ? 1 : 2, a: PL.keys[0], b: PL.keys[1], seed: PL.seed, answers: PL.answers, ai: PL.ai, memo: PL.ai === 'hard' ? PL.memo : undefined, turn: r.done ? W.replay.turns : r.req.turn, names: PL.decks.map((d) => d.name), at: Date.now(), done: r.done || undefined });
-  if (PL.career != null) store.set('arena.career.game.v1', { k: PL.career, seed: PL.seed, answers: PL.answers, ai: PL.ai, memo: PL.ai === 'hard' ? PL.memo : undefined, turn: r.done ? W.replay.turns : r.req.turn, done: r.done || undefined });
+  if (PL.career != null) store.set(crKey(PL.cj || 'cloud', true), { k: PL.career, seed: PL.seed, answers: PL.answers, ai: PL.ai, memo: PL.ai === 'hard' ? PL.memo : undefined, turn: r.done ? W.replay.turns : r.req.turn, done: r.done || undefined });
   if (r.done) { journalRecord(); if (PL.career != null) careerResult(r); }
 }
 function settle(r) {
@@ -3668,7 +3689,7 @@ function renderPlaybar() {
   let title = '', hint = '', btns = '';
   if (ui === 'busy') { const k = PB.title.querySelector('.pb-kicker'); title = (k ? PB.title.textContent.slice(k.textContent.length) : PB.title.textContent) || 'The AI is thinking'; btns = ghost('skip', 'Skip ahead'); }
   else if (ui === 'over') { const won = W.replay.winner; title = won === 0 ? 'You win' : won == null ? 'A draw' : `${opp} wins`; btns = TU.on ? ghost('lessons', 'All lessons') + solid('relesson', TU.lesson.practice ? 'Play again' : 'Replay the lesson')
-      : PL.career != null ? (won === 0 ? solid('crjourney', PL.career === CAR.STAGES.length - 1 ? 'Finish the journey' : 'Choose your reward') : solid('crretry', 'Try again')) : solid('again', 'Play again'); }
+      : PL.career != null ? (won === 0 ? solid('crjourney', PL.career === CAR.journey(PL.cj || 'cloud').stages.length - 1 ? 'Finish the journey' : 'Choose your reward') : solid('crretry', 'Try again')) : solid('again', 'Play again'); }
   else if (ui === 'sheet') { title = PL.choice ? PL.choice.title : ''; btns = solid('showsheet', 'Choose'); }
   else if (ui === 'act') {
     const w = r.when;
@@ -4310,11 +4331,11 @@ const wl = (t) => `${t.w}–${t.l}${t.d ? `–${t.d}` : ''}`;
 // A game you played to the end goes in once: a reload of a finished game doesn't add it again. Lessons aren't recorded.
 function journalRecord() {
   if (TU.on || !JRN || !W.replay || W.mode !== 'play') return;
-  const id = PL.career != null ? `cr${PL.career}.${PL.seed}.${PL.answers.length}` : `${PL.seed}.${PL.answers.length}.${(PL.keys || PL.decks.map((d) => d.name)).join('|')}`;
+  const id = PL.career != null ? `cr${PL.cj && PL.cj !== 'cloud' ? PL.cj : ''}${PL.career}.${PL.seed}.${PL.answers.length}` : `${PL.seed}.${PL.answers.length}.${(PL.keys || PL.decks.map((d) => d.name)).join('|')}`;
   const list = journalList();
   if (list.some((e) => e.id === id)) return;
   const secs = PL.t0 ? Math.min(7200, Math.round((Date.now() - PL.t0) / 1000)) : 0;
-  store.set('arena.journal.v1', JRN.add(list, JRN.entryOf(W.replay, { id, ai: PL.ai || 'normal', decks: PL.decks, career: PL.career, secs })));
+  store.set('arena.journal.v1', JRN.add(list, JRN.entryOf(W.replay, { id, ai: PL.ai || 'normal', decks: PL.decks, career: PL.career, cj: PL.cj, secs })));
 }
 const jFilter = (f) => (f === 'all' ? null : f === 'career' ? (e) => e.career != null : (e) => e.fmt === f);
 const colorPips = (c) => (c ? c.split('').map((x) => sym(x)).join('') : sym('C'));
@@ -4355,8 +4376,8 @@ function dayLabel(t) {
   return new Date(t).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: new Date(t).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
 }
 function gameRow(e) {
-  const stage = e.career != null && window.ARENA_CAREER ? ARENA_CAREER.STAGES[e.career] : null;
-  const what = stage ? `Career, stage ${e.career + 1}: ${stage.title}` : `${e.fmt === 'commander' ? 'Commander' : 'Standard'} · ${e.ai === 'hard' ? 'Hard' : 'Normal'} AI`;
+  const jy = e.career != null && window.ARENA_CAREER ? ARENA_CAREER.journey(e.cj || 'cloud') : null, stage = jy && jy.stages[e.career];
+  const what = stage ? `${jy.title}, stage ${e.career + 1}: ${stage.title}` : `${e.fmt === 'commander' ? 'Commander' : 'Standard'} · ${e.ai === 'hard' ? 'Hard' : 'Normal'} AI`;
   const how = e.res === 'draw' ? (e.why === 'turns' ? 'Turn limit' : 'Both fell') : JRN.HOW[e.why] || '';
   return `<li class="jg"><span class="jg-r ${e.res}" aria-label="${RES[e.res][1]}">${RES[e.res][0]}</span>`
     + `<span class="jg-main"><b>vs ${esc(e.op.n)}</b><span>${esc(e.me.n)} · ${esc(what)}</span></span>`
@@ -4477,38 +4498,46 @@ function openJournal(push = true) {
 }
 
 /* ============================================================
-   Career: Cloud's journey to Sephiroth
+   Career: Cloud's journey to Sephiroth, Frodo's to Mount Doom
    ============================================================ */
 const CAR = window.ARENA_CAREER;
-const CR = { run: undefined, decks: new Map(), fin: null, pend: null };
-const finNames = () => CR.fin || (CR.fin = new Set(((window.ARENA_SETS && ARENA_SETS.sets.find((s) => s.code === 'FIN')) || { cards: [] }).cards.map((x) => (Array.isArray(x) ? x[0] : x))));
-const careerRun = () => (CR.run === undefined ? (CR.run = store.get('arena.career.v1', null)) : CR.run);
-function careerSave(run) { CR.run = run; store.set('arena.career.v1', run); CR.decks.delete('me'); }
-const careerGame = () => store.get('arena.career.game.v1', null);
-// Cloud's deck and the villains', kept like any other deck so the deck view can open them
-function careerMe() {
-  const run = careerRun();
-  if (!CR.decks.has('me')) CR.decks.set('me', finishDeck(CAR.cloudDeck(Arena, DATA.pool, run), { key: 'cr.me', by: 'career', face: run.cmd,
-    blurb: `Cloud and the cards he has picked up on the way: ${plural(run.got.length, 'card')} earned so far. Every win brings a pack of new ones, which replace his weakest cards.` }));
-  return CR.decks.get('me');
+const CR = { j: null, runs: {}, decks: new Map(), names: {}, plain: null, pend: null };
+// The journey on show: the one last chosen, else Frodo's (the newer one; Cloud's is a tap away beside it)
+const crJ = () => CR.j || (CR.j = CAR.JOURNEYS[store.get('arena.career.j.v1', '')] ? store.get('arena.career.j.v1', '') : 'frodo');
+function crPick(j) { if (!CAR.JOURNEYS[j]) return; CR.j = j; store.set('arena.career.j.v1', j); }
+// Cloud's run and game keep the keys they always had
+const crKey = (j, game) => `arena.career.${j === 'cloud' ? '' : `${j}.`}${game ? 'game.' : ''}v1`;
+const crDeckKey = (j, k) => (j === 'cloud' ? `cr.${k}` : `cr.${j}.${k}`);
+// The cards of each hero's world (their reward packs), and the plain core-set cards Frodo starts with
+const worldNames = (j) => CR.names[j] || (CR.names[j] = new Set(((window.ARENA_SETS && ARENA_SETS.sets.find((s) => s.code === CAR.journey(j).set)) || { cards: [] }).cards.map((x) => (Array.isArray(x) ? x[0] : x))));
+const plainNames = () => CR.plain || (CR.plain = new Set(((window.ARENA_SETS && ARENA_SETS.sets) || []).filter((s) => !['MSH', 'FIN', 'LTR'].includes(s.code)).flatMap((s) => s.cards.map((x) => (Array.isArray(x) ? x[0] : x)))));
+const careerRun = (j = crJ()) => (j in CR.runs ? CR.runs[j] : (CR.runs[j] = store.get(crKey(j), null)));
+function careerSave(run, j = crJ()) { CR.runs[j] = run; store.set(crKey(j), run); CR.decks.delete(`${j}.me`); }
+const careerGame = (j = crJ()) => store.get(crKey(j, true), null);
+// The hero's deck and the villains', kept like any other deck so the deck view can open them
+function careerMe(j = crJ()) {
+  const run = careerRun(j), J = CAR.journey(j);
+  if (!CR.decks.has(`${j}.me`)) CR.decks.set(`${j}.me`, finishDeck(CAR.heroDeck(Arena, DATA.pool, run), { key: crDeckKey(j, 'me'), by: 'career', face: run.cmd,
+    blurb: `${J.blurb}: ${plural(run.got.length, 'card')} earned so far. Every win brings a pack of new ones, which replace ${J.his} weakest cards.` }));
+  return CR.decks.get(`${j}.me`);
 }
-function careerFoe(k) {
-  if (!CR.decks.has(k)) { const st = CAR.STAGES[k]; CR.decks.set(k, finishDeck(CAR.stageDeck(Arena, DATA.pool, k), { key: `cr.${k}`, by: 'career', blurb: st.text, face: CAR.norm(st.cmd) })); }
-  return CR.decks.get(k);
+function careerFoe(k, j = crJ()) {
+  if (!CR.decks.has(`${j}.${k}`)) { const st = CAR.journey(j).stages[k]; CR.decks.set(`${j}.${k}`, finishDeck(CAR.stageDeck(Arena, DATA.pool, k, j), { key: crDeckKey(j, k), by: 'career', blurb: st.text, face: CAR.norm(st.cmd) })); }
+  return CR.decks.get(`${j}.${k}`);
 }
 function careerStartFight(resume) {
-  const run = careerRun();
+  const j = crJ(), run = careerRun(j);
   if (!run || run.done) return;
-  const k = run.stage, st = CAR.STAGES[k];
-  const sv = careerGame();
+  const k = run.stage, st = CAR.journey(j).stages[k];
+  const sv = careerGame(j);
   S.backTo = 'career';
-  const decks = [careerMe(), careerFoe(k)];
-  if (resume && sv && !sv.done && sv.k === k) playStart(sv.seed, sv.answers, { decks, career: k, ai: sv.ai, memo: sv.memo || null });
-  else playStart(newSeed(), [], { decks, career: k, ai: st.ai });
+  const decks = [careerMe(j), careerFoe(k, j)];
+  if (resume && sv && !sv.done && sv.k === k) playStart(sv.seed, sv.answers, { decks, career: k, cj: j, ai: sv.ai, memo: sv.memo || null });
+  else playStart(newSeed(), [], { decks, career: k, cj: j, ai: st.ai });
 }
 // A career game has ended: the journey moves on after a win, and a pack of cards waits to be chosen
 function careerResult(r) {
-  const run = careerRun();
+  const j = PL.cj || 'cloud', run = careerRun(j);
   if (!run || PL.career == null) return;
   const id = `${PL.seed}.${PL.answers.length}`;
   if (run.fights.some((f) => f.id === id)) return;
@@ -4516,77 +4545,93 @@ function careerResult(r) {
   const next = CAR.afterFight(run, PL.career, won, { id, turns: r.G.turn });
   // Only the win that opens the next stage earns a pack
   if (next.stage === run.stage + 1 && !next.done) next.reward = { k: PL.career, seed: newSeed() };
-  careerSave(next);
+  careerSave(next, j);
 }
 function careerDoneText(run) {
   const fights = run.fights.length, wins = run.fights.filter((f) => f.won).length;
   return `${plural(fights, 'fight')}, ${plural(wins, 'win')}, ${plural(run.got.length, 'new card')} along the way.`;
 }
+const crBg = (name) => `data-art="${esc(name)}" style="${artOf(name) ? `background-image:url(&quot;${esc(artOf(name))}&quot;)` : ''}"`;
+// The two journeys side by side, the one on show pressed
+function careerPicker() {
+  return `<div class="cr-pick" role="group" aria-label="Choose a journey">${CAR.IDS.map((id) => {
+    const J = CAR.journey(id), run = careerRun(id);
+    const where = run ? (run.done ? 'Complete' : `${run.stage} of ${J.stages.length} cleared`) : 'Not started';
+    return `<button type="button" class="cr-pj" data-cj="${id}" aria-pressed="${crJ() === id}"><span class="cr-pj-art" ${crBg(run ? run.cmd : CAR.norm(J.start))}></span>`
+      + `<span class="cr-pj-tx"><b>${esc(J.title)}</b><span>${esc(J.world)} · ${esc(where)}</span></span></button>`;
+  }).join('')}</div>`;
+}
 function renderCareer() {
-  ensureImages([CAR.CLOUD.start, CAR.CLOUD.sword].concat(CAR.STAGES.map((st) => CAR.norm(st.cmd))));
-  const run = careerRun();
-  const bg = (name) => `data-art="${esc(name)}" style="${artOf(name) ? `background-image:url(&quot;${esc(artOf(name))}&quot;)` : ''}"`;
-  const heroName = run ? run.cmd : CAR.CLOUD.start;
+  const j = crJ(), J = CAR.journey(j), N = J.stages.length;
+  ensureImages(CAR.IDS.map((id) => CAR.norm(CAR.journey(id).start)).concat([J.sword], J.stages.map((st) => CAR.norm(st.cmd))));
+  const run = careerRun(j);
+  const bg = crBg;
+  const heroName = run ? run.cmd : CAR.norm(J.start);
   const k = run ? run.stage : 0;
-  const prog = CAR.STAGES.map((st, i) => `<i class="${i < k ? 'on' : i === k && !(run && run.done) ? 'now' : ''}"></i>`).join('');
-  const parts = [`<section class="cr-hero" ${bg(heroName)}><div class="cr-hero-in"><p class="cr-kick">Career</p><h1>Cloud’s Journey</h1>`
-    + `<p class="cr-intro">Ten Commander fights across the worlds of Final Fantasy, from the Midgar slums to Sephiroth. Cloud starts with a plain deck; every win earns a pack of new cards.</p>`
-    + `<div class="cr-prog" aria-hidden="true">${prog}</div><p class="cr-prog-l">${run ? (run.done ? 'Journey complete' : `${k} of 10 stages cleared`) : 'Not started'}</p></div></section>`];
+  const prog = J.stages.map((st, i) => `<i class="${i < k ? 'on' : i === k && !(run && run.done) ? 'now' : ''}"></i>`).join('');
+  const parts = [careerPicker(), `<section class="cr-hero" ${bg(heroName)}><div class="cr-hero-in"><p class="cr-kick">Career</p><h1>${esc(J.title)}</h1>`
+    + `<p class="cr-intro">${esc(J.intro)}</p>`
+    + `<div class="cr-prog" aria-hidden="true">${prog}</div><p class="cr-prog-l">${run ? (run.done ? 'Journey complete' : `${k} of ${N} stages cleared`) : 'Not started'}</p></div></section>`];
   if (!run) {
-    parts.push(`<div class="cr-note"><p>Cloud begins with <b>Cloud, Midgar Mercenary</b> as his commander, the Buster Sword and a deck of plain white cards. Losing costs nothing: you can fight a stage as often as it takes.</p><button type="button" class="pill pill-solid" data-cr="new">${icon('swords')}Begin the journey</button></div>`);
+    parts.push(`<div class="cr-note"><p>${esc(J.begin[0])}<b>${esc(J.begin[1])}</b>${esc(J.begin[2])}</p><button type="button" class="pill pill-solid" data-cr="new">${icon('swords')}Begin the journey</button></div>`);
   } else {
     if (run.reward) parts.push(`<div class="cr-note"><p><b>Stage ${run.reward.k + 1} cleared.</b> Choose your reward before the next fight.</p><button type="button" class="pill pill-solid" data-cr="reward">${icon('sparkle')}Choose your reward</button></div>`);
-    const sv = careerGame();
-    if (!run.done && sv && !sv.done && sv.k === k && !run.reward) parts.push(`<div class="cr-note"><p><b>Your fight is waiting.</b> ${esc(CAR.STAGES[k].title)}, turn ${sv.turn || 1}.</p><button type="button" class="pill pill-solid" data-cr="resume">${icon('play')}Resume</button></div>`);
+    const sv = careerGame(j);
+    if (!run.done && sv && !sv.done && sv.k === k && !run.reward) parts.push(`<div class="cr-note"><p><b>Your fight is waiting.</b> ${esc(J.stages[k].title)}, turn ${sv.turn || 1}.</p><button type="button" class="pill pill-solid" data-cr="resume">${icon('play')}Resume</button></div>`);
     if (run.done) {
-      parts.push(`<section class="cr-next boss cr-done"><div class="cr-next-art" ${bg(run.cmd)}></div><div class="cr-next-body"><p class="cr-stage">Journey complete</p><h2>The Planet is safe</h2>`
-        + `<p class="cr-text">Sephiroth falls, and the Lifestream runs quiet again. ${esc(careerDoneText(run))}</p><div class="cr-acts"><button type="button" class="pill pill-solid" data-cr="new">${icon('swords')}Start a new journey</button><button type="button" class="link-btn" data-cr="deck">See Cloud’s deck</button></div></div></section>`);
+      parts.push(`<section class="cr-next boss cr-done"><div class="cr-next-art" ${bg(run.cmd)}></div><div class="cr-next-body"><p class="cr-stage">Journey complete</p><h2>${esc(J.doneTitle)}</h2>`
+        + `<p class="cr-text">${esc(J.doneText)} ${esc(careerDoneText(run))}</p><div class="cr-acts"><button type="button" class="pill pill-solid" data-cr="new">${icon('swords')}Start a new journey</button><button type="button" class="link-btn" data-cr="deck">See ${esc(J.hero)}’s deck</button></div></div></section>`);
     } else {
-      const st = CAR.STAGES[k], foe = careerFoe(k);
+      const st = J.stages[k], foe = careerFoe(k, j);
       const tries = run.fights.filter((f) => f.k === k).length;
       const rules = [st.ai === 'hard' ? 'Hard AI' : 'Normal AI', `starts at ${st.life || 40} life`, tries ? `${plural(tries, 'try', 'tries')} so far` : ''].filter(Boolean).join(' · ');
       parts.push(`<section class="cr-next${st.boss ? ' boss' : ''}"><div class="cr-next-art" ${bg(CAR.norm(st.cmd))}></div><div class="cr-next-body">`
-        + `<p class="cr-stage">${st.boss ? 'Final stage' : `Stage ${k + 1} of 10`} · ${esc(st.where)}</p><h2>${esc(st.title)}</h2>`
+        + `<p class="cr-stage">${st.boss ? 'Final stage' : `Stage ${k + 1} of ${N}`} · ${esc(st.where)}</p><h2>${esc(st.title)}</h2>`
         + `<p class="cr-foe"><span class="cols">${colorsHTML(foe.colors)}</span><span>${esc(CAR.norm(st.cmd))}</span></p>`
         + `<p class="cr-text">${esc(st.text)}</p><p class="cr-rules">${esc(rules)}</p>`
         + `<div class="cr-acts"><button type="button" class="pill pill-solid" data-cr="fight"${run.reward ? ' disabled' : ''}>${icon('swords')}${tries ? 'Fight again' : 'Fight'}</button><button type="button" class="link-btn" data-cr="foe">See their deck</button></div></div></section>`);
     }
-    const me = careerMe();
+    const me = careerMe(j);
     const got = run.got.slice(-8).reverse();
     parts.push(`<section class="cr-deck"><span class="cr-deck-art" ${bg(run.cmd)}></span><span class="cr-deck-tx"><h3>${esc(me.name)}</h3><p>${esc(run.cmd)} · ${me.size} cards · ${plural(run.got.length, 'card')} earned</p></span>`
       + `<button type="button" class="pill" data-cr="deck">See the deck</button>`
       + `${got.length ? `<div class="cr-new"><span class="lbl">Latest cards</span>${got.map((n) => `<button type="button" class="chip got" data-keycard="${esc(n)}">${esc(n)}</button>`).join('')}</div>` : ''}</section>`);
   }
-  parts.push(`<section class="cr-path"><h2>The road to Sephiroth</h2><ol class="cr-steps">${CAR.STAGES.map((st, i) => {
+  parts.push(`<section class="cr-path"><h2>${esc(J.road)}</h2><ol class="cr-steps">${J.stages.map((st, i) => {
     const state = run && (i < k || run.done) ? 'done' : run && i === k ? 'now' : 'locked';
     const win = run && run.fights.find((f) => f.k === i && f.won);
     const r = state === 'done' ? (win ? `Won on turn ${win.turns}` : 'Cleared') : state === 'now' ? 'Up next' : st.boss ? 'Final boss' : '';
     return `<li class="cr-st ${state}${st.boss ? ' boss' : ''}"><span class="n">${state === 'done' ? icon('check') : i + 1}</span><span class="th" ${bg(CAR.norm(st.cmd))}></span>`
-      + `<span><b>${esc(st.title)}</b><span class="s">${esc(CAR.norm(st.cmd))} · ${st.ai === 'hard' ? 'Hard' : 'Normal'} AI</span></span><span class="r">${r}</span></li>`;
+      + `<span><b>${esc(st.title)}</b><span class="s">${esc(CAR.norm(st.cmd))} · ${esc(st.where)}</span></span><span class="r">${r}</span></li>`;
   }).join('')}</ol></section>`);
-  if (run && !run.done) parts.push('<p class="cr-foot"><button type="button" class="link-btn" data-cr="reset">Start the journey over</button></p>');
+  if (run && !run.done) parts.push(`<p class="cr-foot"><button type="button" class="link-btn" data-cr="reset">Start ${esc(J.hero)}’s journey over</button></p>`);
   $('#careerBody').innerHTML = parts.join('');
+  if (S.view === 'career') document.title = `Career: ${J.title}`;
 }
-function openCareer(push = true) {
+function openCareer(push = true, j) {
+  if (j) crPick(j);
   setView('career', push);
   renderCareer();
   const run = careerRun();
   if (run && run.reward && CR.autoReward) { CR.autoReward = false; openReward(); }
 }
-// The reward: three packs; the chosen one's cards replace the weakest in Cloud's deck
+// The reward: three packs; the chosen one's cards replace the weakest in the hero's deck. A stage with a gift adds it too.
 function openReward() {
-  const run = careerRun();
+  const j = crJ(), J = CAR.journey(j), run = careerRun(j);
   if (!run || !run.reward) return;
   const { k, seed } = run.reward;
-  const packs = CAR.packsFor(Arena, DATA.pool, finNames(), run, k, seed);
-  CR.pend = packs;
-  ensureImages(packs.flatMap((p) => p.cards));
+  const packs = CAR.packsFor(Arena, DATA.pool, worldNames(j), run, k, seed);
+  const gift = CAR.giftFor(run, k);
+  CR.pend = { packs, gift };
+  ensureImages(packs.flatMap((p) => p.cards).concat(gift ? gift.cards : []));
   const box = $('#crReward');
   box.innerHTML = `<div class="rw-scrim" data-rw="close"></div><div class="rw-box" role="dialog" aria-labelledby="rwTitle">
-    <h2 id="rwTitle">Stage ${k + 1} cleared</h2><p class="rw-sub">Choose one pack. Its ${CAR.PACK} cards go into Cloud’s deck in place of his weakest. Tap a card to read it.</p>
+    <h2 id="rwTitle">Stage ${k + 1} cleared</h2><p class="rw-sub">Choose one pack. Its ${CAR.PACK} cards go into ${esc(J.hero)}’s deck in place of ${J.his} weakest${gift ? ', and the gifts come with it' : ''}. Tap a card to read it.</p>
+    ${gift ? `<section class="rw-gift"><h3>${esc(gift.from)}</h3><p>${esc(gift.text)}</p><div class="rw-cards" data-gift></div></section>` : ''}
     <div class="rw-packs">${packs.map((p, i) => `<section class="rw-pack"><h3>${esc(p.name)}<span>${p.cards.length} cards</span></h3><div class="rw-cards" data-pack="${i}"></div><button type="button" class="pill pill-solid" data-take="${i}">Take ${esc(p.name.toLowerCase())}</button></section>`).join('')}</div>
     <p class="rw-hint">You can close this and choose later; the next fight waits until you do.</p></div>`;
-  packs.forEach((p, i) => { const row = box.querySelector(`[data-pack="${i}"]`); p.cards.forEach((n, j) => { const d = DATA.byName.get(n); if (d) row.appendChild(makeCard(d, `rw-${i}-${j}`)); }); });
+  packs.forEach((p, i) => { const row = box.querySelector(`[data-pack="${i}"]`); p.cards.forEach((n, x) => { const d = DATA.byName.get(n); if (d) row.appendChild(makeCard(d, `rw-${i}-${x}`)); }); });
+  if (gift) { const row = box.querySelector('[data-gift]'); gift.cards.forEach((n, x) => { const d = DATA.byName.get(n); if (d) row.appendChild(makeCard(d, `rw-g-${x}`)); }); }
   const was = !box.hidden;
   box.hidden = false;
   sizeReward();
@@ -4597,14 +4642,15 @@ function openReward() {
 function sizeReward() { $$('#crReward .rw-cards').forEach((row) => row.style.setProperty('--cardw', `${Math.max(40, Math.floor((row.clientWidth - 18) / 4))}px`)); }
 function closeReward(viaHistory) { const box = $('#crReward'); if (box.hidden) return; box.hidden = true; box.innerHTML = ''; if (viaHistory !== true) UI.overlay.closed('rw'); }
 function takePack(i) {
-  const run = careerRun(), pack = CR.pend && CR.pend[i];
+  const j = crJ(), J = CAR.journey(j), run = careerRun(j), pend = CR.pend, pack = pend && pend.packs[i];
   if (!run || !run.reward || !pack) return;
-  const r = CAR.addCards(DATA.pool, run, pack.cards);
+  const gifts = pend.gift ? pend.gift.cards : [];
+  const r = CAR.addCards(DATA.pool, run, pack.cards.concat(gifts));
   const next = Object.assign({}, r.run, { reward: null });
-  careerSave(next);
+  careerSave(next, j);
   const box = $('#crReward .rw-box');
   const chips = (names) => names.map((n) => `<button type="button" class="chip" data-keycard="${esc(n)}">${esc(n)}</button>`).join('');
-  box.innerHTML = `<h2>Added to Cloud’s deck</h2><div class="rw-done"><p class="rw-sub">New cards in, and the weakest cards out to make room. Tap one to read it.</p><h3 class="rw-h">In</h3><div class="rw-chips">${chips(pack.cards)}</div><h3 class="rw-h">Out</h3><div class="rw-chips">${r.out.length ? chips(r.out) : '<span class="faint">Nothing</span>'}</div></div>`
+  box.innerHTML = `<h2>Added to ${esc(J.hero)}’s deck</h2><div class="rw-done"><p class="rw-sub">New cards in, and the weakest cards out to make room. Tap one to read it.</p><h3 class="rw-h">In</h3><div class="rw-chips">${chips(pack.cards.concat(gifts))}</div><h3 class="rw-h">Out</h3><div class="rw-chips">${r.out.length ? chips(r.out) : '<span class="faint">Nothing</span>'}</div></div>`
     + `<div class="cr-acts"><button type="button" class="pill pill-solid" data-rw="fight">${icon('swords')}On to stage ${next.stage + 1}</button><button type="button" class="link-btn" data-rw="close">Back to the journey</button></div>`;
   box.querySelector('[data-rw="fight"]').focus();
   renderCareer();
@@ -4635,16 +4681,19 @@ function wire() {
   $('#careerBody').addEventListener('click', (e) => {
     const kc = e.target.closest('[data-keycard]');
     if (kc) { inspect(kc); return; }
+    const pj = e.target.closest('[data-cj]');
+    if (pj) { if (pj.dataset.cj !== crJ()) { crPick(pj.dataset.cj); renderCareer(); const t = $(`#careerBody [data-cj="${pj.dataset.cj}"]`); if (t) t.focus(); } return; }
     const b = e.target.closest('[data-cr]');
     if (!b || b.disabled) return;
-    const run = careerRun(), act = b.dataset.cr;
-    if (act === 'new') { if (run && !run.done && !confirm('Start Cloud’s journey over? Your progress and his cards will be lost.')) return; careerSave(CAR.newRun(Arena, DATA.pool, finNames(), newSeed())); store.set('arena.career.game.v1', null); renderCareer(); }
-    else if (act === 'reset') { if (confirm('Start Cloud’s journey over? Your progress and his cards will be lost.')) { careerSave(null); store.set('arena.career.game.v1', null); renderCareer(); } }
+    const j = crJ(), J = CAR.journey(j), run = careerRun(j), act = b.dataset.cr;
+    const over = `Start ${J.hero}’s journey over? Your progress and ${J.his} cards will be lost.`;
+    if (act === 'new') { if (run && !run.done && !confirm(over)) return; careerSave(CAR.newRun(Arena, DATA.pool, worldNames(j), newSeed(), j, plainNames()), j); store.set(crKey(j, true), null); renderCareer(); }
+    else if (act === 'reset') { if (confirm(over)) { careerSave(null, j); store.set(crKey(j, true), null); renderCareer(); } }
     else if (act === 'fight') careerStartFight(false);
     else if (act === 'resume') careerStartFight(true);
     else if (act === 'reward') openReward();
-    else if (act === 'deck') { careerMe(); openDeckView('cr.me', b, 'career'); }
-    else if (act === 'foe') { careerFoe(run.stage); openDeckView(`cr.${run.stage}`, b, 'career'); }
+    else if (act === 'deck') { careerMe(j); openDeckView(crDeckKey(j, 'me'), b, 'career'); }
+    else if (act === 'foe') { careerFoe(run.stage, j); openDeckView(crDeckKey(j, run.stage), b, 'career'); }
   });
   $('#crReward').addEventListener('click', (e) => {
     const card = e.target.closest('.card');
@@ -4704,8 +4753,8 @@ function wire() {
     else if (k === 'all') { const all = PL.picks.size === PL.req.cands.length; PL.picks = new Set(all ? PL.req.must : PL.req.cands); renderPlaybar(); decorate(); }
     else if (k === 'blocks') answer({ type: 'block', blocks: [...PL.blocks] });
     else if (k === 'again') playStart(newSeed());
-    else if (k === 'crretry') careerStartFight(false);
-    else if (k === 'crjourney') { CR.autoReward = true; openCareer(true); }
+    else if (k === 'crretry') { crPick(PL.cj || 'cloud'); careerStartFight(false); }
+    else if (k === 'crjourney') { CR.autoReward = true; openCareer(true, PL.cj || 'cloud'); }
     else if (k === 'relesson') lessonStart(TU.lesson.id);
     else if (k === 'lessons') goLessons();
     else if (k === 'showsheet') { $('#sheet').hidden = false; }
@@ -4870,9 +4919,9 @@ function wire() {
     else if (a.dataset.act === 'replay') toReplay();
     else if (a.dataset.act === 'again') { T.banner.hidden = true; render(0, false); play(); }
     else if (a.dataset.act === 'lobby') { setView('lobby', true); renderSeats(); }
-    else if (a.dataset.act === 'career') openCareer(true);
-    else if (a.dataset.act === 'crreward') { CR.autoReward = true; openCareer(true); }
-    else if (a.dataset.act === 'crretry') careerStartFight(false);
+    else if (a.dataset.act === 'career') openCareer(true, PL.cj || 'cloud');
+    else if (a.dataset.act === 'crreward') { CR.autoReward = true; openCareer(true, PL.cj || 'cloud'); }
+    else if (a.dataset.act === 'crretry') { crPick(PL.cj || 'cloud'); careerStartFight(false); }
     else if (a.dataset.act === 'close') T.banner.hidden = true;
   });
   // Press and hold any card to read it, even where a tap picks it (attacking, blocking, targets, choices).

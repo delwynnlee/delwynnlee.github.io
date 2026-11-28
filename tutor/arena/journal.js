@@ -21,7 +21,7 @@
       id: ctx.id, at: ctx.at || Date.now(), fmt: r.format || 'standard', ai: ctx.ai || 'normal', res,
       why: r.winner == null ? (r.reason === 'turns' ? 'turns' : 'both') : r.reason || 'life',
       turns: r.turns, first: r.first === 0, me: side(r.players[0], ctx.decks[0]), op: side(r.players[1], ctx.decks[1]),
-      career: ctx.career != null ? ctx.career : undefined, secs: ctx.secs || undefined,
+      career: ctx.career != null ? ctx.career : undefined, cj: ctx.career != null && ctx.cj && ctx.cj !== 'cloud' ? ctx.cj : undefined, secs: ctx.secs || undefined,
     };
   }
   // Adds an entry unless the same game is already there; the oldest go once there are too many
