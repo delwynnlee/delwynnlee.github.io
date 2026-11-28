@@ -4,6 +4,8 @@
     {
       id: 'charizard', name: 'Charizard ex', types: ['R'], archetype: 'midrange', face: 'sv3-125',
       blurb: 'Rare Candy straight into Charizard ex, whose Infernal Reign loads three Fire Energy at once. Pidgeot ex fetches whatever piece is missing.',
+      plan: "Get Charmander and Pidgey down early with Buddy-Buddy Poffin and Nest Ball, then Rare Candy straight into Charizard ex: Infernal Reign attaches three Fire Energy from the deck the moment it evolves, so Burning Darkness hits on the same turn, harder for every Prize card the opponent has taken. Pidgeot ex's Quick Search finds the missing piece each turn, and Boss's Orders picks off whatever is about to cause trouble.",
+      keys: ["Charizard ex", "Rare Candy", "Pidgeot ex", "Boss's Orders"],
       cards: [[3, 'me2-11'], [1, 'me2pt5-20'], [2, 'me2-12'], [3, 'sv3-125'], [2, 'sv3pt5-16'], [1, 'sv3-163'], [2, 'sv3-164'], [1, 'sv6pt5-38'],
         [4, 'sv1-191'], [4, 'me1-131'], [2, 'sv1-181'], [2, 'me2pt5-184'], [4, 'sv8pt5-122'], [3, 'sv2-185'], [2, 'me1-114'], [1, 'sv1-166'], [1, 'sv1-180'], [1, 'sv1-176'],
         [1, 'sv2-188'], [1, 'me2pt5-196'], [1, 'sv1-194'], [1, 'sv5-157'], [2, 'sv1-186'], [1, 'sv4-160'], [1, 'sv5-159'], [1, 'sv4-163'], [1, 'sv1-171'],
@@ -12,6 +14,8 @@
     {
       id: 'gardevoir', name: 'Gardevoir ex', types: ['P'], archetype: 'control', face: 'sv1-86',
       blurb: 'Psychic Embrace pulls Energy back from the discard pile, and every damage counter it costs makes Drifloon hit harder.',
+      plan: "Evolve into Gardevoir ex on the Bench and leave it there: Psychic Embrace attaches Psychic Energy from the discard pile as often as you like, two damage counters each time. Professor's Research and Earthen Vessel fill the discard pile; the damage counters make Drifloon's Balloon Blast hit harder, and Drifblim's Curse Spreading puts eight damage counters wherever you like. Mimikyu and Latias ex keep the engine safe and moving.",
+      keys: ["Gardevoir ex", "Drifblim", "Rare Candy", "Earthen Vessel"],
       cards: [[2, 'sv1-84'], [2, 'me1-58'], [2, 'me1-59'], [1, 'sv1-85'], [2, 'sv1-86'], [2, 'sv1-89'], [1, 'sv1-90'], [1, 'sv2-97'], [1, 'sv8-76'], [1, 'sv6pt5-38'],
         [3, 'sv1-191'], [4, 'me1-131'], [2, 'sv1-181'], [2, 'me2pt5-184'], [4, 'sv8pt5-122'], [3, 'sv2-185'], [2, 'me1-114'], [1, 'sv1-166'], [1, 'sv1-176'],
         [1, 'me2pt5-196'], [1, 'sv2-188'], [2, 'sv4-163'], [1, 'sv1-194'], [1, 'sv5-152'], [2, 'sv1-186'], [1, 'sv4-160'], [1, 'sv5-159'],
@@ -20,6 +24,8 @@
     {
       id: 'dragapult', name: 'Dragapult ex', types: ['N'], archetype: 'midrange', face: 'sv6-130',
       blurb: 'Phantom Dive hits the Active for 200 and scatters six damage counters across the Bench. Dusknoir finishes whatever is left.',
+      plan: "Build Dreepy into Dragapult ex as fast as Rare Candy allows; Drakloak's Recon Directive digs for the pieces on the way. Phantom Dive hits the Active for 200 and spreads six damage counters across the Bench, setting up two-Prize turns, and Dusknoir's Cursed Blast finishes off anything the spread left low.",
+      keys: ["Dragapult ex", "Drakloak", "Dusknoir", "Rare Candy"],
       cards: [[4, 'sv6-128'], [3, 'sv6-129'], [3, 'sv6-130'], [2, 'sv6pt5-18'], [1, 'sv6pt5-19'], [1, 'sv6pt5-20'], [1, 'sv6pt5-38'],
         [4, 'sv1-191'], [4, 'me1-131'], [2, 'sv1-181'], [2, 'me2pt5-184'], [4, 'sv8pt5-122'], [3, 'sv2-185'], [2, 'me1-114'], [1, 'sv1-166'], [1, 'sv1-176'],
         [1, 'me2pt5-196'], [1, 'sv2-188'], [1, 'sv1-194'], [1, 'sv5-157'], [2, 'sv1-186'], [1, 'sv4-160'], [1, 'sv5-159'], [1, 'sv4-163'],
@@ -28,6 +34,8 @@
     {
       id: 'lucario', name: 'Mega Lucario ex', types: ['F'], archetype: 'aggro', face: 'me1-77',
       blurb: 'Aura Jab hits for 130 and loads the Bench from the discard pile, so the next Mega Lucario ex arrives ready to swing.',
+      plan: "Fighting Gong and Nest Ball find Riolu, and Mega Lucario ex comes in fast: Aura Jab hits for 130 and attaches Fighting Energy from the discard pile to the Bench, so every attack powers up the next attacker. Koraidon ex and Solrock help early, and Bravery Charm keeps Mega Lucario ex standing for another turn.",
+      keys: ["Mega Lucario ex", "Fighting Gong", "Koraidon ex", "Bravery Charm"],
       cards: [[4, 'me1-76'], [3, 'me1-77'], [2, 'me55-83'], [1, 'me2pt5-121'], [1, 'sv3-93'],
         [4, 'me1-116'], [3, 'me1-131'], [3, 'sv1-181'], [4, 'sv8pt5-122'], [2, 'sv2-185'], [2, 'me1-114'], [1, 'sv1-166'], [1, 'sv1-176'],
         [2, 'sv1-194'], [2, 'sv1-171'], [1, 'me2pt5-196'], [1, 'sv2-188'], [1, 'sv5-152'], [2, 'sv2-173'], [2, 'sv4-163'], [1, 'sv5-159'], [2, 'sv1-186'], [1, 'sv4-160'],
@@ -36,6 +44,8 @@
     {
       id: 'raging-bolt', name: 'Raging Bolt ex', types: ['N', 'G'], archetype: 'aggro', face: 'svp-145',
       blurb: 'Teal Mask Ogerpon ex piles Energy onto the board, then Raging Bolt ex throws all of it away for 70 damage apiece.',
+      plan: "Teal Mask Ogerpon ex's Teal Dance attaches Grass Energy from the hand and draws a card each turn, and Earthen Vessel keeps the Energy coming. Raging Bolt ex's Bellowing Thunder discards any number of Basic Energy from your Pokémon for 70 damage each, enough to Knock Out anything, then Energy Retrieval and the next Ogerpon reload it.",
+      keys: ["Raging Bolt ex", "Teal Mask Ogerpon ex", "Earthen Vessel", "Energy Switch"],
       cards: [[4, 'svp-145'], [4, 'sv6-25'], [1, 'svp-160'],
         [4, 'sv4-163'], [2, 'sv1-171'], [1, 'sv2-189'], [4, 'sv1-181'], [2, 'me1-131'], [4, 'sv8pt5-122'], [2, 'sv2-185'], [3, 'me1-114'],
         [2, 'sv1-194'], [1, 'sv5-157'], [2, 'sv1-186'], [1, 'me2pt5-196'], [2, 'sv1-173'], [1, 'sv2-188'], [1, 'sv6-154'], [2, 'zsv10pt5-79'],
@@ -44,6 +54,8 @@
     {
       id: 'gholdengo', name: 'Gholdengo ex', types: ['M'], archetype: 'midrange', face: 'sv4-139',
       blurb: 'Make It Rain spends Metal Energy straight from the hand, 50 damage a card, while Coin Bonus keeps the hand full.',
+      plan: "Gholdengo ex's Coin Bonus draws a card every turn, and Make It Rain discards Basic Metal Energy from your hand for 50 damage each. Earthen Vessel, Energy Search and Superior Energy Retrieval keep the hand full of Energy, so each turn picks exactly the damage the Knock Out needs.",
+      keys: ["Gholdengo ex", "Superior Energy Retrieval", "Earthen Vessel", "Squawkabilly ex"],
       cards: [[4, 'sv4-87'], [4, 'sv4-139'], [1, 'svp-160'], [1, 'sv2-97'], [2, 'sv8-144'],
         [4, 'sv2-189'], [2, 'sv1-171'], [4, 'sv4-163'], [3, 'sv1-181'], [3, 'me1-131'], [2, 'me2pt5-184'], [4, 'sv8pt5-122'], [2, 'sv2-185'],
         [2, 'me1-114'], [1, 'sv1-194'], [1, 'sv2-188'], [1, 'sv5-157'], [1, 'sv1-186'], [1, 'me2pt5-196'], [2, 'sv1-172'], [1, 'sv1-180'],
@@ -52,6 +64,8 @@
     {
       id: 'absol-control', name: 'Absol Control', types: ['D'], archetype: 'control', face: 'me1-86',
       blurb: 'Hammers, Judge and Claw of Darkness strip the opponent bare while Mega Absol ex soaks up the hits.',
+      plan: "Don't race: Crushing Hammer and Xerosic's Machinations strip Energy, Judge and Iono shrink the opponent's hand, and Mega Absol ex soaks up hits while Claw of Darkness hits for 200 and discards the card you choose from their hand. Dusknoir and Darkrai ex close the game once the opponent runs out of answers.",
+      keys: ["Mega Absol ex", "Crushing Hammer", "Judge", "Dusknoir"],
       cards: [[3, 'me1-86'], [2, 'me2-63'], [2, 'me1-88'], [1, 'svp-110'], [2, 'sv6pt5-18'], [1, 'sv6pt5-19'], [1, 'sv6pt5-20'], [1, 'sv6pt5-38'],
         [3, 'sv1-168'], [1, 'sv6pt5-64'], [2, 'sv1-176'], [1, 'sv6-165'], [3, 'sv2-185'], [2, 'me1-114'], [4, 'sv8pt5-122'], [4, 'me1-131'], [3, 'sv1-181'],
         [2, 'sv1-191'], [2, 'sv1-194'], [1, 'me2pt5-196'], [1, 'sv2-188'], [2, 'sv1-186'], [1, 'sv6-158'], [1, 'sv4-163'],
@@ -60,6 +74,8 @@
     {
       id: 'chien-pao', name: 'Chien-Pao Baxcalibur', types: ['W'], archetype: 'midrange', face: 'sv2-61',
       blurb: 'Baxcalibur attaches Water Energy from the hand as often as it likes, and Chien-Pao ex melts it all into Hail Blade.',
+      plan: "Get Baxcalibur onto the Bench with Rare Candy: Super Cold lets you attach Water Energy from your hand as often as you like. Chien-Pao ex's Shivery Chill fetches the Energy, and Hail Blade discards any amount of it for 60 damage each, so it can Knock Out anything in one hit. Mega Starmie ex is the second attacker.",
+      keys: ["Chien-Pao ex", "Baxcalibur", "Rare Candy", "Superior Energy Retrieval"],
       cards: [[2, 'sv2-61'], [2, 'sv4pt5-17'], [2, 'sv2-58'], [1, 'sv2-59'], [3, 'sv2-60'], [2, 'me3-20'], [2, 'me3-21'],
         [4, 'sv1-191'], [4, 'me1-131'], [2, 'sv1-181'], [2, 'me2pt5-184'], [4, 'sv8pt5-122'], [3, 'sv2-185'], [2, 'me1-114'], [1, 'sv1-166'],
         [1, 'me2pt5-196'], [1, 'sv2-188'], [2, 'sv1-194'], [1, 'sv5-157'], [2, 'sv1-186'], [2, 'sv2-189'], [1, 'sv4-163'],
@@ -68,6 +84,8 @@
     {
       id: 'lightning-box', name: 'Lightning Box', types: ['L'], archetype: 'aggro', face: 'sv1-81',
       blurb: 'Miraidon ex fills the Bench with Lightning attackers in one go, and Iron Hands ex takes an extra Prize card when it knocks one out.',
+      plan: "Miraidon ex's Tandem Unit puts two Basic Lightning Pokémon from your deck onto the Bench at once. Iron Hands ex takes an extra Prize card whenever Amp You Very Much Knocks Out a Pokémon, Pikachu ex and Zapdos hit hard, and Levincia gets the Energy back so every attacker can swing.",
+      keys: ["Miraidon ex", "Iron Hands ex", "Pikachu ex", "Levincia"],
       cards: [[3, 'sv1-81'], [2, 'sv4-70'], [2, 'sv8pt5-28'], [2, 'sv6-65'], [1, 'svp-160'],
         [4, 'sv1-181'], [3, 'me1-131'], [4, 'sv8pt5-122'], [3, 'sv2-185'], [3, 'me1-114'], [2, 'sv1-194'], [2, 'sv1-171'], [1, 'sv2-189'], [2, 'sv4-163'],
         [1, 'sv5-154'], [2, 'sv2-173'], [1, 'me2pt5-196'], [1, 'sv2-188'], [2, 'sv1-186'], [2, 'sv9-150'], [1, 'sv5-159'], [1, 'sv4-160'], [2, 'zsv10pt5-79'],
@@ -76,6 +94,8 @@
     {
       id: 'venusaur', name: 'Mega Venusaur ex', types: ['G'], archetype: 'control', face: 'me1-3',
       blurb: 'Solar Transfer moves Grass Energy wherever it is needed, and Jungle Dump hits for 240 while healing the damage back.',
+      plan: "Evolve Bulbasaur into Mega Venusaur ex with Rare Candy. Solar Transfer moves Grass Energy between your Pokémon as often as you like, so the attacker always has what it needs, and Jungle Dump hits for 240 and heals. Teal Mask Ogerpon ex draws and attaches Energy while the Mega gets ready, and Hero's Cape helps it survive.",
+      keys: ["Mega Venusaur ex", "Teal Mask Ogerpon ex", "Rare Candy", "Hero's Cape"],
       cards: [[4, 'me1-1'], [2, 'me1-2'], [3, 'me1-3'], [2, 'sv6-25'], [1, 'sv6pt5-38'],
         [4, 'sv1-191'], [4, 'me1-131'], [2, 'sv1-181'], [2, 'me2pt5-184'], [4, 'sv8pt5-122'], [3, 'sv2-185'], [2, 'me1-114'], [1, 'sv1-166'], [1, 'sv1-176'],
         [1, 'me2pt5-196'], [1, 'sv2-188'], [2, 'sv1-194'], [1, 'sv5-152'], [2, 'sv1-186'], [2, 'sv4-163'], [1, 'sv1-171'],
@@ -84,6 +104,8 @@
     {
       id: 'charizard-x', name: 'Mega Charizard X ex', types: ['R'], archetype: 'aggro', face: 'me2-13',
       blurb: 'Emboar stokes the fire, attaching Energy from hand as often as it likes, and Inferno X turns every Fire Energy on the board into 90 damage.',
+      plan: "Put Emboar on the Bench with Rare Candy: Inferno Fandango attaches Fire Energy from your hand as often as you like. Mega Charizard X ex's Inferno X discards Fire Energy from your Pokémon for 90 damage each, and Superior Energy Retrieval brings it all back for the next turn.",
+      keys: ["Mega Charizard X ex", "Emboar", "Rare Candy", "Superior Energy Retrieval"],
       cards: [[3, 'me2-11'], [2, 'me2-12'], [3, 'me2-13'], [3, 'rsv10pt5-11'], [1, 'rsv10pt5-12'], [2, 'rsv10pt5-13'], [1, 'sv4-29'],
         [4, 'sv1-191'], [4, 'me1-131'], [2, 'sv1-181'], [2, 'me2pt5-184'], [4, 'sv8pt5-122'], [3, 'sv2-185'], [2, 'me1-114'], [1, 'sv1-166'],
         [2, 'sv2-189'], [2, 'sv4-163'], [1, 'sv1-194'], [1, 'sv2-188'], [1, 'me2pt5-196'], [1, 'sv1-186'],

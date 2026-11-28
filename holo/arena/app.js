@@ -44,6 +44,13 @@ const ICON = {
   swirl: '<path d="M12 12.5a1.5 1.5 0 1 1 1.5-1.5 3.5 3.5 0 1 1-3.5-3.5 5.5 5.5 0 1 1-5.5 5.5"/>',
   zoom: '<circle cx="10.5" cy="10.5" r="5.5"/><path d="M15 15l4.5 4.5"/>',
   check: '<path d="M5.5 12.5l4.2 4.2 8.8-9.4"/>',
+  copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="2.4"/><path d="M15.5 8.5V6.4a1.9 1.9 0 0 0-1.9-1.9H6.4a1.9 1.9 0 0 0-1.9 1.9v7.2a1.9 1.9 0 0 0 1.9 1.9h2.1"/>',
+  search: '<circle cx="10.5" cy="10.5" r="6.2"/><path d="M15.2 15.2l4.6 4.6"/>',
+  swords: '<path d="M4.5 4.5l9 9M4.5 4.5h3.2M4.5 4.5v3.2M13 15.5l-2.5 2.5M8.5 11l-2.5 2.5M19.5 4.5l-9 9M19.5 4.5h-3.2M19.5 4.5v3.2M11 15.5l2.5 2.5M15.5 11l2.5 2.5M6.4 17.6l-2 2M17.6 17.6l2 2"/>',
+  star: '<path d="M12 4.2l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.6-4.8 2.6.9-5.4-3.9-3.8 5.4-.8z"/>',
+  book: '<path d="M5 5.2c2.6-.9 5-.6 7 1v13c-2-1.6-4.4-1.9-7-1z"/><path d="M19 5.2c-2.6-.9-5-.6-7 1v13c2-1.6 4.4-1.9 7-1z"/>',
+  grid: '<rect x="4.5" y="4.5" width="6" height="6" rx="1.4"/><rect x="13.5" y="4.5" width="6" height="6" rx="1.4"/><rect x="4.5" y="13.5" width="6" height="6" rx="1.4"/><rect x="13.5" y="13.5" width="6" height="6" rx="1.4"/>',
+  list: '<path d="M9 7h11M9 12h11M9 17h11M4.5 7h.5M4.5 12h.5M4.5 17h.5"/>',
 };
 const icon = (name) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICON[name]}</svg>`;
 
@@ -152,6 +159,8 @@ function renderAi() { $$('#aiSeg button').forEach((b) => b.setAttribute('aria-pr
 const saveSeats = () => store.set(KEY.seats, S.seats);
 function hashFor() {
   if (S.view === 'learn') return '#learn';
+  if (S.view === 'decks') return '#decks';
+  if (S.view === 'journal') return '#journal';
   if (S.view === 'watch' && TU.on) return `#lesson=${TU.lesson.id}`;
   const p = new URLSearchParams();
   if (S.seats[0]) p.set('a', S.seats[0]);
@@ -202,8 +211,8 @@ function renderSeats() {
     return `<div class="seat" data-seat="${i}" data-on="${S.active === i}">`
       + `<div class="seat-art">${face ? cropHTML(face) : ''}<button type="button" class="seat-tag" data-pick="${i}" aria-pressed="${S.active === i}">${seatName(i)}${S.active === i ? ', choosing' : ''}</button></div>`
       + `<div class="seat-body"><h3 class="deck-name">${esc(d.name)}</h3>${metaHTML(d)}<p class="blurb">${esc(d.blurb)}</p>${mixHTML(d)}`
-      + `<div class="seat-foot"><button type="button" class="link-btn" data-list="${i}" aria-expanded="${open}">${open ? 'Hide the list' : `See all ${d.size} cards`}</button><span class="faint">${d.mons} Pokémon, ${d.trainers} Trainers, ${d.energy} Energy</span></div>`
-      + `${open ? listHTML(d) : ''}</div></div>`;
+      + `<div class="seat-foot"><button type="button" class="link-btn" data-dv="${esc(d.key)}">See all ${d.size} cards</button><span class="faint">${d.mons} Pokémon, ${d.trainers} Trainers, ${d.energy} Energy</span></div>`
+      + `</div></div>`;
   });
   L.seats.innerHTML = `${parts[0]}<span class="vs-big" aria-hidden="true">vs</span>${parts[1]}`;
   L.pickTitle.textContent = `Choose a deck for ${seatName(S.active)}`;
@@ -378,6 +387,7 @@ const say = (text) => (W.mode === 'play' ? youText(text) : text);
 // The painted scene at the top of each page (theme.css); a game has the playmat instead
 const ART = { lobby: 'arena', decks: 'decks', learn: 'learn', journal: 'journal', career: 'career', finals: 'finals' };
 const VIEWS = ['lobby', 'decks', 'learn', 'finals', 'career', 'journal', 'watch'];
+const VIEW_EL = { lobby: '#lobby', decks: '#vDecks', learn: '#vLearn', finals: '#vFinals', career: '#vCareer', journal: '#vJournal', watch: '#watch' };
 // Where each page was scrolled to, so coming back to a long list finds the same place
 const SCROLL = {};
 try { history.scrollRestoration = 'manual'; } catch { /* old browsers */ }
@@ -385,19 +395,21 @@ function setView(view, push) {
   const was = S.view;
   if (was !== 'watch') SCROLL[was] = window.scrollY;
   S.view = view;
-  for (const v of VIEWS) $(`#${v}`).hidden = v !== view;
+  for (const v of VIEWS) $(VIEW_EL[v]).hidden = v !== view;
   if (ART[view]) document.body.dataset.art = ART[view]; else delete document.body.dataset.art;
   const tab = view === 'learn' || view === 'finals' || (view === 'watch' && !TU.on) ? 'lobby' : view;
   $$('#nav [data-nav]').forEach((a) => { if (a.dataset.nav === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   document.body.classList.toggle('watching', view === 'watch');
   document.body.classList.toggle('in-game', view === 'watch');
   const back = $('#toLobby');
-  back.hidden = view === 'lobby';
-  back.innerHTML = `${icon('back')}${view === 'watch' && TU.on ? 'Lessons' : 'Lobby'}`;
+  // Back to where the game came from; the other pages have their tabs
+  back.hidden = view !== 'watch';
+  back.innerHTML = `${icon('back')}${view === 'watch' && TU.on ? 'Lessons' : { decks: 'Decks', career: 'Career', finals: 'Finals', journal: 'Journal' }[S.backTo] || 'Lobby'}`;
   $('#matchup').hidden = view !== 'watch';
   if (view !== 'watch') { stop(); endPlay(); closeInspector(); closeSheet(); }
   if (view === 'lobby') { renderResume(); renderLearnBtn(); renderSeats(); }
   if (view === 'learn') renderLessons();
+  if (view === 'decks') renderLibrary();
   if (view === 'watch') requestAnimationFrame(measure);
   if (was !== view) window.scrollTo(0, view !== 'watch' && SCROLL[view] ? SCROLL[view] : 0);
   syncHash(push);
@@ -846,7 +858,7 @@ function showBanner() {
 /* ---------- Watching a game ---------- */
 function replayOf(G, decks) {
   const stats = G.players.map((P) => Object.assign({ taken: P.taken || 0, left: P.prizes.length }, P.stats));
-  return { frames: G.frames, names: decks.map((d) => d.name), winner: G.winner, reason: G.reason, turns: G.turn, first: G.first, stats };
+  return { frames: G.frames, names: decks.map((d) => d.name), winner: G.winner, reason: G.reason, why: G.why, turns: G.turn, first: G.first, stats };
 }
 function watch(seed, opts = {}) {
   const d0 = deckByKey(S.seats[0]), d1 = deckByKey(S.seats[1]);
@@ -875,6 +887,407 @@ function enterTable() {
   W.i = 0;
   requestAnimationFrame(measure);
 }
+
+/* ============================================================
+   6b. Deck view: every card in a deck, its plan, and its numbers
+   ============================================================ */
+const DV = { key: null, from: null, ctx: 'lobby', set: null, mode: store.get('holo.arena.dvmode.v1', 'pics') === 'list' ? 'list' : 'pics' };
+const TRAINER_ORDER = ['supporter', 'item', 'tool', 'stadium'];
+const cardOrder = (x) => (x.kind === 0 ? x.stage : x.kind === 1 ? TRAINER_ORDER.indexOf(x.trainer) : 0);
+function deckGroups(d) {
+  return [['Pokémon', (x) => x.kind === 0], ['Trainers', (x) => x.kind === 1], ['Energy', (x) => x.kind === 2]]
+    .map(([label, f]) => [label, d.list.filter(({ def: x }) => f(x)).sort((a, b) => cardOrder(a.def) - cardOrder(b.def) || b.n - a.n || a.def.name.localeCompare(b.def.name))])
+    .filter(([, rows]) => rows.length);
+}
+function deckStats(d) {
+  const count = (f) => d.list.filter(({ def: x }) => f(x)).reduce((t, x) => t + x.n, 0);
+  const energy = {};
+  for (const { def: x, n } of d.list) if (x.kind === 2) energy[x.provides || 'C'] = (energy[x.provides || 'C'] || 0) + n;
+  return {
+    basic: count((x) => x.kind === 0 && x.stage === 0), s1: count((x) => x.kind === 0 && x.stage === 1), s2: count((x) => x.kind === 0 && x.stage === 2),
+    ex: count((x) => x.kind === 0 && x.ex), supporter: count((x) => x.trainer === 'supporter'), item: count((x) => x.trainer === 'item'),
+    tool: count((x) => x.trainer === 'tool'), stadium: count((x) => x.trainer === 'stadium'), energy,
+  };
+}
+// The list as Pokémon TCG Live reads it: a section per kind, then count, name, set code and number
+function deckText(d) {
+  return deckGroups(d).map(([label, rows]) => `${label === 'Trainers' ? 'Trainer' : label}: ${rows.reduce((t, x) => t + x.n, 0)}\n${rows.map(({ def: x, n }) => `${n} ${x.name}${x.set ? ` ${x.set} ${x.num}` : ''}`).join('\n')}`).join('\n\n') + '\n';
+}
+// The cards that make a deck work: its notes say which; otherwise its biggest Pokémon
+function keyCards(d) {
+  const inDeck = (name) => (d.list.find(({ def: x }) => x.name === name) || {}).def || (DATA.pool.byName.get(name) || [])[0];
+  if (d.keys) return d.keys.map(inDeck).filter(Boolean);
+  return d.list.map((x) => x.def).filter((x) => x.kind === 0).sort((a, b) => b.stage - a.stage || (b.ex ? 1 : 0) - (a.ex ? 1 : 0) || b.hp - a.hp).slice(0, 4);
+}
+function statHTML(n, label) { return `<div class="dv-stat"><b>${nf.format(n)}</b><span>${label}</span></div>`; }
+function dvFootHTML(d, key) {
+  if (DV.ctx === 'career' || DV.ctx === 'finals') return '';
+  if (DV.ctx === 'library') return `<button type="button" class="pill" data-dvplay="setup">Set up a match</button><button type="button" class="pill pill-solid" data-dvplay="play">${icon('play')}Play vs AI</button>`;
+  return [0, 1].map((i) => (S.seats[i] === key
+    ? `<button type="button" class="pill" disabled>${icon('check')}${seatName(i)}'s deck</button>`
+    : `<button type="button" class="pill${i === S.active ? ' pill-solid' : ''}" data-dvseat="${i}">Use for ${seatName(i)}</button>`)).join('');
+}
+// The decks you can page through from the open one: the rest of the list it was opened from
+function deckSet(src) {
+  if (!src || !src.isConnected) return null;
+  const tile = src.closest('[data-lib], .tile[data-key]');
+  const list = tile && tile.closest('#libBody, .deck-grid, .recent');
+  if (!list) return null;
+  const items = $$('[data-lib], .tile[data-key]', list).filter((t) => t.getClientRects().length > 0);
+  const i = items.indexOf(tile);
+  if (i < 0 || items.length < 2) return null;
+  const grp = tile.closest('.lib-group');
+  return { items, i, label: grp ? grp.querySelector('h2').firstChild.textContent : '' };
+}
+function openDeckView(key, from, ctx) {
+  const d = deckByKey(key);
+  if (!d) return;
+  const box = $('#deckView');
+  const was = !box.hidden;
+  DV.key = key;
+  DV.ctx = ctx || 'lobby';
+  DV.from = from || document.activeElement;
+  const ds = DV.set = deckSet(DV.from);
+  const keys = keyCards(d);
+  const st = deckStats(d);
+  const face = def(d.face);
+  const eTypes = Object.keys(st.energy);
+  const maxE = Math.max(1, ...Object.values(st.energy));
+  const nav = ds ? `<div class="dv-nav"><button type="button" class="icon-btn" data-dvpage="-1" aria-label="Previous deck"${ds.i <= 0 ? ' disabled' : ''}>${icon('prev')}</button>`
+    + `<span class="dv-pos"><b>${ds.i + 1}</b> of ${ds.items.length}${ds.label ? ` · ${esc(ds.label)}` : ''}</span>`
+    + `<button type="button" class="icon-btn" data-dvpage="1" aria-label="Next deck"${ds.i >= ds.items.length - 1 ? ' disabled' : ''}>${icon('next')}</button></div>` : '';
+  const html = `<div class="dv-box">
+    <div class="dv-hero">${face ? cropHTML(face).replace('<div class="crop">', '<div class="crop dv-crop">') : ''}${nav}<button type="button" class="icon-btn dv-x" data-dvclose aria-label="Close">${icon('x')}</button></div>
+    <div class="dv-head"><h2 class="deck-name" id="dvName">${esc(d.name)}</h2>${metaHTML(d)}</div>
+    <div class="dv-plan"><h4>${d.by === 'gen' ? 'How it was built' : 'Strategy'}</h4><p>${esc(d.plan || d.blurb)}</p>
+      ${keys.length ? `<h4 class="dv-keys-h">Key cards</h4><div class="dv-keys">${keys.map((k) => `<button type="button" class="chip" data-zoom="${esc(k.id)}">${esc(k.name)}</button>`).join('')}</div>` : ''}</div>
+    <div class="dv-stats">${statHTML(d.mons, 'Pokémon')}${statHTML(d.trainers, 'Trainers')}${statHTML(d.energy, 'Energy')}${statHTML(st.basic, 'Basic Pokémon')}${st.s1 || st.s2 ? statHTML(st.s1 + st.s2, 'Evolutions') : ''}${statHTML(st.ex, 'Pokémon ex')}</div>
+    <div class="dv-charts">
+      <div class="dv-chart"><h4>Trainers by kind</h4><div class="dv-bars">${[['Supporters', st.supporter], ['Items', st.item], ['Tools', st.tool], ['Stadiums', st.stadium]].filter(([, n]) => n).map(([l, n]) => `<div class="dv-bar-row"><span>${l}</span><i class="bar" style="width:${Math.round((n / Math.max(1, d.trainers)) * 100)}%"></i><b>${n}</b></div>`).join('')}</div></div>
+      <div class="dv-chart"><h4>Energy by type</h4><div class="dv-bars">${eTypes.length ? eTypes.map((t) => `<div class="dv-bar-row ty t-${t}">${pipHTML(t)}<i class="bar" style="width:${Math.round((st.energy[t] / maxE) * 100)}%"></i><b>${st.energy[t]}</b></div>`).join('') : '<p class="empty-note">No Energy cards.</p>'}</div></div>
+    </div>
+    <div class="dv-tools">
+      <div class="seg" role="group" aria-label="Show the cards as" id="dvMode"><button type="button" data-dvmode="pics" aria-pressed="${DV.mode === 'pics'}">${icon('grid')}Pictures</button><button type="button" data-dvmode="list" aria-pressed="${DV.mode === 'list'}">${icon('list')}List</button></div>
+      <button type="button" class="ghost" data-dvcopy>${icon('copy')}Copy the list</button>
+    </div>
+    <div class="dv-cards" id="dvCards"></div>
+    <div class="dv-foot">${dvFootHTML(d, key)}</div>
+  </div>`;
+  // Turning to another deck changes the box; the scrim behind it stays
+  if (was) box.querySelector('.dv-box').outerHTML = html;
+  else box.innerHTML = `<div class="dv-scrim" data-dvclose></div>${html}`;
+  renderDeckCards(d);
+  box.hidden = false;
+  box.querySelector('.dv-box').scrollTop = 0;
+  box.querySelector('.dv-x').focus({ preventScroll: true });
+  if (!was && window.UI) UI.overlay.open('dv', () => closeDeckView(true));
+}
+function renderDeckCards(d) {
+  const host = $('#dvCards');
+  if (!host) return;
+  $$('#dvMode button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.dvmode === DV.mode)));
+  if (DV.mode === 'list') { host.innerHTML = listHTML(d); return; }
+  host.innerHTML = deckGroups(d).map(([label, rows]) => `<section class="dv-group"><h3>${label}<span>${rows.reduce((t, x) => t + x.n, 0)}</span></h3><div class="dv-grid">${rows.map(({ def: x, n }) => `<button type="button" class="dv-cell cardbtn" data-zoom="${esc(x.id)}" aria-label="${esc(`${n > 1 ? `${n} copies of ` : ''}${x.name}. Open it to read it.`)}">${cardHTML(x, { alt: '', lazy: true })}${n > 1 ? `<span class="dv-n" aria-hidden="true">×${n}</span>` : ''}</button>`).join('')}</div></section>`).join('');
+}
+// Turn to the deck before or after the open one
+function pageDeck(dir) {
+  const ds = DV.set;
+  if (!ds) return;
+  const to = ds.i + dir;
+  const boxEl = $('#deckView .dv-box');
+  if (to < 0 || to >= ds.items.length || !ds.items[to].isConnected) { if (window.UI) UI.slide(boxEl, dir, true); return; }
+  const t = ds.items[to];
+  t.scrollIntoView({ block: 'nearest' });
+  openDeckView(t.dataset.lib || t.dataset.key, t, DV.ctx);
+  if (window.UI) UI.slide($('#deckView .dv-box'), dir);
+}
+function closeDeckView(viaHistory) {
+  const box = $('#deckView');
+  if (box.hidden) return;
+  box.hidden = true;
+  box.innerHTML = '';
+  DV.set = null;
+  if (viaHistory !== true && window.UI) UI.overlay.closed('dv');
+  if (DV.from && DV.from.isConnected) DV.from.focus({ preventScroll: true });
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch {
+    const t = document.createElement('textarea');
+    t.value = text; t.style.position = 'fixed'; t.style.opacity = '0';
+    document.body.appendChild(t); t.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch { ok = false; }
+    t.remove();
+    return ok;
+  }
+}
+function pageToast(text) {
+  let t = $('#pageToast');
+  if (!t) { t = document.createElement('div'); t.id = 'pageToast'; t.className = 'page-toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+  t.textContent = text;
+  t.hidden = false;
+  clearTimeout(t._h);
+  t._h = setTimeout(() => { t.hidden = true; }, 2200);
+}
+
+/* ============================================================
+   6c. Decks: every deck, with its plan, to read and play
+   ============================================================ */
+const LIB = Object.assign({ src: 'all', q: '', arch: 'all', types: [] }, store.get('holo.arena.lib.v1', {}));
+const LIB_TYPES = ['G', 'R', 'W', 'L', 'P', 'F', 'D', 'M', 'N'];
+const libSave = () => store.set('holo.arena.lib.v1', { src: LIB.src, arch: LIB.arch, types: LIB.types });
+// Every deck in the library: Claude's, and any others the page knows (the Famous Finals decks)
+function libEntries() {
+  const out = [];
+  for (const spec of window.ARENA_DECKS) { const d = deckByKey(`c.${spec.id}`); if (d) out.push({ d, src: 'claude', group: "Claude's decks" }); }
+  for (const e of (window.libExtra ? window.libExtra() : [])) out.push(e);
+  return out.map((e) => Object.assign(e, { hay: `${e.d.name}\n${e.d.plan || e.d.blurb || ''}\n${e.d.list.map((x) => x.def.name).join('\n')}`.toLowerCase() }));
+}
+function libFilter(entries) {
+  const q = LIB.q.trim().toLowerCase();
+  return entries.filter((e) => (LIB.src === 'all' || e.src === LIB.src)
+    && (LIB.arch === 'all' || e.d.archetype === LIB.arch)
+    && LIB.types.every((t) => (e.d.types || []).includes(t))
+    && (!q || q.split(/\s+/).every((w) => e.hay.includes(w))));
+}
+function libTileHTML(e) {
+  const d = e.d, face = def(d.face);
+  const keys = keyCards(d).slice(0, 3);
+  return `<div class="lib-tile tile" data-lib="${esc(d.key)}" role="button" tabindex="0" aria-label="${esc(d.name)}: open the deck">`
+    + `<div class="tile-art">${face ? cropHTML(face) : ''}</div>`
+    + `<div class="tile-body"><h3 class="deck-name">${esc(d.name)}</h3>${metaHTML(d)}<p class="blurb">${esc(d.blurb)}</p>`
+    + `${keys.length ? `<div class="lib-keys">${keys.map((k) => `<span class="lib-key">${esc(k.name)}</span>`).join('')}</div>` : ''}`
+    + `<div class="lib-acts"><button type="button" class="pill pill-solid" data-libplay="${esc(d.key)}">${icon('play')}Play</button><button type="button" class="link-btn" data-libopen="${esc(d.key)}">Open the deck</button></div></div></div>`;
+}
+function renderLibrary() {
+  const all = libEntries();
+  const srcs = [['all', 'All'], ['claude', "Claude's"]].concat(all.some((e) => e.src === 'finals') ? [['finals', 'Famous finals']] : []);
+  if (!srcs.some(([k]) => k === LIB.src)) LIB.src = 'all';
+  const list = libFilter(all);
+  const groups = [];
+  for (const e of list) { let g = groups.find((x) => x.name === e.group); if (!g) groups.push(g = { name: e.group, items: [] }); g.items.push(e); }
+  const head = `<div class="lib-bar">
+      <div class="seg seg-lg" role="group" aria-label="Whose decks" id="libSrc">${srcs.map(([k, l]) => `<button type="button" data-libsrc="${k}" aria-pressed="${LIB.src === k}">${l}</button>`).join('')}</div>
+      <label class="lib-search">${icon('search')}<input type="search" id="libQ" placeholder="Search decks and cards" autocomplete="off" spellcheck="false" aria-label="Search decks and cards" value="${esc(LIB.q)}"></label>
+    </div>
+    <div class="lib-filters">
+      <div class="seg" role="group" aria-label="Plan" id="libArch">${[['all', 'Any plan']].concat(Object.entries(ARCH)).map(([k, l]) => `<button type="button" data-libarch="${k}" aria-pressed="${LIB.arch === k}">${l}</button>`).join('')}</div>
+      <div class="types lib-types" role="group" aria-label="Types">${LIB_TYPES.map((t) => `<button type="button" data-libtype="${t}" aria-pressed="${LIB.types.includes(t)}" aria-label="${TYPES[t]}">${pipHTML(t)}</button>`).join('')}</div>
+    </div>
+    <p class="lib-count" role="status">${list.length === all.length ? `${plural(all.length, 'deck')}` : `${plural(list.length, 'deck')} of ${all.length}`}</p>`;
+  const body = groups.length ? groups.map((g) => `<section class="lib-group"><h2>${esc(g.name)}<small>${g.items.length}</small></h2><div class="deck-grid lib-grid">${g.items.map(libTileHTML).join('')}</div></section>`).join('')
+    : `<div class="lib-empty"><img class="medal" src="../img/empty-search.webp" alt="" width="96" height="96"><p>No deck matches. <button type="button" class="link-btn" data-libreset>Clear the filters</button></p></div>`;
+  const keepFocus = document.activeElement && document.activeElement.id === 'libQ';
+  const pos = keepFocus ? document.activeElement.selectionStart : 0;
+  $('#libBody').innerHTML = head + body;
+  if (keepFocus) { const q = $('#libQ'); q.focus(); q.setSelectionRange(pos, pos); }
+}
+function openLibrary(push = true) {
+  setView('decks', push);
+  renderLibrary();
+}
+window.openLibrary = openLibrary;
+// An opponent for a deck from the library: another of the same kind of deck, of a different type when there is one
+function libOpponent(key) {
+  const d = deckByKey(key);
+  const all = libEntries().filter((e) => e.d.key !== key);
+  const same = all.filter((e) => e.src === (libEntries().find((x) => x.d.key === key) || {}).src);
+  const pool = (same.length ? same : all);
+  const other = pool.filter((e) => !(e.d.types || []).some((t) => (d.types || []).includes(t)));
+  const pick = (other.length ? other : pool);
+  return pick[Math.floor(Math.random() * pick.length)].d.key;
+}
+function libPlay(key, how) {
+  if (!deckByKey(key)) return;
+  closeDeckView();
+  S.seats = [key, libOpponent(key)];
+  S.active = 1;
+  saveSeats();
+  if (how === 'setup') { setView('lobby', true); renderSeats(); return; }
+  S.backTo = 'decks';
+  playStart(newSeed(), []);
+}
+
+/* ============================================================
+   6d. Journal: every game you play against the AI
+   ============================================================ */
+const JRN = window.ARENA_JOURNAL;
+const JV = { filter: ['all', 'free', 'career', 'finals'].includes(store.get('holo.arena.jfilter.v1', 'all')) ? store.get('holo.arena.jfilter.v1', 'all') : 'all', shown: 40 };
+const journalList = () => store.get('holo.arena.journal.v1', []) || [];
+const RES = { win: ['W', 'Win'], loss: ['L', 'Loss'], draw: ['D', 'Draw'] };
+const pct = (x) => `${Math.round(x * 100)}%`;
+const wl = (t) => `${t.w}–${t.l}${t.d ? `–${t.d}` : ''}`;
+// A game you played to the end goes in once: a reload of a finished game doesn't add it again. Lessons aren't recorded.
+function journalRecord() {
+  if (TU.on || !JRN || !W.replay || W.mode !== 'play' || !W.replay.stats) return;
+  const id = PL.career != null ? `cr${PL.career}.${PL.seed}.${PL.answers.length}` : `${PL.seed}.${PL.answers.length}.${(PL.keys || PL.labels).join('|')}`;
+  const list = journalList();
+  if (list.some((e) => e.id === id)) return;
+  const secs = PL.t0 ? Math.min(7200, Math.round((Date.now() - PL.t0) / 1000)) : 0;
+  const decks = PL.decks.map((d, i) => Object.assign({}, d, { name: PL.labels[i] }));
+  const mode = PL.career != null ? 'career' : PL.fin ? 'finals' : 'free';
+  store.set('holo.arena.journal.v1', JRN.add(list, JRN.entryOf(W.replay, { id, ai: PL.ai || 'normal', decks, mode, career: PL.career, fin: PL.fin, secs })));
+}
+const jFilter = (f) => (f === 'all' ? null : (e) => e.mode === f);
+const typePips = (t) => (t ? pipsHTML(t) : pipHTML('C'));
+// A vertical bar from the baseline y0 out to y1, rounded only at its far end
+function vbar(x, y0, y1, w, r) {
+  r = Math.min(r, w / 2, Math.abs(y1 - y0));
+  if (y1 < y0) return `M${x},${y0}V${y1 + r}Q${x},${y1} ${x + r},${y1}H${x + w - r}Q${x + w},${y1} ${x + w},${y1 + r}V${y0}Z`;
+  return `M${x},${y0}V${y1 - r}Q${x},${y1} ${x + r},${y1}H${x + w - r}Q${x + w},${y1} ${x + w},${y1 - r}V${y0}Z`;
+}
+// Wins rise above the line, losses hang below it, draws sit on it: the last games at a glance, oldest first
+function sparkHTML(last) {
+  if (!last.length) return '';
+  const bw = 7, gap = 3, h = 36, mid = h / 2;
+  const w = last.length * (bw + gap) - gap;
+  const bars = last.map((e, i) => {
+    const x = i * (bw + gap);
+    if (e.res === 'draw') return `<rect class="d" x="${x}" y="${mid - 1.5}" width="${bw}" height="3" rx="1.5"/>`;
+    return `<path class="${e.res === 'win' ? 'w' : 'l'}" d="${vbar(x, mid + (e.res === 'win' ? -1 : 1), e.res === 'win' ? 1 : h - 1, bw, 2)}"/>`;
+  }).join('');
+  const label = `Last ${plural(last.length, 'game')}, oldest first: ${last.map((e) => RES[e.res][1].toLowerCase()).join(', ')}`;
+  return `<svg class="jr-spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="${esc(label)}"><line class="mid" x1="0" x2="${w}" y1="${mid}" y2="${mid}"/>${bars}</svg>`;
+}
+function meterList(rows, name) {
+  return `<div class="mts">${rows.map((t) => `<div class="mt"><span class="mt-name">${name(t)}</span><span class="mt-bar" role="img" aria-label="${pct(t.rate)} won"><i style="width:${(t.rate * 100).toFixed(1)}%"></i></span><span class="mt-fig"><b>${pct(t.rate)}</b>${wl(t)}</span></div>`).join('')}</div>`;
+}
+function howBars(counts, loss) {
+  const rows = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  if (!rows.length) return '';
+  const max = Math.max(...rows.map((r) => r[1]));
+  return `<div class="hb"><p class="hb-h">${loss ? 'Your losses' : 'Your wins'}</p>${rows.map(([why, n]) => `<div class="hb-row"><span>${esc(JRN.HOW[why] || why)}</span><span class="hb-bar${loss ? ' l' : ''}"><i style="width:${Math.max(3, (n / max) * 100).toFixed(1)}%"></i><b>${n}</b></span></div>`).join('')}</div>`;
+}
+const dayOf = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+function dayLabel(t) {
+  const today = dayOf(Date.now()), d = dayOf(t);
+  if (d === today) return 'Today';
+  if (d === today - 864e5) return 'Yesterday';
+  return new Date(t).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: new Date(t).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
+}
+function gameRow(e) {
+  const what = e.mode === 'career' && window.careerStageName ? careerStageName(e.career) : e.mode === 'finals' && window.finalName ? finalName(e.fin) : `${e.ai === 'hard' ? 'Hard' : 'Normal'} AI`;
+  const how = e.res === 'draw' ? JRN.HOW[e.why] || 'Draw' : JRN.HOW[e.why] || '';
+  return `<li class="jg"><span class="jg-r ${e.res}" aria-label="${RES[e.res][1]}">${RES[e.res][0]}</span>`
+    + `<span class="jg-main"><b>vs ${esc(e.op.n)}</b><span>${esc(e.me.n)} · ${esc(what)}</span></span>`
+    + `<span class="jg-side"><b>Turn ${e.turns}</b>${esc(how)}<br>${new Date(e.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span></li>`;
+}
+function renderJournal() {
+  const all = journalList();
+  const s = JRN.stats(all, jFilter(JV.filter));
+  const modes = [['all', 'All'], ['free', 'Free play'], ['career', 'Career'], ['finals', 'Finals']].filter(([k]) => k === 'all' || k === 'free' || all.some((e) => e.mode === k));
+  const seg = `<div class="seg jr-filter" role="group" aria-label="Which games">${modes.map(([k, l]) => `<button type="button" data-jf="${k}" aria-pressed="${JV.filter === k}">${l}</button>`).join('')}</div>`;
+  const head = `<section class="hero art-title"><h1>Journal</h1><span class="ornament" aria-hidden="true"></span><p>Every game you play against the AI, the way it went, and how you're doing.</p></section>`;
+  if (!s.n) {
+    $('#journalBody').innerHTML = `${head}${all.length ? seg : ''}<div class="jr-empty"><img class="medal" src="../img/empty-journal.webp" alt="" width="116" height="116"><b>${all.length ? 'Nothing here yet' : 'No games yet'}</b>${all.length ? 'No games of this kind so far.' : 'Play a game against the AI and it shows up here, with your win rate, your best decks and your records.'}<p class="jr-go"><button type="button" class="pill pill-solid" data-jr="play">${icon('swords')}Find a match</button></p></div>`;
+    return;
+  }
+  const t = s.all;
+  const streak = s.streak > 0 ? [plural(s.streak, 'win'), 'in a row'] : s.streak < 0 ? [plural(-s.streak, 'loss', 'losses'), 'in a row'] : ['None', 'the last game was a draw'];
+  const parts = [head, seg];
+  const hours = Math.round(s.totals.secs / 3600);
+  parts.push(`<div class="jr-top"><div class="jr-hero"><p class="jr-lbl">Win rate</p><p class="jr-big">${pct(s.rate)}</p>`
+    + `<p class="jr-sub">${plural(t.w, 'win')}, ${plural(t.l, 'loss', 'losses')}${t.d ? ` and ${plural(t.d, 'draw')}` : ''} in ${plural(t.n, 'game')}</p>`
+    + `${sparkHTML(s.last)}<div class="jr-key"><span><i style="background:var(--win)"></i>Win</span><span><i style="background:var(--loss)"></i>Loss</span>${s.last.some((e) => e.res === 'draw') ? '<span><i style="background:var(--draw)"></i>Draw</span>' : ''}<span>Last ${plural(s.last.length, 'game')}</span></div></div>`
+    + `<div class="jr-kpis"><div class="kpi"><span>Games played</span><b>${nf.format(t.n)}</b>${s.totals.secs > 600 ? `<small>About ${hours || '<1'} hour${hours === 1 ? '' : 's'} at the table</small>` : ''}</div>`
+    + `<div class="kpi"><span>Current streak</span><b>${streak[0]}</b><small>${streak[1]}</small></div>`
+    + `<div class="kpi"><span>Best winning streak</span><b>${s.bestStreak ? plural(s.bestStreak, 'win') : 'None yet'}</b></div>`
+    + `<div class="kpi"><span>Turns to win</span><b>${s.avgWinTurns ? s.avgWinTurns.toFixed(1) : '–'}</b><small>on average</small></div></div></div>`);
+  parts.push(`<section class="jr-card"><h2>Win rate over time</h2><p class="jr-cap">Your overall win rate after each game. The line at 50% is an even record.</p><div class="jl" id="jrLine" tabindex="0" aria-label="Win rate after each game: ${pct(s.trend[0].rate)} after the first, ${pct(s.rate)} now. Use the arrow keys to step through the games."></div></section>`);
+  const grid = [];
+  const ais = ['normal', 'hard'].filter((k) => s.byAi[k]).map((k) => Object.assign({ name: k }, s.byAi[k], { rate: JRN.rate(s.byAi[k]) }));
+  if (ais.length) grid.push(`<section class="jr-card"><h2>Against each AI</h2><p class="jr-cap">Wins out of games played.</p>${meterList(ais, (x) => `<span class="nm">${x.name === 'hard' ? 'Hard' : 'Normal'} AI</span>`)}</section>`);
+  const fs = ['first', 'second'].filter((k) => s.byFirst[k].n).map((k) => Object.assign({ name: k }, s.byFirst[k], { rate: JRN.rate(s.byFirst[k]) }));
+  if (fs.length) grid.push(`<section class="jr-card"><h2>Going first or second</h2><p class="jr-cap">Who took the first turn.</p>${meterList(fs, (x) => `<span class="nm">You went ${x.name}</span>`)}</section>`);
+  if (s.decks.length) grid.push(`<section class="jr-card"><h2>Your decks</h2><p class="jr-cap">The ones you've played most.</p>${meterList(s.decks.slice(0, 6), (x) => `${typePips(x.t)}<span class="nm">${esc(x.name)}</span>`)}</section>`);
+  if (s.opps.length) grid.push(`<section class="jr-card"><h2>Opponents</h2><p class="jr-cap">Decks you've met at least twice, the hardest first.</p>${meterList(s.opps.slice(0, 6), (x) => `${typePips(x.t)}<span class="nm">${esc(x.name)}</span>`)}</section>`);
+  if (s.types.length) grid.push(`<section class="jr-card"><h2>By type</h2><p class="jr-cap">A deck of two types counts for both.</p>${meterList(s.types, (x) => `${pipHTML(x.name)}<span class="nm">${TYPES[x.name] || x.name}</span>`)}</section>`);
+  if (t.w || t.l) grid.push(`<section class="jr-card"><h2>How games end</h2><p class="jr-cap">What finished each game.</p>${howBars(s.winHow, false)}${howBars(s.lossHow, true)}</section>`);
+  parts.push(`<div class="jr-grid">${grid.join('')}</div>`);
+  const r = s.rec, vs = (e) => `${esc(e.me.n)} vs ${esc(e.op.n)}`;
+  const recs = [
+    r.fastest && ['fastest', 'Fastest win', `Turn ${r.fastest.turns}`, vs(r.fastest)],
+    r.closest && ['closest', 'Closest call', r.closest.op.left ? `${plural(r.closest.op.left, 'Prize card')} from losing` : 'Won at the wire', vs(r.closest)],
+    r.damage && r.damage.me.best ? ['damage', 'Biggest hit', `${nf.format(r.damage.me.best)} damage`, `One attack, ${vs(r.damage)}`] : null,
+    r.longest && ['longest', 'Longest game', `${r.longest.turns} turns`, vs(r.longest)],
+  ].filter(Boolean);
+  const tt = s.totals;
+  parts.push(`<section class="jr-card"><h2>Records</h2><p class="jr-cap">Your bests so far.</p><div class="recs">${recs.map(([k, a, b, c]) => `<div class="rec"><img class="medal" src="../img/rec-${k}.webp" alt="" width="54" height="54" loading="lazy"><span>${a}</span><b>${b}</b><small>${c}</small></div>`).join('')}</div>`
+    + `<p class="tots"><span><b>${nf.format(tt.taken)}</b> Prize cards taken</span><span><b>${nf.format(tt.kos)}</b> Pokémon Knocked Out</span><span><b>${nf.format(tt.dmg)}</b> damage dealt</span><span><b>${nf.format(tt.tr)}</b> Trainers played</span><span><b>${nf.format(tt.turns)}</b> turns played</span></p></section>`);
+  // The games themselves, newest first, a day at a time
+  const games = (jFilter(JV.filter) ? all.filter(jFilter(JV.filter)) : all).slice().reverse();
+  const shown = games.slice(0, JV.shown);
+  let html = '', day = null;
+  for (const e of shown) {
+    const d = dayOf(e.at);
+    if (d !== day) { html += `${day == null ? '' : '</ul>'}<h3 class="jg-day">${esc(dayLabel(e.at))}</h3><ul class="jg-list">`; day = d; }
+    html += gameRow(e);
+  }
+  html += '</ul>';
+  parts.push(`<section class="jr-games"><h2>Games</h2>${html}${games.length > shown.length ? `<div class="jr-more"><button type="button" class="pill" data-jr="more">Show more</button></div>` : ''}</section>`);
+  parts.push('<p class="jr-foot"><button type="button" class="link-btn" data-jr="clear">Clear the journal</button></p>');
+  $('#journalBody').innerHTML = parts.join('');
+  drawTrend(s.trend);
+}
+// The win-rate line, drawn at the width it has; a crosshair follows the pointer or the arrow keys
+function drawTrend(trend) {
+  const box = $('#jrLine');
+  if (!box) return;
+  const W0 = Math.max(260, box.clientWidth), Hh = W0 < 500 ? 170 : 210, Lm = 38, Rm = 46, Tm = 12, Bm = 26;
+  const n = trend.length;
+  const x = (k) => Lm + (n === 1 ? (W0 - Lm - Rm) / 2 : ((k - 1) / (n - 1)) * (W0 - Lm - Rm));
+  const y = (v) => Tm + (1 - v) * (Hh - Tm - Bm);
+  const pts = trend.map((p) => [x(p.k), y(p.rate)]);
+  const line = pts.map(([a, b], i) => `${i ? 'L' : 'M'}${a.toFixed(1)},${b.toFixed(1)}`).join('');
+  const area = `${line}L${pts[n - 1][0].toFixed(1)},${y(0)}L${pts[0][0].toFixed(1)},${y(0)}Z`;
+  const ticks = [0, 0.5, 1].map((v) => `<line class="${v === 0 ? 'base' : 'g'}" x1="${Lm}" x2="${W0 - Rm}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${Lm - 8}" y="${y(v) + 4}" text-anchor="end">${v * 100}%</text>`).join('');
+  const xl = `<text class="ax" x="${Lm}" y="${Hh - 6}">Game 1</text>${n > 1 ? `<text class="ax" x="${W0 - Rm}" y="${Hh - 6}" text-anchor="end">Game ${n}</text>` : ''}`;
+  const last = pts[n - 1];
+  box.innerHTML = `<svg width="${W0}" height="${Hh}" viewBox="0 0 ${W0} ${Hh}" aria-hidden="true">${ticks}${xl}<path class="area" d="${area}"/><path class="ln" d="${line}"/>`
+    + `<circle class="dot" cx="${last[0]}" cy="${last[1]}" r="4.5"/><text class="end" x="${last[0] + 9}" y="${last[1] + 4}">${pct(trend[n - 1].rate)}</text>`
+    + `<line class="xh" x1="0" x2="0" y1="${Tm}" y2="${y(0)}" visibility="hidden"/><circle class="dot hov" r="4.5" visibility="hidden"/></svg>`;
+  const svg = box.querySelector('svg'), xh = svg.querySelector('.xh'), hov = svg.querySelector('.hov');
+  const show = (i) => {
+    const p = trend[i], [px, py] = pts[i];
+    xh.setAttribute('x1', px); xh.setAttribute('x2', px); xh.setAttribute('visibility', 'visible');
+    hov.setAttribute('cx', px); hov.setAttribute('cy', py); hov.setAttribute('visibility', 'visible');
+    const rr = svg.getBoundingClientRect();
+    jTip(`${pct(p.rate)} overall`, `Game ${p.k}: ${RES[p.e.res][1].toLowerCase()} vs ${p.e.op.n}`, rr.left + px, rr.top + py);
+    box._i = i;
+  };
+  const hide = () => { xh.setAttribute('visibility', 'hidden'); hov.setAttribute('visibility', 'hidden'); jTip(); };
+  const at = (cx) => { const rr = svg.getBoundingClientRect(); const k = n === 1 ? 0 : Math.round(((cx - rr.left - Lm) / (W0 - Lm - Rm)) * (n - 1)); return clamp(k, 0, n - 1); };
+  svg.addEventListener('pointermove', (e) => show(at(e.clientX)));
+  svg.addEventListener('pointerdown', (e) => show(at(e.clientX)));
+  // A finger lifting off counts as leaving: on touch the readout stays until the next tap elsewhere
+  svg.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') hide(); });
+  box.onkeydown = (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home' && e.key !== 'End') return;
+    e.preventDefault();
+    const i = box._i == null ? n - 1 : box._i;
+    show(e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : clamp(i + (e.key === 'ArrowLeft' ? -1 : 1), 0, n - 1));
+  };
+  box.onblur = hide;
+}
+// One tooltip for the journal: the value first, then what it is
+function jTip(head, sub, x, y) {
+  let t = $('#jtip');
+  if (!head) { if (t) t.hidden = true; return; }
+  if (!t) { t = document.createElement('div'); t.id = 'jtip'; t.className = 'jtip'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+  t.innerHTML = '';
+  const b = document.createElement('b'); b.textContent = head; t.appendChild(b);
+  if (sub) t.appendChild(document.createTextNode(sub));
+  t.hidden = false;
+  const w = t.offsetWidth, h = t.offsetHeight;
+  t.style.left = `${clamp(x - w / 2, 8, innerWidth - w - 8)}px`;
+  t.style.top = `${y - h - 14 < 8 ? y + 16 : y - h - 14}px`;
+}
+function openJournal(push = true) {
+  setView('journal', push);
+  JV.shown = 40;
+  renderJournal();
+}
+window.openJournal = openJournal;
 
 /* ============================================================
    7. Inspector: one card, big, with what you can do with it
@@ -915,16 +1328,19 @@ function openInspector(opts) {
     ${opts.why ? `<p class="why">${esc(opts.why)}</p>` : ''}</div>
     <button type="button" class="icon-btn x" data-close="1" aria-label="Close">${icon('x')}</button>`;
   INSP._acts = opts.acts || [];
+  const was = !INSP.hidden;
   INSP.hidden = false;
   SCRIM.hidden = false;
+  if (!was && window.UI) UI.overlay.open('insp', () => closeInspector(true));
   const btn = INSP.querySelector('[data-act="0"]') || INSP.querySelector('[data-close]');
   btn.focus({ preventScroll: true });
 }
-function closeInspector() {
+function closeInspector(viaHistory) {
   if (INSP.hidden) return;
   INSP.hidden = true;
   if ($('#sheet').hidden) SCRIM.hidden = true;
   INSP.innerHTML = '';
+  if (viaHistory !== true && window.UI) UI.overlay.closed('insp');
   if (inspReturn && inspReturn.isConnected) inspReturn.focus({ preventScroll: true });
   inspReturn = null;
 }
@@ -1083,6 +1499,7 @@ function settle() {
   const r = W.replay;
   if (PL.keys) store.set(KEY.play, { v: 2, a: PL.keys[0], b: PL.keys[1], seed: PL.seed, answers: PL.answers, ai: PL.ai, memo: PL.ai === 'hard' ? PL.memo : undefined, turn: PL.done ? r.turns : PL.req.turn, names: PL.labels, at: Date.now(), done: PL.done || undefined });
   if (PL.done) {
+    journalRecord();
     setUi('over');
     showBanner();
     if (TU.on && r.winner === 0) markLessonDone(TU.lesson.id);
@@ -1557,8 +1974,8 @@ function wire() {
   $('#toLobby').addEventListener('click', () => { if (S.view === 'watch' && TU.on) goLessons(true); else setView(S.backTo || 'lobby', true); });
   $('#learnBtn').addEventListener('click', () => goLessons(true));
   $('#lessons').addEventListener('click', (e) => { const b = e.target.closest('[data-lesson]'); if (b) lessonStart(b.dataset.lesson); });
-  $('#playBtn').addEventListener('click', () => playStart(newSeed(), []));
-  $('#watchBtn').addEventListener('click', () => watch(newSeed()));
+  $('#playBtn').addEventListener('click', () => { S.backTo = null; playStart(newSeed(), []); });
+  $('#watchBtn').addEventListener('click', () => { S.backTo = null; watch(newSeed()); });
   $('#simBtn').addEventListener('click', simulate);
   $('#randBtn').addEventListener('click', randomMatchup);
   $('#swapBtn').addEventListener('click', () => { S.seats.reverse(); S.sim = null; L.sim.hidden = true; saveSeats(); renderSeats(); syncHash(false); });
@@ -1572,6 +1989,8 @@ function wire() {
   L.seats.addEventListener('click', (e) => {
     const z = e.target.closest('[data-zoom]');
     if (z) { openInspector({ def: def(z.dataset.zoom) }); return; }
+    const dv = e.target.closest('[data-dv]');
+    if (dv) { openDeckView(dv.dataset.dv, dv, 'lobby'); return; }
     const l = e.target.closest('[data-list]');
     if (l) { const i = +l.dataset.list; if (openLists.has(i)) openLists.delete(i); else openLists.add(i); renderSeats(); return; }
     const s = e.target.closest('.seat');
@@ -1595,6 +2014,82 @@ function wire() {
     if (e.target.closest('#genGo')) buildFromPanel(false);
     if (e.target.closest('#genRand')) buildFromPanel(true);
   });
+  // the Decks page
+  const lib = $('#libBody');
+  let libTyping = 0;
+  lib.addEventListener('input', (e) => {
+    if (e.target.id !== 'libQ') return;
+    clearTimeout(libTyping);
+    libTyping = setTimeout(() => { LIB.q = e.target.value; renderLibrary(); }, 120);
+  });
+  lib.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-libsrc], [data-libarch], [data-libtype], [data-libreset], [data-libplay], [data-libopen], [data-lib]');
+    if (!b) return;
+    if (b.dataset.libsrc) { LIB.src = b.dataset.libsrc; libSave(); renderLibrary(); return; }
+    if (b.dataset.libarch) { LIB.arch = b.dataset.libarch; libSave(); renderLibrary(); return; }
+    if (b.dataset.libtype) { const t = b.dataset.libtype; LIB.types = LIB.types.includes(t) ? LIB.types.filter((x) => x !== t) : LIB.types.concat(t); libSave(); renderLibrary(); return; }
+    if (b.hasAttribute('data-libreset')) { Object.assign(LIB, { src: 'all', q: '', arch: 'all', types: [] }); libSave(); renderLibrary(); return; }
+    if (b.dataset.libplay) { libPlay(b.dataset.libplay, 'play'); return; }
+    const key = b.dataset.libopen || b.dataset.lib;
+    openDeckView(key, b.closest('[data-lib]') || b, 'library');
+  });
+  lib.addEventListener('keydown', (e) => {
+    const t = e.target.closest('[data-lib]');
+    if (t && e.target === t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openDeckView(t.dataset.lib, t, 'library'); }
+  });
+  // Holding a deck tile in the lobby opens it instead of seating it
+  const HOLD = { ms: 450, timer: 0, swallow: 0 };
+  L.pickBody.addEventListener('pointerdown', (e) => {
+    const t = e.target.closest('.tile[data-key]');
+    if (!t || e.button) return;
+    clearTimeout(HOLD.timer);
+    const x = e.clientX, y = e.clientY;
+    const cancel = () => { clearTimeout(HOLD.timer); removeEventListener('pointermove', moved); };
+    const moved = (m) => { if (Math.hypot(m.clientX - x, m.clientY - y) > 10) cancel(); };
+    addEventListener('pointermove', moved, { passive: true });
+    addEventListener('pointerup', cancel, { once: true });
+    addEventListener('pointercancel', cancel, { once: true });
+    HOLD.timer = setTimeout(() => { removeEventListener('pointermove', moved); HOLD.swallow = Date.now(); if (navigator.vibrate) navigator.vibrate(8); openDeckView(t.dataset.key, t, 'lobby'); }, HOLD.ms);
+  });
+  L.pickBody.addEventListener('contextmenu', (e) => { if (e.target.closest('.tile[data-key]') && Date.now() - HOLD.swallow < 900) e.preventDefault(); });
+  // the journal
+  $('#journalBody').addEventListener('click', (e) => {
+    const f = e.target.closest('[data-jf]');
+    if (f) { JV.filter = f.dataset.jf; store.set('holo.arena.jfilter.v1', JV.filter); JV.shown = 40; renderJournal(); return; }
+    const b = e.target.closest('[data-jr]');
+    if (!b) return;
+    if (b.dataset.jr === 'more') { JV.shown += 60; renderJournal(); return; }
+    if (b.dataset.jr === 'play') { setView('lobby', true); return; }
+    if (b.dataset.jr === 'clear') {
+      if (!b.dataset.armed) { b.dataset.armed = '1'; b.textContent = 'Tap again to clear every game'; setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = 'Clear the journal'; } }, 3000); return; }
+      store.set('holo.arena.journal.v1', []); renderJournal();
+    }
+  });
+  addEventListener('scroll', () => jTip(), { passive: true });
+  // the deck view
+  const dvb = $('#deckView');
+  dvb.addEventListener('click', async (e) => {
+    if (e.target.closest('[data-dvclose]')) { closeDeckView(); return; }
+    const pg = e.target.closest('[data-dvpage]');
+    if (pg) { pageDeck(+pg.dataset.dvpage); return; }
+    const md = e.target.closest('[data-dvmode]');
+    if (md) { DV.mode = md.dataset.dvmode; store.set('holo.arena.dvmode.v1', DV.mode); renderDeckCards(deckByKey(DV.key)); return; }
+    if (e.target.closest('[data-dvcopy]')) { const ok = await copyText(deckText(deckByKey(DV.key))); pageToast(ok ? 'List copied. Paste it into Pokémon TCG Live to build the deck.' : "The list couldn't be copied here."); return; }
+    const z = e.target.closest('[data-zoom]');
+    if (z) { openInspector({ def: def(z.dataset.zoom) }); return; }
+    const st = e.target.closest('[data-dvseat]');
+    if (st) { S.active = +st.dataset.dvseat; setSeat(DV.key); closeDeckView(); return; }
+    const pl = e.target.closest('[data-dvplay]');
+    if (pl) libPlay(DV.key, pl.dataset.dvplay);
+  });
+  if (window.UI) {
+    UI.swipe(dvb, {
+      ignore: () => !DV.set || !INSP.hidden,
+      move: (dx, paged) => UI.drag($('#deckView .dv-box'), dx, DV.set && DV.set.i > 0, DV.set && DV.set.i < DV.set.items.length - 1, paged),
+      swipe: (dir) => pageDeck(dir),
+    });
+    UI.wheel(dvb, { ignore: () => !DV.set || !INSP.hidden, swipe: (dir) => pageDeck(dir) });
+  }
   // table
   T.board.addEventListener('click', onBoardClick);
   T.board.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-card]')) { e.preventDefault(); onBoardClick(e); } });
@@ -1654,7 +2149,11 @@ function wire() {
     else if (a.dataset.sh === 'ok' && valid()) { const sel = SH.sel.slice(); const done = SH.opts.done; closeSheet(); done(sel); }
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { if (!INSP.hidden) { closeInspector(); return; } if (SH.opts && SH.opts.readOnly) { closeSheet(); return; } if (T.logpane.classList.contains('open')) closeLog(); return; }
+    if (e.key === 'Escape') { if (!INSP.hidden) { closeInspector(); return; } if (!$('#deckView').hidden) { closeDeckView(); return; } if (SH.opts && SH.opts.readOnly) { closeSheet(); return; } if (T.logpane.classList.contains('open')) closeLog(); return; }
+    if (!$('#deckView').hidden && INSP.hidden && !e.target.closest('input, textarea')) {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); pageDeck(e.key === 'ArrowLeft' ? -1 : 1); }
+      return;
+    }
     if (S.view !== 'watch' || !INSP.hidden || !SHEET.hidden || e.target.closest('input, textarea')) return;
     if (W.mode === 'watch') {
       if (e.key === ' ' && !e.target.closest('button')) { e.preventDefault(); W.playing ? stop() : play(); }
@@ -1663,11 +2162,14 @@ function wire() {
     } else if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); undo(); }
   });
   let rz = 0;
-  addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => { headerHeight(); measure(); }); });
-  addEventListener('popstate', route);
+  addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => { headerHeight(); measure(); if (S.view === 'journal' && $('#jrLine')) renderJournal(); }); });
+  // Back closes whatever is open on top (a card, a deck) before it leaves the page
+  addEventListener('popstate', (e) => { if (window.UI && UI.overlay.pop(e)) return; route(); });
 }
 function route() {
   const h = readHash();
+  if (location.hash === '#decks') { setView('decks', false); return; }
+  if (location.hash === '#journal') { openJournal(false); return; }
   if (h.lesson && lessonById(h.lesson)) { lessonStart(h.lesson, true); return; }
   if (h.learn || location.hash === '#learn') { setView('learn', false); return; }
   if (h.a) S.seats[0] = h.a.key;

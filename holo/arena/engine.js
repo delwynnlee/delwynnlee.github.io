@@ -1358,9 +1358,9 @@
     const out = G.players.map((P) => !P.active && !P.bench.length);
     if (won[0] || won[1] || out[0] || out[1]) {
       const w0 = won[0] || out[1], w1 = won[1] || out[0];
-      if (w0 && w1) return endGame(G, null, 'Both players won at once: a draw.');
+      if (w0 && w1) return endGame(G, null, 'Both players won at once: a draw.', 'both');
       const W = G.players[w0 ? 0 : 1], L = opp(G, W);
-      return endGame(G, W.i, won[W.i] ? `${W.name} takes their last Prize card.` : `${L.name} has no Pokémon left in play.`);
+      return endGame(G, W.i, won[W.i] ? `${W.name} takes their last Prize card.` : `${L.name} has no Pokémon left in play.`, won[W.i] ? 'prizes' : 'bench');
     }
     // the player whose turn it isn't promotes first
     const order = [1 - G.active, G.active].map((i) => G.players[i]);
@@ -1380,9 +1380,10 @@
     P.active = b;
     emit(G, 'promote', `${P.name} sends out ${nm(b)}.`, { who: P.i, hl: [b.id] });
   }
-  function endGame(G, winner, reason) {
+  // why: how it ended, for the journal ('prizes', 'bench', 'deck', 'turns' or 'both')
+  function endGame(G, winner, reason, why) {
     if (G.over) return;
-    G.over = true; G.winner = winner; G.reason = reason;
+    G.over = true; G.winner = winner; G.reason = reason; G.why = why || '';
     G.phase = 'over';
     emit(G, 'end', winner == null ? `Draw. ${reason}` : `${G.players[winner].name} wins. ${reason}`);
   }
@@ -1455,7 +1456,7 @@
     P.boosts = [];
     for (const m of allMons(G)) m.fx = m.fx.filter((f) => f.until >= G.turn);
     emit(G, 'turn', `Turn ${G.turn}: ${P.name}.`, { who: P.i });
-    if (!P.deck.length) return endGame(G, 1 - P.i, `${P.name} can't draw a card.`);
+    if (!P.deck.length) return endGame(G, 1 - P.i, `${P.name} can't draw a card.`, 'deck');
     draw(G, P, 1);
     emit(G, 'draw', `${P.name} draws a card.`, { who: P.i, drew: P.hand[P.hand.length - 1].id });
     G.phase = 'main';
@@ -1482,7 +1483,7 @@
     checkKOs(G, null);
     if (G.over) return;
     G.active = 1 - G.active;
-    if (G.turn >= MAX_TURNS) endGame(G, null, 'The game reached the turn limit.');
+    if (G.turn >= MAX_TURNS) endGame(G, null, 'The game reached the turn limit.', 'turns');
   }
 
   /* ---------- What can be done right now ---------- */
