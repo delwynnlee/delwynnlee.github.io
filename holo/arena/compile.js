@@ -41,6 +41,16 @@
   /* ---------- One sentence of effect text ---------- */
   // Each rule: [regex, (match) => effect | [effects] | 'skip']
   const RULES = [
+    // Scream Tail, Mew ex, Budew, and the two Technical Machines
+    [R(`this attack does (\\d+) damage to ${N} of your opponent's pokemon for each damage counter on this pokemon`), (m) => [{ k: 'snipe', n: 0, perSelf: +m[1] }]],
+    [R(`choose ${N} of your opponent's active pokemon's attacks and use it as this attack`), () => [{ k: 'copyAttack' }]],
+    [R(`during your opponent's next turn, they can't play any item cards from their hand`), () => [{ k: 'itemLock' }]],
+    [R(`choose up to ${N} of your benched pokemon\\. for each of those pokemon, search your deck for a card that evolves from that pokemon and put it onto that pokemon to evolve it`), (m) => [{ k: 'tmEvolve', n: n(m[1]) }]],
+    [R(`devolve each of your opponent's evolved pokemon by putting the highest stage evolution card on it into your opponent's hand`), () => [{ k: 'devolveAll' }]],
+    // Meowth ex, Alakazam, Dedenne (the 2026 World Championship final)
+    [R(`put this pokemon and all attached cards into your hand`), () => [{ k: 'scoopSelf' }]],
+    [R(`place ${N} damage counters on your opponent's active pokemon for each card in your hand`), (m) => [{ k: 'handCounters', n: n(m[1]) }]],
+    [R(`put a trainer card from your discard pile into your hand`), () => [{ k: 'recover', n: 1, what: 'trainer' }]],
     // reminders and filler
     [R("\\(don't apply weakness and resistance for benched pokemon\\)"), () => 'skip'],
     [R("\\(your opponent chooses the new active pokemon\\)"), () => 'skip'],
@@ -261,6 +271,12 @@
         i++;
         continue;
       }
+      // Technical Machine: Evolution, two sentences
+      if ((m = /^choose up to (\d+|two) of your benched pokemon$/.exec(s)) && /^for each of those pokemon, search your deck for a card that evolves from that pokemon and put it onto that pokemon to evolve it$/.test(ss[i + 1] || '')) {
+        fx.push({ k: 'tmEvolve', n: n(m[1]) });
+        i++;
+        continue;
+      }
       if (/^(?:you may )?discard a stadium in play$/.test(s) && /^if you do, this attack does (\d+) more damage$/.test(ss[i + 1] || '')) {
         fx.push({ k: 'stadiumBonus', n: +/(\d+)/.exec(ss[i + 1])[1] });
         i++;
@@ -314,6 +330,18 @@
     [R(`when you play this pokemon from your hand onto your bench during your turn, you may search your deck for (?:a|up to ${N}) basic ${T} energy cards?, reveal (?:it|them), and put (?:it|them) into your hand\\. then, shuffle your deck`), (m) => ({ k: 'bench', fx: [{ k: 'energySearch', n: m[1] ? n(m[1]) : 1, type: TYPE_OF[m[2]] }] })],
     [R(`as often as you like during your turn, you may attach a basic ${T} energy card from your discard pile to ${N} of your ${T} pokemon\\. if you attached energy to a pokemon in this way, put (\\d+) damage counters on that pokemon\\. you can't use this ability on a pokemon that would be knocked out`),
       (m) => ({ k: 'embrace', type: TYPE_OF[m[1]], onType: TYPE_OF[m[3]], counters: +m[4] })],
+    // Munkidori, Flutter Mane, Lillie's Clefairy ex, Mew ex, Hawlucha, Bloodmoon Ursaluna ex
+    [R(`once during your turn, if this pokemon has any ${T} energy attached, you may move up to ${N} damage counters from ${N} of your pokemon to ${N} of your opponent's pokemon`), (m) => ({ k: 'once', needE: TYPE_OF[m[1]], fx: [{ k: 'moveCounters', n: n(m[2]) }] })],
+    [R(`as long as this pokemon is in the active spot, your opponent's active pokemon has no abilities, except for .+`), () => ({ k: 'lockAbilities' })],
+    [R(`the weakness of each of your opponent's ${T} pokemon in play is now ${T}\\. \\(apply weakness as ×2\\)`), (m) => ({ k: 'weakOverride', on: TYPE_OF[m[1]], to: TYPE_OF[m[2]] })],
+    [R(`once during your turn, you may draw cards until you have ${N} cards in your hand`), (m) => ({ k: 'once', fx: [{ k: 'drawTo', n: n(m[1]) }] })],
+    [R(`when you play this pokemon from your hand onto your bench during your turn, you may choose ${N} of your opponent's benched pokemon and put ${N} damage counters? on each of them`), (m) => ({ k: 'bench', fx: [{ k: 'counters', n: n(m[2]), count: n(m[1]), bench: true }] })],
+    [R(`(.+) used by this pokemon costs colorless less for each prize card your opponent has taken`), (m) => ({ k: 'costLess', atk: m[1] })],
+    // Dudunsparce, Meowth ex, Genesect, Shaymin
+    [R(`once during your turn, you may draw ${N} cards\\. if you drew any cards in this way, shuffle this pokemon and all attached cards into your deck`), (m) => ({ k: 'once', fx: [{ k: 'draw', n: n(m[1]) }, { k: 'shuffleSelf' }] })],
+    [R(`once during your turn, when you play this pokemon from your hand onto your bench, you may use this ability\\. search your deck for a supporter card, reveal it, and put it into your hand\\. then, shuffle your deck\\. you can't use more than 1 ability that has .?last-ditch.? in its name each turn`), () => ({ k: 'bench', lastDitch: true, fx: [{ k: 'cardSearch', what: ['supporter'] }] })],
+    [R(`if this pokemon has a pokemon tool attached, your opponent can't play any ace spec cards from their hand`), () => ({ k: 'aceLock' })],
+    [R(`prevent all damage done to your benched pokemon that don't have a rule box by attacks from your opponent's pokemon(?:\\. \\(.+\\))?`), () => ({ k: 'flowerCurtain' })],
   ];
 
   ABILITY_RULES.push(
@@ -425,6 +453,13 @@
     [R(`look at the top ${N} cards of your deck\\. you may reveal any number of pokemon you find there and put them into your hand\\. shuffle the other cards back into your deck`), (m) => [{ k: 'look', n: n(m[1]), what: 'pokemon', any: true }]],
     [R(`move up to ${N} energy from ${N} of your pokemon to another of your pokemon`), (m) => [{ k: 'shiftEnergy', n: n(m[1]) }]],
     [R(`you can use this card only if you have more prize cards remaining than your opponent\\. ?heal (\\d+) damage from ${N} of your pokemon`), (m) => [{ k: 'heal', n: +m[1], who: 'any' }], { req: 'behind' }],
+    // Crispin, Rosa's Encouragement, Poké Pad, Special Red Card, Eri, Enhanced Hammer
+    [R(`search your deck for up to ${N} basic energy cards of different types, reveal them, and put ${N} of them into your hand\\. attach the other to ${N} of your pokemon`), () => [{ k: 'crispin' }]],
+    [R(`you can use this card only if you have more prize cards remaining than your opponent\\. attach up to ${N} basic energy cards from your discard pile to ${N} of your stage 2 pokemon`), (m) => [{ k: 'attachDiscard', n: n(m[1]), to: 'stage2', one: true }], { req: 'behind' }],
+    [R(`search your deck for a pokemon that doesn't have a rule box, reveal it, and put it into your hand`), () => [{ k: 'pokeSearch', n: 1, noRuleBox: true }]],
+    [R(`you can use this card only if your opponent has ${N} or fewer prize cards remaining\\. your opponent shuffles their hand and puts it on the bottom of their deck\\. if they put any cards on the bottom of their deck in this way, they draw ${N} cards`), (m) => [{ k: 'redCard', n: n(m[2]) }], (m) => ({ req: 'oppPrizes', n: n(m[1]) })],
+    [R(`your opponent reveals their hand, and you discard up to ${N} item cards you find there`), (m) => [{ k: 'eri', n: n(m[1]) }]],
+    [R(`discard a special energy from ${N} of your opponent's pokemon`), () => [{ k: 'stripAny', n: 1, special: true }]],
   );
   // Simple trainers can be read with the attack sentences, as long as every effect makes sense without an attacker.
   const TRAINER_SAFE = new Set(['draw', 'drawTo', 'heal', 'switchOutOpp', 'gust', 'strip', 'cond', 'recoverEnergy', 'energySearch', 'pokeSearch', 'benchSearch', 'cardSearch', 'tutor', 'millOpp', 'discardRandom', 'oppDiscards', 'discardStadium', 'recover', 'shuffleHand', 'discardHand']);
@@ -435,6 +470,7 @@
     return !bad && fx.length && fx.every(okFx) ? fx : null;
   }
   const TOOL_RULES = [
+    [R(`the pokemon this card is attached to can use the attack on this card\\. if this card is attached to ${N} of your pokemon, discard it at the end of your turn`), () => ({ k: 'tm' })],
     [R(`the (basic )?pokemon this card is attached to gets \\+(\\d+) hp`), (m) => ({ k: 'hp', n: +m[2], basic: !!m[1] })],
     [R(`the retreat cost of the pokemon this card is attached to is ((?:colorless)+) less`), (m) => ({ k: 'retreat', n: m[1].length / 9 })],
     [R(`the retreat cost of the pokemon this card is attached to is colorless less\\. if that pokemon's remaining hp is (\\d+) or less, it has no retreat cost`), (m) => ({ k: 'retreat', n: 1, freeAt: +m[1] })],
@@ -457,6 +493,9 @@
     [R(`pokemon tools attached to each pokemon \\(both yours and your opponent's\\) have no effect`), () => ({ k: 'noTools' })],
     [R(`once during each player's turn, that player may search their deck for a basic pokemon that doesn't have a rule box and put it onto their bench`), () => ({ k: 'benchSearch', noRuleBox: true })],
     [R(`once during each player's turn, that player may draw a card`), () => ({ k: 'draw' })],
+    // Risky Ruins and Battle Cage
+    [R(`whenever any player puts a basic non-${T} pokemon onto their bench during their turn, place ${N} damage counters on that pokemon`), (m) => ({ k: 'benchHurt', notType: TYPE_OF[m[1]], n: n(m[2]) })],
+    [R(`prevent all damage counters from being placed on benched pokemon \\(both yours and your opponent's\\) by effects of attacks and abilities from the opponent's pokemon`), () => ({ k: 'cage' })],
   ];
 
   function matchRules(rules, s) {
@@ -518,7 +557,15 @@
       const body = trainerBody(raw.ru);
       def.text = (raw.ru || []).filter((r) => !REMINDER.test(clean(r).toLowerCase().replace(/[.!]$/, ''))).join(' ');
       if (raw.n === 'Rare Candy') def.fx = [{ k: 'rareCandy' }];
-      else if (t === 'tool') { const m = matchRules(TOOL_RULES, body); if (m) def.tool = m.fx; else fail('tool: ' + body); }
+      else if (t === 'tool') {
+        const m = matchRules(TOOL_RULES, body);
+        if (m) def.tool = m.fx; else fail('tool: ' + body);
+        // A Technical Machine's attack, used by the Pokémon it's attached to
+        if (def.tool && def.tool.k === 'tm') {
+          def.tmAtks = (raw.at || []).map((a) => ({ name: a[0], cost: a[1] || '', base: parseInt(a[2], 10) || 0, mod: '', text: a[3] || '', tm: true, fx: a[3] ? parseEffectText(a[3], (x) => fail(`${a[0]}: ${x}`)) : [] }));
+          if (!def.tmAtks.length) fail('tm without an attack');
+        }
+      }
       else if (t === 'stadium') { const m = matchRules(STADIUM_RULES, body); if (m) def.stadium = m.fx; else fail('stadium: ' + body); }
       else {
         const m = matchRules(TRAINER_RULES, body);
@@ -532,7 +579,17 @@
         def.provides = t ? TYPE_OF[t] : null;
         if (!def.provides) fail('energy type');
       } else {
-        fail('special energy');
+        const body = clean((raw.ru || []).join(' ')).toLowerCase();
+        def.text = (raw.ru || []).join(' ');
+        def.provides = 'C';
+        let m;
+        if (/provides every type of energy but provides only 1 energy at a time\. if the pokemon this card is attached to has any other special energy attached, this card provides colorless energy instead/.test(body)) def.special = 'luminous';
+        else if (/it provides colorless energy\. if this card is attached to a stage 2 pokemon, this card provides every type of energy but provides only 2 energy at a time/.test(body)) { def.special = 'neoUpper'; def.ace = /ace spec/.test(body); }
+        else if ((m = /^as long as this card is attached to a pokemon, it provides (\w+) energy\. when you attach this card from your hand to an? (\w+) pokemon, search your deck for up to (\w+) basic (\w+) pokemon and put them onto your bench/.exec(body)) && TYPE_OF[m[1]] && TYPE_OF[m[2]] && TYPE_OF[m[4]]) {
+          def.special = 'onAttach'; def.provides = TYPE_OF[m[1]]; def.onAttach = { onType: TYPE_OF[m[2]], fx: [{ k: 'benchSearch', n: n(m[3]), type: TYPE_OF[m[4]] }] };
+        } else if ((m = /^as long as this card is attached to a pokemon, it provides colorless energy\. when you attach this card from your hand to a pokemon, draw (\w+) cards/.exec(body))) {
+          def.special = 'onAttach'; def.onAttach = { fx: [{ k: 'draw', n: n(m[1]) }] }; def.ace = /ace spec/.test(body);
+        } else fail('special energy');
       }
     }
     def.ok = why.length === 0;

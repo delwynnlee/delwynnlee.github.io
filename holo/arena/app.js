@@ -141,6 +141,9 @@ function deckByKey(key) {
   let m;
   if ((m = /^c\.([a-z0-9-]+)$/.exec(key))) { const spec = window.ARENA_DECKS.find((x) => x.id === m[1]); return spec ? claudeDeck(spec) : null; }
   if ((m = /^g\.([GRWLPFDM]{1,2})\.(aggro|midrange|control)\.(\d{1,10})$/.exec(key))) return genDeck([...m[1]], m[2], +m[3]);
+  if (key === 'cr.me' && window.careerMe) return careerMe();
+  if ((m = /^cr\.(\d{1,2})$/.exec(key)) && window.careerFoe) return careerFoe(+m[1]);
+  if (window.finalsDeck && /^f\./.test(key)) return finalsDeck(key);
   return null;
 }
 const newSeed = () => (Math.random() * 2 ** 31) >>> 0;
@@ -161,6 +164,8 @@ function hashFor() {
   if (S.view === 'learn') return '#learn';
   if (S.view === 'decks') return '#decks';
   if (S.view === 'journal') return '#journal';
+  if (S.view === 'career') return '#career';
+  if (S.view === 'finals') return '#finals';
   if (S.view === 'watch' && TU.on) return `#lesson=${TU.lesson.id}`;
   const p = new URLSearchParams();
   if (S.seats[0]) p.set('a', S.seats[0]);
@@ -185,8 +190,9 @@ function readHash() {
    ============================================================ */
 const L = { boot: $('#boot'), body: $('#lobbyBody'), seats: $('#seats'), sim: $('#sim'), pickBody: $('#pickBody'), pickTitle: $('#pickTitle'), pickHint: $('#pickHint') };
 const seatName = (i) => `Player ${i + 1}`;
+const BY = { claude: 'Designed by Claude', gen: 'Built by the generator', career: 'Victory Road', finals: 'As registered at Worlds' };
 function metaHTML(d) {
-  return `<div class="deck-meta"><span class="pips">${pipsHTML(d.types.join(''))}</span><span class="arch">${ARCH[d.archetype]}</span><span>${d.by === 'claude' ? 'Designed by Claude' : 'Built by the generator'}</span></div>`;
+  return `<div class="deck-meta"><span class="pips">${pipsHTML(d.types.join(''))}</span><span class="arch">${ARCH[d.archetype]}</span><span>${BY[d.by] || ''}</span></div>`;
 }
 function mixHTML(d) {
   const pct = (n) => (n / d.size) * 100;
@@ -833,9 +839,20 @@ function openLog() { T.logpane.classList.add('open'); }
 function closeLog() { T.logpane.classList.remove('open'); }
 function showBanner() {
   const r = W.replay;
-  const title = r.winner == null ? 'A draw' : W.mode === 'play' ? (r.winner === 0 ? 'You win' : 'You lose') : `${r.names[r.winner]} wins`;
+  const crk = W.mode === 'play' && PL.career != null ? PL.career : null;
+  const crSt = crk != null ? CAR.STAGES[crk] : null;
+  let title = r.winner == null ? 'A draw' : W.mode === 'play' ? (r.winner === 0 ? 'You win' : 'You lose') : `${r.names[r.winner]} wins`;
+  if (crSt) title = r.winner === 0 ? (crSt.boss ? CAR.JOURNEY.doneTitle : `${crSt.who} beaten`) : 'Not this time';
+  if (W.mode === 'play' && PL.fin && window.finalsBannerTitle) title = finalsBannerTitle(r) || title;
   let acts = '';
-  if (TU.on) {
+  if (crSt) {
+    acts = r.winner === 0
+      ? (crSt.boss ? '<button type="button" class="pill pill-solid" data-b="career">Finish the journey</button>'
+        : '<button type="button" class="pill pill-solid" data-b="crreward">Choose your reward</button><button type="button" class="pill" data-b="career">Back to the road</button>')
+      : '<button type="button" class="pill pill-solid" data-b="crretry">Try again</button><button type="button" class="pill" data-b="career">Back to the road</button>';
+  } else if (W.mode === 'play' && PL.fin) {
+    acts = '<button type="button" class="pill pill-solid" data-b="finretry">Play it again</button><button type="button" class="pill" data-b="toReplay">Watch the replay</button><button type="button" class="pill" data-b="finals">Back to the finals</button>';
+  } else if (TU.on) {
     acts = r.winner === 0
       ? `${TU.next ? '<button type="button" class="pill pill-solid" data-b="nextLesson">Next lesson</button>' : ''}<button type="button" class="pill" data-b="lessons">All lessons</button>`
       : '<button type="button" class="pill pill-solid" data-b="retryLesson">Try again</button><button type="button" class="pill" data-b="lessons">All lessons</button>';
@@ -921,6 +938,10 @@ function keyCards(d) {
 }
 function statHTML(n, label) { return `<div class="dv-stat"><b>${nf.format(n)}</b><span>${label}</span></div>`; }
 function dvFootHTML(d, key) {
+  if (d && d.fin && (DV.ctx === 'finals' || DV.ctx === 'library')) {
+    const x = FIN.byId.get(d.fin.id);
+    return `<button type="button" class="pill pill-solid" data-dvplay="play"${d.playable ? '' : ' disabled'}>${icon('swords')}Play as ${esc(FIN.surname(x.d.player))}</button>`;
+  }
   if (DV.ctx === 'career' || DV.ctx === 'finals') return '';
   if (DV.ctx === 'library') return `<button type="button" class="pill" data-dvplay="setup">Set up a match</button><button type="button" class="pill pill-solid" data-dvplay="play">${icon('play')}Play vs AI</button>`;
   return [0, 1].map((i) => (S.seats[i] === key
@@ -1057,7 +1078,7 @@ function libTileHTML(e) {
     + `<div class="tile-art">${face ? cropHTML(face) : ''}</div>`
     + `<div class="tile-body"><h3 class="deck-name">${esc(d.name)}</h3>${metaHTML(d)}<p class="blurb">${esc(d.blurb)}</p>`
     + `${keys.length ? `<div class="lib-keys">${keys.map((k) => `<span class="lib-key">${esc(k.name)}</span>`).join('')}</div>` : ''}`
-    + `<div class="lib-acts"><button type="button" class="pill pill-solid" data-libplay="${esc(d.key)}">${icon('play')}Play</button><button type="button" class="link-btn" data-libopen="${esc(d.key)}">Open the deck</button></div></div></div>`;
+    + `<div class="lib-acts"><button type="button" class="pill pill-solid" data-libplay="${esc(d.key)}"${d.playable === false ? ' disabled' : ''}>${icon('play')}Play</button><button type="button" class="link-btn" data-libopen="${esc(d.key)}">Open the deck</button></div></div></div>`;
 }
 function renderLibrary() {
   const all = libEntries();
@@ -1090,6 +1111,7 @@ window.openLibrary = openLibrary;
 // An opponent for a deck from the library: another of the same kind of deck, of a different type when there is one
 function libOpponent(key) {
   const d = deckByKey(key);
+  if (d && d.fin) { const rv = FIN.rival(d.fin.id); if (rv) return `f.${rv.id}`; }
   const all = libEntries().filter((e) => e.d.key !== key);
   const same = all.filter((e) => e.src === (libEntries().find((x) => x.d.key === key) || {}).src);
   const pool = (same.length ? same : all);
@@ -1098,7 +1120,9 @@ function libOpponent(key) {
   return pick[Math.floor(Math.random() * pick.length)].d.key;
 }
 function libPlay(key, how) {
-  if (!deckByKey(key)) return;
+  const d = deckByKey(key);
+  if (!d) return;
+  if (d.fin && how !== 'setup') { finalStart(d.fin.id); return; }
   closeDeckView();
   S.seats = [key, libOpponent(key)];
   S.active = 1;
@@ -1290,6 +1314,261 @@ function openJournal(push = true) {
 window.openJournal = openJournal;
 
 /* ============================================================
+   6e. Career: Victory Road, from the first Gym to your rival
+   ============================================================ */
+const CAR = window.ARENA_CAREER;
+const CR = { run: undefined, pend: null, autoReward: false };
+const CR_KEY = 'holo.arena.career.v1', CR_GAME = 'holo.arena.career.game.v1';
+const careerRun = () => (CR.run !== undefined ? CR.run : (CR.run = store.get(CR_KEY, null)));
+function careerSave(run) { CR.run = run; store.set(CR_KEY, run); DECKS.delete('cr.me'); }
+const careerGame = () => store.get(CR_GAME, null);
+window.careerStageName = (k) => (CAR && CAR.STAGES[k] ? `Victory Road, ${CAR.STAGES[k].who}` : 'Victory Road');
+// Your deck and the Leaders', kept like any other deck so the deck view can open them
+function careerMe() {
+  const run = careerRun();
+  if (!run) return null;
+  if (DECKS.has('cr.me')) return DECKS.get('cr.me');
+  const P = CAR.PARTNERS[run.partner];
+  return finishDeck(CAR.heroDeck(A, DATA.pool, run), { key: 'cr.me', by: 'career',
+    blurb: `${P.name}'s deck: ${plural(run.got.length, 'card')} earned so far. Every win brings a pack of new cards, which replace your weakest.` });
+}
+function careerFoe(k) {
+  const st = CAR.STAGES[k];
+  if (!st) return null;
+  if (DECKS.has(`cr.${k}`)) return DECKS.get(`cr.${k}`);
+  return finishDeck(CAR.stageDeck(A, DATA.pool, k), { key: `cr.${k}`, by: 'career', blurb: st.text });
+}
+window.careerMe = careerMe;
+window.careerFoe = careerFoe;
+const crCard = (key) => CAR.card(A, DATA.pool, key);
+const crArt = (key, cls) => { const d = typeof key === 'string' ? crCard(key) : key; return `<span class="cr-art ${cls || ''}">${d ? cropHTML(d) : ''}</span>`; };
+function careerStartFight(resume) {
+  const run = careerRun();
+  if (!run || run.done || run.reward) return;
+  const k = run.stage, st = CAR.STAGES[k];
+  const decks = [Object.assign(forEngine(careerMe()), { prizes: st.you }), forEngine(careerFoe(k))];
+  const sv = careerGame();
+  S.backTo = 'career';
+  if (resume && sv && !sv.done && sv.k === k) playStart(sv.seed, sv.answers, { decks, career: k, ai: sv.ai === 'hard' ? 'hard' : 'normal', memo: sv.memo || null });
+  else playStart(newSeed(), [], { decks, career: k, ai: st.ai });
+}
+// A career game has ended: the road moves on after a win, and a pack of cards waits to be chosen
+function careerResult() {
+  const run = careerRun();
+  if (!run || PL.career == null) return;
+  const id = `${PL.seed}.${PL.answers.length}`;
+  if (run.fights.some((f) => f.id === id)) return;
+  const won = W.replay.winner === 0;
+  const next = CAR.afterFight(run, PL.career, won, { id, turns: W.replay.turns });
+  if (next.stage === run.stage + 1 && !next.done) next.reward = { k: PL.career, seed: newSeed() };
+  careerSave(next);
+}
+function renderCareer() {
+  const J = CAR.JOURNEY, N = CAR.STAGES.length;
+  const run = careerRun();
+  const parts = [];
+  if (!run) {
+    parts.push(`<section class="cr-hero cr-intro-hero"><div class="cr-hero-in"><p class="cr-kick">Career</p><h1>${esc(J.title)}</h1><span class="ornament" aria-hidden="true"></span><p class="cr-intro">${esc(J.intro)}</p></div></section>`);
+    parts.push(`<h2 class="cr-h">Choose your partner</h2><p class="cr-sub">Your partner's line starts your deck, with plain Trainers and a lot of Energy. The rest you earn on the road.</p>`
+      + `<div class="cr-partners">${Object.values(CAR.PARTNERS).map((P) => `<button type="button" class="cr-partner" data-crpartner="${P.id}">${crArt(P.line[2][1], 'big')}<span class="cr-pt"><b>${esc(P.name)}</b><span class="pips">${pipHTML(P.type)}</span><span>${esc(P.blurb)}</span></span></button>`).join('')}</div>`);
+    $('#careerBody').innerHTML = parts.join('');
+    return;
+  }
+  const P = CAR.PARTNERS[run.partner];
+  const k = run.stage;
+  const me = careerMe();
+  const prog = CAR.STAGES.map((st, i) => `<i class="${i < k || run.done ? 'on' : i === k ? 'now' : ''}"></i>`).join('');
+  parts.push(`<section class="cr-hero">${crArt(me.face, 'cr-hero-art')}<div class="cr-hero-in"><p class="cr-kick">Career · ${esc(P.name)}'s journey</p><h1>${esc(J.title)}</h1>`
+    + `<p class="cr-intro">${esc(J.intro)}</p><div class="cr-prog" aria-hidden="true">${prog}</div><p class="cr-prog-l">${run.done ? 'Journey complete' : `${k} of ${N} stages cleared`}</p></div></section>`);
+  if (run.reward) parts.push(`<div class="cr-note"><p><b>${esc(CAR.STAGES[run.reward.k].who)} beaten.</b> Choose your reward before the next battle.</p><button type="button" class="pill pill-solid" data-cr="reward">${icon('sparkle')}Choose your reward</button></div>`);
+  const sv = careerGame();
+  if (!run.done && !run.reward && sv && !sv.done && sv.k === k) parts.push(`<div class="cr-note"><p><b>Your battle is waiting.</b> ${esc(CAR.STAGES[k].who)}, turn ${sv.turn || 1}.</p><button type="button" class="pill pill-solid" data-cr="resume">${icon('play')}Resume</button></div>`);
+  if (run.done) {
+    const wins = run.fights.filter((f) => f.won).length;
+    parts.push(`<section class="cr-next boss cr-done">${crArt(me.face, 'cr-next-art')}<div class="cr-next-body"><p class="cr-stage">Journey complete</p><h2>${esc(J.doneTitle)}</h2>`
+      + `<p class="cr-text">${esc(J.doneText)} ${plural(run.fights.length, 'battle')}, ${plural(wins, 'win')}, ${plural(run.got.length, 'new card')} along the way.</p>`
+      + `<div class="cr-acts"><button type="button" class="pill pill-solid" data-cr="new">${icon('swords')}Start a new journey</button><button type="button" class="link-btn" data-cr="deck">See your deck</button></div></div></section>`);
+  } else {
+    const st = CAR.STAGES[k], foe = careerFoe(k);
+    const tries = run.fights.filter((f) => f.k === k).length;
+    const rules = [st.ai === 'hard' ? 'Hard AI' : 'Normal AI', `you take ${st.you} Prize cards to win`, tries ? `${plural(tries, 'try', 'tries')} so far` : ''].filter(Boolean).join(' · ');
+    parts.push(`<section class="cr-next${st.boss ? ' boss' : ''}">${crArt(foe.face, 'cr-next-art')}<div class="cr-next-body">`
+      + `<p class="cr-stage">${st.boss ? 'Final battle' : `Stage ${k + 1} of ${N}`} · ${esc(st.where)}</p><h2>${esc(st.who)}: ${esc(st.title)}</h2>`
+      + `<p class="cr-foe"><span class="pips">${pipsHTML(foe.types.join(''))}</span><span>${esc(foe.name)}</span></p>`
+      + `<p class="cr-text">${esc(st.text)}</p><p class="cr-rules">${esc(rules.charAt(0).toUpperCase() + rules.slice(1))}</p>`
+      + `<div class="cr-acts"><button type="button" class="pill pill-solid" data-cr="fight"${run.reward ? ' disabled' : ''}>${icon('swords')}${tries ? 'Battle again' : 'Battle'}</button><button type="button" class="link-btn" data-cr="foe">See their deck</button></div></div></section>`);
+  }
+  const got = run.got.slice(-8).reverse();
+  parts.push(`<section class="cr-deck">${crArt(me.face, 'cr-deck-art')}<span class="cr-deck-tx"><h3>${esc(me.name)}</h3><p>${me.size} cards · ${me.mons} Pokémon, ${me.trainers} Trainers, ${me.energy} Energy · ${plural(run.got.length, 'card')} earned</p></span>`
+    + `<button type="button" class="pill" data-cr="deck">See your deck</button>`
+    + `${got.length ? `<div class="cr-new"><span class="lbl">Latest cards</span>${got.map((n) => { const d = (DATA.pool.byName.get(n) || [])[0]; return d ? `<button type="button" class="chip got" data-zoom="${esc(d.id)}">${esc(n)}</button>` : ''; }).join('')}</div>` : ''}</section>`);
+  parts.push(`<section class="cr-path"><h2>${esc(J.road)}</h2><ol class="cr-steps">${CAR.STAGES.map((st, i) => {
+    const state = i < k || run.done ? 'done' : i === k ? 'now' : 'locked';
+    const win = run.fights.find((f) => f.k === i && f.won);
+    const r = state === 'done' ? (win ? `Won on turn ${win.turns}` : 'Cleared') : state === 'now' ? 'Up next' : st.boss ? 'Final battle' : '';
+    const face = crCard(st.face);
+    return `<li class="cr-st ${state}${st.boss ? ' boss' : ''}"><span class="n">${state === 'done' ? icon('check') : i + 1}</span>${crArt(face, 'th')}`
+      + `<span><b>${esc(st.who)}: ${esc(st.title)}</b><span class="s">${esc(st.where)} · ${st.ai === 'hard' ? 'Hard AI' : 'Normal AI'} · ${st.you} Prize cards</span></span><span class="r">${r}</span></li>`;
+  }).join('')}</ol></section>`);
+  if (!run.done) parts.push(`<p class="cr-foot"><button type="button" class="link-btn" data-cr="reset">Start the journey over</button></p>`);
+  $('#careerBody').innerHTML = parts.join('');
+}
+function openCareer(push = true) {
+  setView('career', push);
+  renderCareer();
+  const run = careerRun();
+  if (run && run.reward && CR.autoReward) { CR.autoReward = false; openReward(); }
+}
+window.openCareer = openCareer;
+// The reward: three packs; the chosen one's cards go into your deck in place of its weakest
+function openReward() {
+  const run = careerRun();
+  if (!run || !run.reward) return;
+  const { k, seed } = run.reward;
+  const packs = CAR.packsFor(A, DATA.pool, run, k, seed);
+  CR.pend = packs;
+  const box = $('#crReward');
+  box.innerHTML = `<div class="rw-scrim" data-rw="close"></div><div class="rw-box" role="dialog" aria-modal="true" aria-labelledby="rwTitle">
+    <img class="medal rw-medal" src="../img/won.webp" alt="" width="72" height="72"><h2 id="rwTitle">${esc(CAR.STAGES[k].who)} beaten</h2>
+    <p class="rw-sub">Choose one pack. Its cards go into your deck in place of the weakest ones (plain Trainers and spare Energy first). Tap a card to read it.</p>
+    <div class="rw-packs">${packs.map((p, i) => `<section class="rw-pack"><h3>${esc(p.name)}<span>${plural(p.cards.reduce((t, x) => t + x[0], 0), 'card')}</span></h3>`
+      + `<div class="rw-cards">${p.cards.map(([n, key]) => { const d = crCard(key); return d ? `<button type="button" class="rw-card cardbtn" data-zoom="${esc(d.id)}">${cardHTML(d, { alt: d.name })}${n > 1 ? `<span class="dv-n">×${n}</span>` : ''}</button>` : ''; }).join('')}</div>`
+      + `<button type="button" class="pill pill-solid" data-take="${i}">Take the ${esc(p.name)}</button></section>`).join('')}</div>
+    <p class="rw-hint">You can close this and choose later; the next battle waits until you do.</p>
+    <button type="button" class="icon-btn rw-x" data-rw="close" aria-label="Close">${icon('x')}</button></div>`;
+  const was = !box.hidden;
+  box.hidden = false;
+  box.querySelector('[data-take]').focus({ preventScroll: true });
+  if (!was && window.UI) UI.overlay.open('rw', () => closeReward(true));
+}
+function closeReward(viaHistory) {
+  const box = $('#crReward');
+  if (box.hidden) return;
+  box.hidden = true;
+  box.innerHTML = '';
+  if (viaHistory !== true && window.UI) UI.overlay.closed('rw');
+}
+function takeReward(i) {
+  const run = careerRun();
+  const pack = CR.pend && CR.pend[i];
+  if (!run || !run.reward || !pack) return;
+  const res = CAR.addPack(A, DATA.pool, run, pack);
+  careerSave(res.run);
+  closeReward();
+  renderCareer();
+  pageToast(`${pack.name} added${res.out.length ? `; out went ${listWords(res.out.map(([n, name]) => `${n > 1 ? `${n} ` : ''}${name}`))}` : ''}.`);
+}
+
+/* ============================================================
+   6f. Famous finals: World Championship finals, both decks as registered
+   ============================================================ */
+const FIN = window.ARENA_FINALS || { FINALS: [], byId: new Map(), deckName: (d) => d.archetype, rival: () => null, surname: (p) => p };
+const FIN_KEY = 'holo.arena.finals.v1', FIN_GAME = 'holo.arena.finals.game.v1';
+// A finalist's deck, kept like any other deck (key f.<id>) so seats, the hash and the deck view all work
+function finalsDeck(key) {
+  if (DECKS.has(key)) return DECKS.get(key);
+  const x = FIN.byId.get(String(key).slice(2));
+  if (!x || !DATA.pool) return null;
+  const { f, d } = x;
+  const r = A.resolveDeck(DATA.pool, { name: FIN.deckName(d), archetype: d.arch, types: d.types, face: d.face, plan: d.plan, keys: d.keys, cards: d.cards });
+  return finishDeck(r, { key, by: 'finals', blurb: `${d.player}'s deck from the ${f.short} final, card for card.`, fin: { id: d.id, final: f.id, won: d.won, player: d.player }, playable: !r.missing.length });
+}
+window.finalsDeck = finalsDeck;
+const finRecs = () => store.get(FIN_KEY, null) || {};
+const finalRecord = (id) => finRecs()[id] || { n: 0, w: 0, best: null, ids: [] };
+const finalSides = () => FIN.FINALS.flatMap((f) => f.decks);
+const finalsDone = () => finalSides().filter((d) => finalRecord(d.id).w > 0).length;
+const finGame = () => store.get(FIN_GAME, null);
+window.finalName = (id) => { const x = FIN.byId.get(id); return x ? `${x.f.short} final, as ${FIN.surname(x.d.player)}` : 'Famous final'; };
+function finalsBtnHTML() {
+  const n = finalSides().length, done = finalsDone();
+  return `<img class="medal" src="../img/finals.webp" alt="" width="46" height="46"><span><b>Famous finals</b><span>${done ? `${done} of ${n} goals done` : `Replay ${plural(FIN.FINALS.length, 'World Championship final')} with the real decks`}</span></span>`;
+}
+function finalSideHTML(f, d) {
+  const r = finalRecord(d.id), deck = finalsDeck(`f.${d.id}`), rv = FIN.rival(d.id), op = rv && finalsDeck(`f.${rv.id}`);
+  const face = deck && def(deck.face);
+  const rec = !r.n ? 'Not played yet' : r.w ? `${plural(r.w, 'win')} in ${plural(r.n, 'game')}${r.best ? `, the fastest on turn ${r.best}` : ''}` : `${plural(r.n, 'game')}, no wins yet`;
+  const can = deck && deck.playable && op && op.playable;
+  return `<div class="fin-side${r.w ? ' done' : ''}${d.won ? ' champ' : ''}"><span class="fin-art">${face ? cropHTML(face) : ''}</span><div class="fin-sb">`
+    + `<p class="fin-role">${d.won ? 'Champion' : 'Runner-up'}</p><h3>${esc(FIN.deckName(d))}</h3>`
+    + `<p class="fin-who">${deck ? `<span class="pips">${pipsHTML(deck.types.join(''))}</span>` : ''}<span>${esc(d.player)}, ${esc(d.from)}</span></p>`
+    + `<p class="fin-goal">${r.w ? `<span class="fin-tick" aria-label="Goal done">${icon('check')}</span>` : ''}${esc(d.goal)}</p><p class="fin-rec">${esc(can ? rec : "Arena can't play every card in these decks yet.")}</p>`
+    + `<div class="fin-acts"><button type="button" class="pill pill-solid" data-fplay="${esc(d.id)}"${can ? '' : ' disabled'}>${icon('swords')}Play as ${esc(FIN.surname(d.player))}</button><button type="button" class="link-btn" data-fdeck="${esc(d.id)}"${deck ? '' : ' disabled'}>See the deck</button></div></div></div>`;
+}
+function renderFinals() {
+  const n = finalSides().length, done = finalsDone();
+  const parts = [`<div class="fin-bar"><div class="ai-pick"><span id="finAiLbl">AI opponent</span><div class="seg" role="group" aria-labelledby="finAiLbl">${['normal', 'hard'].map((k) => `<button type="button" data-fai="${k}" aria-pressed="${S.ai === k}">${k === 'hard' ? 'Hard' : 'Normal'}</button>`).join('')}</div></div>`
+    + `<p class="fin-count">${done ? `${done} of ${n} goals done` : 'One game decides it, with the decks exactly as they were registered.'}</p></div>`];
+  const g = finGame(), gx = g && !g.done && FIN.byId.get(g.id);
+  if (gx) {
+    const rv = FIN.rival(g.id);
+    parts.push(`<div class="cr-note fin-note"><p><b>Your game is waiting.</b> ${esc(FIN.deckName(gx.d))} against ${esc(FIN.deckName(rv))}, turn ${g.turn || 1}.</p><button type="button" class="pill pill-solid" data-fres>${icon('play')}Resume</button></div>`);
+  }
+  for (const f of FIN.FINALS) {
+    const win = f.decks.find((d) => d.won) || f.decks[0];
+    parts.push(`<section class="fin" id="fin-${esc(f.id)}"><div class="fin-head"><img class="medal fin-medal" src="../img/final-${esc(f.id)}.webp" alt="" width="76" height="76" loading="lazy">`
+      + `<div class="fin-tx"><p class="fin-kick">${esc(f.when)}, ${esc(f.where)}</p><h2>${esc(f.event)}</h2><p class="fin-score">${esc(win.player)} won${f.score ? ` ${esc(f.score)}` : ''}</p></div></div>`
+      + `<p class="fin-story">${esc(f.story)}</p>`
+      + `<div class="fin-sides">${f.decks.map((d) => finalSideHTML(f, d)).join('')}</div>`
+      + `<p class="fin-foot"><button type="button" class="link-btn" data-fwatch="${esc(win.id)}">Watch the AI play it</button><a href="${esc(f.link.url)}" target="_blank" rel="noopener">Read about the final on ${esc(f.link.label)}</a></p></section>`);
+  }
+  $('#finalsBody').innerHTML = parts.join('');
+}
+function openFinals(push = true) {
+  setView('finals', push);
+  renderFinals();
+}
+window.openFinals = openFinals;
+// Play one finalist's deck against the other's, or watch the AI play the champion's side
+function finalStart(id, watchIt) {
+  const rv = FIN.rival(id), me = finalsDeck(`f.${id}`), op = rv && finalsDeck(`f.${rv.id}`);
+  if (!me || !op || !me.playable || !op.playable) return;
+  closeDeckView();
+  S.seats = [me.key, op.key];
+  saveSeats();
+  S.backTo = 'finals';
+  if (watchIt) watch(newSeed());
+  else playStart(newSeed(), [], { fin: id });
+}
+function finalsResume(replace) {
+  const g = finGame();
+  if (!g || g.done) return false;
+  const rv = FIN.rival(g.id), me = finalsDeck(`f.${g.id}`), op = rv && finalsDeck(`f.${rv.id}`);
+  if (!me || !op || !me.playable || !op.playable) return false;
+  S.seats = [me.key, op.key];
+  saveSeats();
+  S.backTo = 'finals';
+  playStart(g.seed, g.answers, { fin: g.id, ai: g.ai === 'hard' ? 'hard' : 'normal', memo: g.memo || null, replace });
+  return true;
+}
+window.finalsRetry = () => { if (PL.fin) finalStart(PL.fin); };
+window.finalsSave = () => {
+  const r = W.replay;
+  store.set(FIN_GAME, { id: PL.fin, seed: PL.seed, answers: PL.answers, ai: PL.ai, memo: PL.ai === 'hard' ? PL.memo : undefined, turn: PL.done ? r.turns : PL.req.turn, done: PL.done || undefined });
+};
+// A finals game has ended: count it toward that side's goal, once
+window.finalsResult = () => {
+  const id = PL.fin;
+  if (!id) return;
+  const gid = `${PL.seed}.${PL.answers.length}`;
+  const recs = finRecs(), r = Object.assign({ n: 0, w: 0, best: null, ids: [] }, recs[id]);
+  if (r.ids.includes(gid)) return;
+  r.ids = r.ids.concat(gid).slice(-40);
+  r.n++;
+  if (W.replay.winner === 0) { r.w++; r.best = r.best == null ? W.replay.turns : Math.min(r.best, W.replay.turns); }
+  recs[id] = r;
+  store.set(FIN_KEY, recs);
+};
+window.finalsBannerTitle = (r) => {
+  const x = FIN.byId.get(PL.fin);
+  if (!x || r.winner == null) return null;
+  if (r.winner !== 0) return 'Not this time';
+  return x.d.won ? `You won it as ${FIN.surname(x.d.player)} did` : `You won it for ${FIN.surname(x.d.player)}`;
+};
+// The finalists' decks in the Decks library
+window.libExtra = () => FIN.FINALS.flatMap((f) => f.decks.map((d) => finalsDeck(`f.${d.id}`)).filter(Boolean).map((d) => ({ d, src: 'finals', group: `${FIN.byId.get(d.fin.id).f.short} final` })));
+
+/* ============================================================
    7. Inspector: one card, big, with what you can do with it
    ============================================================ */
 const INSP = $('#insp'), SCRIM = $('#scrim');
@@ -1298,7 +1577,8 @@ function cardText(d) {
   const out = [];
   for (const a of d.abil || []) out.push(`<div class="block"><p class="k">Ability</p><b>${esc(a.name)}</b>${a.text ? `<p>${esc(a.text)}</p>` : ''}</div>`);
   for (const a of d.atks || []) out.push(`<div class="block"><div class="atk-top"><span class="pips">${a.cost ? pipsHTML(a.cost) : '<span class="muted">Free</span>'}</span><b>${esc(a.name)}</b>${a.base || a.mod ? `<span class="dmg">${a.base || ''}${esc(a.mod || '')}</span>` : ''}</div>${a.text ? `<p>${esc(a.text)}</p>` : ''}</div>`);
-  if (d.kind === 1 && d.text) out.push(`<div class="block"><p>${esc(d.text)}</p></div>`);
+  for (const a of d.tmAtks || []) out.push(`<div class="block"><div class="atk-top"><span class="pips">${a.cost ? pipsHTML(a.cost) : '<span class="muted">Free</span>'}</span><b>${esc(a.name)}</b>${a.base ? `<span class="dmg">${a.base}</span>` : ''}</div>${a.text ? `<p>${esc(a.text)}</p>` : ''}</div>`);
+  if (d.kind !== 0 && d.text) out.push(`<div class="block"><p>${esc(d.text)}</p></div>`);
   if (d.kind === 0) {
     const w = (d.weak || []).map((x) => `${pipHTML(x.t)} ${esc(x.v)}`).join(' ') || 'none';
     const r = (d.res || []).map((x) => `${pipHTML(x.t)} ${x.v}`).join(' ') || 'none';
@@ -1435,7 +1715,7 @@ function playStart(seed, answers, opts = {}) {
   const decks = [Object.assign({}, both[0], { name: 'You' }), both[1]];
   // Lessons are written for the normal AI; a game picks its level when it starts and keeps it when resumed
   const ai = opts.lesson ? 'normal' : opts.ai || S.ai;
-  Object.assign(PL, { on: true, keys: opts.decks ? null : S.seats.slice(), decks, labels, ai, memo: opts.memo || {}, t0: Date.now(), setup: opts.setup || null, first: opts.first != null ? opts.first : null, seed, answers: (answers || []).slice(), req: null, done: false, shown: -1, skip: null, toastTurn: 0 });
+  Object.assign(PL, { on: true, keys: opts.decks ? null : S.seats.slice(), decks, labels, ai, memo: opts.memo || {}, t0: Date.now(), career: opts.career != null ? opts.career : null, fin: opts.fin || null, finSeat: opts.finSeat || 0, setup: opts.setup || null, first: opts.first != null ? opts.first : null, seed, answers: (answers || []).slice(), req: null, done: false, shown: -1, skip: null, toastTurn: 0 });
   W.mode = 'play';
   W.seed = seed;
   W.decks = decks;
@@ -1497,9 +1777,13 @@ function runFrames(i, end, done) {
 }
 function settle() {
   const r = W.replay;
-  if (PL.keys) store.set(KEY.play, { v: 2, a: PL.keys[0], b: PL.keys[1], seed: PL.seed, answers: PL.answers, ai: PL.ai, memo: PL.ai === 'hard' ? PL.memo : undefined, turn: PL.done ? r.turns : PL.req.turn, names: PL.labels, at: Date.now(), done: PL.done || undefined });
+  if (PL.keys && PL.career == null && !PL.fin) store.set(KEY.play, { v: 2, a: PL.keys[0], b: PL.keys[1], seed: PL.seed, answers: PL.answers, ai: PL.ai, memo: PL.ai === 'hard' ? PL.memo : undefined, turn: PL.done ? r.turns : PL.req.turn, names: PL.labels, at: Date.now(), done: PL.done || undefined });
+  if (PL.career != null) store.set(CR_GAME, { k: PL.career, seed: PL.seed, answers: PL.answers, ai: PL.ai, memo: PL.ai === 'hard' ? PL.memo : undefined, turn: PL.done ? r.turns : PL.req.turn, done: PL.done || undefined });
+  if (PL.fin && window.finalsSave) finalsSave();
   if (PL.done) {
     journalRecord();
+    if (PL.career != null) careerResult();
+    if (PL.fin && window.finalsResult) finalsResult();
     setUi('over');
     showBanner();
     if (TU.on && r.winner === 0) markLessonDone(TU.lesson.id);
@@ -1556,7 +1840,16 @@ function nameOfId(id) {
   if (req && req.defs && req.defs[id]) return def(req.defs[id]).name;
   return '';
 }
-const coachCtx = () => ({ nameOf: nameOfId, atkName: (i) => { const m = curFrame().s.p[0].active; return m ? def(m.d).atks[i].name : ''; } });
+// A Pokémon's attacks as the engine numbers them: its own, then any a Technical Machine on it lends
+const atksOfSnap = (m) => { const t = m.t && def(m.t); return t && t.tmAtks ? def(m.d).atks.concat(t.tmAtks) : def(m.d).atks; };
+// What an attack costs right now: Bloodmoon Ursaluna ex's Blood Moon costs less for each Prize card the opponent has taken
+function costNow(f, m, atk) {
+  let cost = atk.cost;
+  const cl = (def(m.d).abil || []).find((x) => x.k === 'costLess' && x.atk === atk.name.toLowerCase());
+  if (cl) { let k = f.s.p[1 - monOwner(f, m.id)].taken || 0; while (k-- > 0 && cost.includes('C')) cost = cost.replace('C', ''); }
+  return cost;
+}
+const coachCtx = () => ({ nameOf: nameOfId, atkName: (i) => { const m = curFrame().s.p[0].active; return m ? atksOfSnap(m)[i].name : ''; } });
 const monName = (id) => { const f = curFrame(); const m = snapMon(f, id); return m ? def(m.d).name : 'that Pokémon'; };
 const where = (id) => { const f = curFrame(); const p = monOwner(f, id); const ps = f.s.p[p]; const act = ps && ps.active && ps.active.id === id; return `${p === 1 ? "your opponent's " : ''}${act ? 'Active ' : 'Benched '}${monName(id)}`; };
 function actLabel(a) {
@@ -1572,7 +1865,7 @@ function actLabel(a) {
     case 'ability': { const m = snapMon(f, a.m); return `Use ${def(m.d).abil[a.i].name}`; }
     case 'stadium': return `Use ${def(f.s.stadium[1]).name}`;
     case 'retreat': return 'Retreat your Active Pokémon';
-    case 'attack': { const m = f.s.p[0].active; return `Attack with ${def(m.d).atks[a.i].name}`; }
+    case 'attack': { const m = f.s.p[0].active; return `Attack with ${atksOfSnap(m)[a.i].name}`; }
     case 'end': return 'End your turn';
     default: return a.k;
   }
@@ -1580,8 +1873,8 @@ function actLabel(a) {
 function atkHTML(a) {
   const f = curFrame();
   const m = f.s.p[0].active;
-  const atk = def(m.d).atks[a.i];
-  return `<span class="pips">${pipsHTML(atk.cost)}</span>${esc(atk.name)}${atk.base || atk.mod ? `<span class="dmgn">${atk.base || ''}${esc(atk.mod || '')}</span>` : ''}`;
+  const atk = atksOfSnap(m)[a.i];
+  return `<span class="pips">${pipsHTML(costNow(f, m, atk))}</span>${esc(atk.name)}${atk.base || atk.mod ? `<span class="dmgn">${atk.base || ''}${esc(atk.mod || '')}</span>` : ''}`;
 }
 const sameAct = (x, y) => x.k === y.k && x.c === y.c && x.m === y.m && x.i === y.i;
 function optsForCard(id) { return PL.req && PL.req.type === 'act' ? PL.req.options.filter((a) => a.c === id) : []; }
@@ -1633,7 +1926,12 @@ function renderPlaybar() {
     const r = W.replay;
     PB.title.textContent = r.winner == null ? 'A draw' : r.winner === 0 ? 'You win' : 'You lose';
     PB.hint.textContent = say(r.reason);
-    PB.acts.innerHTML = '<button type="button" class="pill pill-solid" data-b="rematch">Play again</button><button type="button" class="pill" data-b="toReplay">Watch the replay</button>';
+    // the same next step the banner offers: a career game moves on or retries, a final replays that side
+    const crSt = PL.career != null && CAR ? CAR.STAGES[PL.career] : null;
+    const again = crSt ? (r.winner === 0 ? (crSt.boss ? '' : '<button type="button" class="pill pill-solid" data-b="crreward">Choose your reward</button>') : '<button type="button" class="pill pill-solid" data-b="crretry">Try again</button>')
+      : PL.fin ? '<button type="button" class="pill pill-solid" data-b="finretry">Play it again</button>'
+      : '<button type="button" class="pill pill-solid" data-b="rematch">Play again</button>';
+    PB.acts.innerHTML = `${again}<button type="button" class="pill" data-b="toReplay">Watch the replay</button>`;
     if (TU.on) PB.acts.innerHTML = '';
     return;
   }
@@ -1662,7 +1960,7 @@ function renderPlaybar() {
       break;
     }
     case 'option': {
-      title = 'Choose one';
+      title = req.reason === 'copyAttack' ? 'Choose the attack to copy' : 'Choose one';
       acts = req.options.map((o, k) => btn(o, `data-option="${k}"`, k === 0)).join('');
       break;
     }
@@ -1715,6 +2013,9 @@ const REASON_T = {
   scoop: 'Choose a Pokémon to put back into your hand',
   candyBasic: 'Use Rare Candy on which Basic Pokémon?',
   retreatTo: 'Retreat: which Benched Pokémon comes in?',
+  moveFrom: 'Move damage counters from which of your Pokémon?',
+  moveTo: "Move them to which of your opponent's Pokémon?",
+  tmEvolve: 'Evolve which Benched Pokémon?',
 };
 function TARGET_TEXT(req) {
   if (req.reason === 'attachTo') return `Attach ${req.def ? def(req.def).name : 'the Energy'} to which Pokémon?`;
@@ -1740,7 +2041,7 @@ function SHEET_TEXT(req) {
     case 'search': return { title: 'Search your deck', sub: `Choose ${upTo} to put into your hand.` };
     case 'benchSearch': return { title: 'Search your deck for Basic Pokémon', sub: `Choose ${upTo} to put onto your Bench.` };
     case 'look': return { title: 'Look at the top of your deck', sub: `Choose ${upTo} to put into your hand. The rest go back.` };
-    case 'evolve': return { title: 'Search your deck for an Evolution card', sub: 'Choose one to evolve with.' };
+    case 'evolve': case 'evolveFromDeck': return { title: 'Search your deck for an Evolution card', sub: 'Choose one to evolve with.' };
     case 'peek': return { title: 'Look at the top of your deck', sub: 'Choose one to keep.' };
     case 'attachEnergy': return { title: `Choose Energy from your ${req.from || 'deck'}`, sub: `Choose ${upTo} to attach.` };
     case 'cost': return { title: fromName ? `Discard for ${fromName}` : 'Discard a card', sub: `Choose ${n(req.min)} from your hand to discard.` };
@@ -1754,7 +2055,9 @@ function SHEET_TEXT(req) {
     case 'retreatCost': return { title: 'Pay the Retreat Cost', sub: `Choose ${plural(req.min, 'Energy', 'Energy')} to discard from ${monName(req.mon)}.` };
     case 'rod': case 'recover': return { title: 'Choose from your discard pile', sub: `Choose ${upTo}.` };
     case 'revive': return { title: 'Choose Basic Pokémon from your discard pile', sub: `Choose ${upTo} to put onto your Bench.` };
-    case 'discardOppHand': return { title: "Your opponent's hand", sub: `Choose ${n(req.min)} to discard.` };
+    case 'discardOppHand': return { title: "Your opponent's hand", sub: req.min === req.max ? `Choose ${n(req.min)} to discard.` : `Choose ${upTo} to discard.` };
+    case 'crispin': return { title: 'Search your deck for Basic Energy', sub: 'Choose up to 2 of different types: one goes into your hand, the other onto one of your Pokémon.' };
+    case 'crispinAttach': return { title: 'Crispin', sub: 'Choose the Energy to attach. The other one goes into your hand.' };
     case 'candyStage2': return { title: 'Rare Candy', sub: 'Choose the Stage 2 Pokémon to evolve into.' };
     default: return { title: 'Choose cards', sub: `Choose ${upTo}.` };
   }
@@ -1952,6 +2255,11 @@ function onButton(name) {
     case 'nextLesson': if (TU.next) lessonStart(TU.next.id, true); return;
     case 'retryLesson': lessonStart(TU.lesson.id, true); return;
     case 'lessons': goLessons(true); return;
+    case 'career': openCareer(true); return;
+    case 'crreward': CR.autoReward = true; openCareer(true); return;
+    case 'crretry': careerStartFight(false); return;
+    case 'finals': if (window.openFinals) openFinals(true); return;
+    case 'finretry': if (window.finalsRetry) finalsRetry(); return;
     default:
   }
 }
@@ -1971,8 +2279,22 @@ function wire() {
     goNav(a.dataset.nav);
   });
   $('#aiSeg').addEventListener('click', (e) => { const b = e.target.closest('[data-ai]'); if (!b) return; S.ai = b.dataset.ai; store.set(KEY.ai, S.ai); renderAi(); });
-  $('#toLobby').addEventListener('click', () => { if (S.view === 'watch' && TU.on) goLessons(true); else setView(S.backTo || 'lobby', true); });
+  $('#toLobby').addEventListener('click', () => {
+    if (S.view === 'watch' && TU.on) { goLessons(true); return; }
+    const open = { decks: openLibrary, career: openCareer, finals: openFinals, journal: window.openJournal }[S.backTo];
+    if (open) open(true); else setView('lobby', true);
+  });
   $('#learnBtn').addEventListener('click', () => goLessons(true));
+  $('#finalsBtn').addEventListener('click', () => openFinals(true));
+  $('#finalsBody').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-fplay], [data-fdeck], [data-fwatch], [data-fai], [data-fres]');
+    if (!b || b.disabled) return;
+    if (b.dataset.fplay) finalStart(b.dataset.fplay);
+    else if (b.dataset.fdeck) openDeckView(`f.${b.dataset.fdeck}`, b, 'finals');
+    else if (b.dataset.fwatch) finalStart(b.dataset.fwatch, true);
+    else if (b.dataset.fai) { S.ai = b.dataset.fai; store.set(KEY.ai, S.ai); renderAi(); renderFinals(); }
+    else if (b.hasAttribute('data-fres')) finalsResume(false);
+  });
   $('#lessons').addEventListener('click', (e) => { const b = e.target.closest('[data-lesson]'); if (b) lessonStart(b.dataset.lesson); });
   $('#playBtn').addEventListener('click', () => { S.backTo = null; playStart(newSeed(), []); });
   $('#watchBtn').addEventListener('click', () => { S.backTo = null; watch(newSeed()); });
@@ -2052,6 +2374,36 @@ function wire() {
     HOLD.timer = setTimeout(() => { removeEventListener('pointermove', moved); HOLD.swallow = Date.now(); if (navigator.vibrate) navigator.vibrate(8); openDeckView(t.dataset.key, t, 'lobby'); }, HOLD.ms);
   });
   L.pickBody.addEventListener('contextmenu', (e) => { if (e.target.closest('.tile[data-key]') && Date.now() - HOLD.swallow < 900) e.preventDefault(); });
+  // the career
+  $('#careerBody').addEventListener('click', (e) => {
+    const p = e.target.closest('[data-crpartner]');
+    if (p) { careerSave(CAR.newRun(p.dataset.crpartner)); renderCareer(); window.scrollTo({ top: 0 }); return; }
+    const z = e.target.closest('[data-zoom]');
+    if (z) { openInspector({ def: def(z.dataset.zoom) }); return; }
+    const b = e.target.closest('[data-cr]');
+    if (!b) return;
+    const run = careerRun();
+    switch (b.dataset.cr) {
+      case 'fight': careerStartFight(false); break;
+      case 'resume': careerStartFight(true); break;
+      case 'reward': openReward(); break;
+      case 'deck': openDeckView('cr.me', b, 'career'); break;
+      case 'foe': if (run) openDeckView(`cr.${run.stage}`, b, 'career'); break;
+      case 'new': store.del(CR_GAME); CR.run = null; store.del(CR_KEY); DECKS.delete('cr.me'); renderCareer(); window.scrollTo({ top: 0 }); break;
+      case 'reset':
+        if (!b.dataset.armed) { b.dataset.armed = '1'; b.textContent = 'Tap again to start over'; setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = 'Start the journey over'; } }, 3000); return; }
+        store.del(CR_GAME); CR.run = null; store.del(CR_KEY); DECKS.delete('cr.me'); renderCareer(); window.scrollTo({ top: 0 });
+        break;
+      default:
+    }
+  });
+  $('#crReward').addEventListener('click', (e) => {
+    if (e.target.closest('[data-rw="close"]')) { closeReward(); return; }
+    const t = e.target.closest('[data-take]');
+    if (t) { takeReward(+t.dataset.take); return; }
+    const z = e.target.closest('[data-zoom]');
+    if (z) openInspector({ def: def(z.dataset.zoom) });
+  });
   // the journal
   $('#journalBody').addEventListener('click', (e) => {
     const f = e.target.closest('[data-jf]');
@@ -2149,7 +2501,7 @@ function wire() {
     else if (a.dataset.sh === 'ok' && valid()) { const sel = SH.sel.slice(); const done = SH.opts.done; closeSheet(); done(sel); }
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { if (!INSP.hidden) { closeInspector(); return; } if (!$('#deckView').hidden) { closeDeckView(); return; } if (SH.opts && SH.opts.readOnly) { closeSheet(); return; } if (T.logpane.classList.contains('open')) closeLog(); return; }
+    if (e.key === 'Escape') { if (!INSP.hidden) { closeInspector(); return; } if (!$('#deckView').hidden) { closeDeckView(); return; } if (!$('#crReward').hidden) { closeReward(); return; } if (SH.opts && SH.opts.readOnly) { closeSheet(); return; } if (T.logpane.classList.contains('open')) closeLog(); return; }
     if (!$('#deckView').hidden && INSP.hidden && !e.target.closest('input, textarea')) {
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); pageDeck(e.key === 'ArrowLeft' ? -1 : 1); }
       return;
@@ -2170,12 +2522,16 @@ function route() {
   const h = readHash();
   if (location.hash === '#decks') { setView('decks', false); return; }
   if (location.hash === '#journal') { openJournal(false); return; }
+  if (location.hash === '#career') { openCareer(false); return; }
+  if (location.hash === '#finals') { openFinals(false); return; }
   if (h.lesson && lessonById(h.lesson)) { lessonStart(h.lesson, true); return; }
   if (h.learn || location.hash === '#learn') { setView('learn', false); return; }
   if (h.a) S.seats[0] = h.a.key;
   if (h.b) S.seats[1] = h.b.key;
   saveSeats();
   if (h.play != null) {
+    const g = finGame();
+    if (g && !g.done && g.seed === h.play && S.seats[0] === `f.${g.id}` && finalsResume(true)) return;
     const s = savedPlay();
     if (s && s.seed === h.play && s.a === S.seats[0] && s.b === S.seats[1]) playStart(s.seed, s.answers, Object.assign(savedOpts(s), { replace: true }));
     else playStart(h.play, [], { replace: true });
@@ -2192,7 +2548,7 @@ async function boot() {
   headerHeight();
   wire();
   try {
-    const res = await fetch('cards.json?v=2026-11-20');
+    const res = await fetch('cards.json?v=2026-11-29');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     DATA.pool = A.loadPool(json);

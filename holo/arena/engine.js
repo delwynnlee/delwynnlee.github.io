@@ -59,7 +59,15 @@
   const findMon = (G, id) => allMons(G).find((m) => m.id === id) || null;
   const nm = (m) => top(m).name;
   const isActive = (G, m) => G.players[m.owner].active === m;
-  const energyOf = (m) => m.energy.map((c) => c.def.provides);
+  // What a Pokémon's Energy provides: a type letter each, '*' for an Energy of every type (Luminous Energy alone, or Neo
+  // Upper Energy twice on a Stage 2), 'C' otherwise
+  const energyOf = (m) => m.energy.flatMap((c) => {
+    const sp = c.def.special;
+    if (!sp) return [c.def.provides];
+    if (sp === 'luminous') return [m.energy.some((x) => x !== c && x.def.special) ? 'C' : '*'];
+    if (sp === 'neoUpper') return top(m).stage === 2 ? ['*', '*'] : ['C'];
+    return [c.def.provides || 'C'];
+  });
   const isPokemon = (d) => d.kind === 0;
   const isBasic = (d) => d.kind === 0 && d.stage === 0;
   const isEnergy = (d) => d.kind === 2;
@@ -232,27 +240,29 @@
   function clearOnMove(m) { m.cond = { p: 0, b: false, r: null, until: 0 }; m.fx = []; }
   function canPay(energies, cost) {
     const pool = {};
-    for (const e of energies) pool[e] = (pool[e] || 0) + 1;
+    let wild = 0;
+    for (const e of energies) if (e === '*') wild++; else pool[e] = (pool[e] || 0) + 1;
     let colorless = 0;
     for (const ch of cost) {
       if (ch === 'C') { colorless++; continue; }
-      if (pool[ch]) pool[ch]--; else return false;
+      if (pool[ch]) pool[ch]--; else if (wild) wild--; else return false;
     }
-    let rest = 0;
+    let rest = wild;
     for (const k in pool) rest += pool[k];
     return rest >= colorless;
   }
   // how many more Energy (and of which types) a Pokémon needs for an attack
   function shortfall(energies, cost) {
     const pool = {};
-    for (const e of energies) pool[e] = (pool[e] || 0) + 1;
+    let wild = 0;
+    for (const e of energies) if (e === '*') wild++; else pool[e] = (pool[e] || 0) + 1;
     const need = [];
     let colorless = 0;
     for (const ch of cost) {
       if (ch === 'C') { colorless++; continue; }
-      if (pool[ch]) pool[ch]--; else need.push(ch);
+      if (pool[ch]) pool[ch]--; else if (wild) wild--; else need.push(ch);
     }
-    let rest = 0;
+    let rest = wild;
     for (const k in pool) rest += pool[k];
     for (let i = rest; i < colorless; i++) need.push('C');
     return need;
@@ -268,22 +278,42 @@
     return c;
   }
   const activeFx = (G, m, k) => m.fx.filter((f) => f.k === k && f.until >= G.turn);
+  // A Pokémon's attacks: its own, then the attack on a Technical Machine attached to it
+  function atksOf(G, m) {
+    const t = toolFx(G, m);
+    return t && t.k === 'tm' && m.tool.def.tmAtks ? top(m).atks.concat(m.tool.def.tmAtks) : top(m).atks;
+  }
+  // What an attack costs this Pokémon right now (Bloodmoon Ursaluna ex's Blood Moon costs less as the opponent takes Prize cards)
+  function costOf(G, m, a) {
+    let cost = a.cost;
+    const cl = abilOf(G, m).find((x) => x.k === 'costLess' && x.atk === a.name.toLowerCase());
+    if (cl) { let k = G.players[1 - m.owner].taken || 0; while (k-- > 0 && cost.includes('C')) cost = cost.replace('C', ''); }
+    return cost;
+  }
+  // The Abilities a Pokémon has right now: an Active Pokémon facing Flutter Mane has none (but that one)
+  function abilOf(G, m) {
+    const d = top(m);
+    if (!d.abil.length || !G.players[m.owner] || G.players[m.owner].active !== m) return d.abil;
+    const F = G.players[1 - m.owner].active;
+    if (F && top(F).abil.some((a) => a.k === 'lockAbilities')) return d.abil.filter((a) => a.k === 'lockAbilities');
+    return d.abil;
+  }
   function canAttackWith(G, P, m, i) {
     if (P.active !== m || G.turn <= 1 && P.i === G.first && P.turns <= 1) return false;
     if (m.cond.r === 'asleep' || m.cond.r === 'paralyzed') return false;
     if (activeFx(G, m, 'noAttack').length) return false;
-    const a = top(m).atks[i];
+    const a = atksOf(G, m)[i];
     if (!a) return false;
     if (activeFx(G, m, 'lockSelf').some((f) => !f.atk || f.atk === a.name.toLowerCase())) return false;
     if (P.i !== G.first && P.turns === 1 && a.fx.some((f) => f.k === 'notFirst')) return false;
-    return canPay(energyOf(m), a.cost);
+    return canPay(energyOf(m), costOf(G, m, a));
   }
   function canRetreat(G, P) {
     const m = P.active;
     if (!m || !P.bench.length || P.flags.retreated === G.turn) return false;
     if (m.cond.r === 'asleep' || m.cond.r === 'paralyzed') return false;
     if (activeFx(G, m, 'noRetreat').length) return false;
-    return m.energy.length >= retreatCost(G, m);
+    return energyOf(m).length >= retreatCost(G, m);
   }
   function canEvolve(G, P, m, d) {
     return d.kind === 0 && d.stage > 0 && d.from === nm(m) && P.turns > 1 && m.since < G.turn && m.evolvedAt !== G.turn;
@@ -322,6 +352,20 @@
     P.bench.push(m);
     return m;
   }
+  // Risky Ruins: Basic Pokémon (not Darkness) put onto the Bench during their owner's turn take damage counters
+  function benchHurt(G, P, m) {
+    const s = G.stadium && G.stadium.def.stadium, d = top(m);
+    if (!s || s.k !== 'benchHurt' || G.active !== P.i || d.stage !== 0 || d.types.includes(s.notType)) return;
+    m.dmg += s.n * 10;
+    emit(G, 'damage', `${G.stadium.def.name}: ${plural(s.n, 'damage counter')} on ${d.name}.`, { hl: [m.id], hits: [[m.id, s.n * 10]] });
+  }
+  // Battle Cage: no damage counters on Benched Pokémon from the effects of the other player's attacks and Abilities
+  function caged(G, ctx, m) {
+    const s = G.stadium && G.stadium.def.stadium;
+    return !!(s && s.k === 'cage' && ctx.src && m.owner !== ctx.P.i && !isActive(G, m));
+  }
+  // Genesect's ACE Nullifier: with a Tool attached, the other player can't play ACE SPEC cards
+  const aceLocked = (G, P) => mons(opp(G, P)).some((m) => m.tool && abilOf(G, m).some((a) => a.k === 'aceLock'));
   function attachEnergy(G, P, m, card) {
     takeFrom(P.hand, card); takeFrom(P.deck, card); takeFrom(P.discard, card);
     m.energy.push(card);
@@ -451,11 +495,13 @@
   function weaknessOf(G, target) {
     const t = toolFx(G, target);
     if (t && t.k === 'noWeak' && (!t.basic || top(target).stage === 0)) return [];
-    return top(target).weak;
+    const td = top(target), O = G.players[1 - target.owner];
+    if (O) for (const x of mons(O)) for (const a of abilOf(G, x)) if (a.k === 'weakOverride' && td.types.includes(a.on)) return [{ t: a.to, v: '×2' }];
+    return td.weak;
   }
   function protectedFromEffects(G, ctx, m) {
     if (!ctx.isAttack || m.owner === ctx.P.i) return false;
-    if (top(m).abil.some((a) => a.k === 'noEffects' && !a.conds)) return true;
+    if (abilOf(G, m).some((a) => a.k === 'noEffects' && !a.conds)) return true;
     if (!isActive(G, m) && top(m).abil.some((a) => a.k === 'benchShield')) return true;
     return m.fx.some((f) => f.k === 'protect' && f.fx && f.until >= G.turn);
   }
@@ -470,7 +516,7 @@
       if (t && t.k === 'dmg' && (!t.vsEx || td.ex) && (!t.behind || P.prizes.length > opp(G, P).prizes.length)) dmg += t.n;
       for (const b of P.boosts) if (!b.vsEx || td.ex) dmg += b.n;
       for (const f of activeFx(G, A, 'weakened')) dmg -= f.n;
-      const aura = td.abil.find((a) => a.k === 'aura');
+      const aura = abilOf(G, target).find((a) => a.k === 'aura');
       if (aura) dmg -= aura.n;
       dmg = Math.max(0, dmg);
       if (!ctx.noWR) {
@@ -479,6 +525,7 @@
       }
       dmg = Math.max(0, dmg);
     } else if (td.tera || td.abil.some((a) => a.k === 'benchShield')) return 0;
+    else if (!ruleBox(td) && target.owner !== P.i && mons(G.players[target.owner]).some((x) => abilOf(G, x).some((a) => a.k === 'flowerCurtain'))) return 0;
     if (!ctx.pierce) {
       for (const f of target.fx) {
         if (f.until < G.turn) continue;
@@ -489,7 +536,7 @@
       const tt = toolFx(G, target);
       if (tt && tt.k === 'shield' && (!tt.type || td.types.includes(tt.type)) && (!tt.stage || tt.stage === td.stage)) dmg -= tt.n;
     }
-    for (const a of td.abil) {
+    for (const a of abilOf(G, target)) {
       if (a.k === 'shield' && (!a.full || target.dmg === 0)) dmg -= a.n;
       if (a.k === 'exShield' && d.ex) dmg = 0;
     }
@@ -498,10 +545,10 @@
   function putDamage(G, ctx, target, amount, label) {
     if (amount <= 0) return 0;
     const td = top(target);
-    if (ctx.isAttack && target.owner !== ctx.P.i && td.abil.some((a) => a.k === 'dodge')) {
+    if (ctx.isAttack && target.owner !== ctx.P.i && abilOf(G, target).some((a) => a.k === 'dodge')) {
       if (flip(G, G.players[target.owner], `${td.name} tries to dodge`)) { emit(G, 'prevent', `${td.name} takes no damage.`, { hl: [target.id] }); return 0; }
     }
-    const st = td.abil.find((a) => a.k === 'sturdy');
+    const st = abilOf(G, target).find((a) => a.k === 'sturdy');
     if (ctx.isAttack && st && target.dmg + amount >= maxHp(G, target) && (st.flip ? flip(G, G.players[target.owner], `${td.name}'s ${st.name}`) : target.dmg === 0)) {
       amount = Math.max(0, maxHp(G, target) - st.hp - target.dmg);
       target.dmg += amount;
@@ -515,8 +562,8 @@
     return amount;
   }
   function afterHit(G, ctx, target) {
-    const A = ctx.src, td = top(target), O = G.players[target.owner];
-    for (const a of td.abil) {
+    const A = ctx.src, O = G.players[target.owner];
+    for (const a of abilOf(G, target)) {
       if (a.k === 'retaliate' && A) { A.dmg += a.n * 10; emit(G, 'damage', `${a.name}: ${a.n * 10} damage to ${nm(A)}.`, { hl: [A.id], hits: [[A.id, a.n * 10]] }); }
       if (a.k === 'retaliateCond' && A && !protectedSelf(A)) setCond(G, A, a.c);
     }
@@ -621,8 +668,9 @@
       }
       case 'snipe': {
         const cands = mons(ctx.O);
-        const t = pickMon(G, P, cands, 'snipe', (m) => koValue(G, P, m, f.n, ctx));
-        if (t) { ctx.snipe = t; ctx.times = f.n; }
+        const amt = f.perSelf ? f.perSelf * Math.floor(ctx.src.dmg / 10) : f.n;
+        const t = pickMon(G, P, cands, 'snipe', (m) => koValue(G, P, m, amt, ctx));
+        if (t) { ctx.snipe = t; ctx.times = amt; }
         break;
       }
       case 'fuel': {
@@ -793,10 +841,12 @@
         const pool = src.filter((c) => isEnergy(c.def) && c.def.basicEnergy && (!f.type || c.def.provides === f.type));
         const k = Math.min(f.n || 1, pool.length);
         const chosen = pickCards(G, P, pool, f.k === 'attachDeck' ? 0 : Math.min(1, k), k, 'attachEnergy', byNeed(G, P), { from: f.k === 'attachDeck' ? 'deck' : 'discard' });
+        let one = null;
         for (const c of chosen) {
-          const targets = f.to === 'self' && A ? [A] : f.to === 'bench' ? P.bench : mons(P);
+          const targets = one ? [one] : f.to === 'self' && A ? [A] : f.to === 'bench' ? P.bench : f.to === 'stage2' ? mons(P).filter((m) => top(m).stage === 2) : mons(P);
           const t = pickMon(G, P, targets, 'attachTo', (m) => energyTargetScore(G, P, m, c.def), false, { card: c.id, def: c.def.id });
           if (!t) continue;
+          if (f.one) one = t;
           attachEnergy(G, P, t, c);
           emit(G, 'energy', `${P.name} attaches ${c.def.name} to ${who(t)}.`, { hl: [t.id] });
         }
@@ -816,10 +866,11 @@
         break;
       }
       case 'strip': case 'stripAny': {
-        const t = f.k === 'strip' ? D : pickMon(G, P, mons(O).filter((m) => m.energy.length), 'strip', (m) => m.energy.length * 2 + monWorth(G, m) + (isActive(G, m) ? 4 : 0));
-        if (!t || !t.energy.length || protectedFromEffects(G, ctx, t)) break;
-        const k = f.n === 'all' ? t.energy.length : Math.min(f.n || 1, t.energy.length);
-        const chosen = pickCards(G, P, t.energy.slice(), k, k, 'stripEnergy', (x) => x.sort((a, b) => (needs(t).includes(b.def.provides) ? 1 : 0) - (needs(t).includes(a.def.provides) ? 1 : 0)).reverse(), { mon: t.id });
+        const ok = (e) => !f.special || e.def.special;
+        const t = f.k === 'strip' ? D : pickMon(G, P, mons(O).filter((m) => m.energy.some(ok)), 'strip', (m) => m.energy.filter(ok).length * 2 + monWorth(G, m) + (isActive(G, m) ? 4 : 0));
+        if (!t || !t.energy.some(ok) || protectedFromEffects(G, ctx, t)) break;
+        const k = f.n === 'all' ? t.energy.length : Math.min(f.n || 1, t.energy.filter(ok).length);
+        const chosen = pickCards(G, P, t.energy.filter(ok), k, k, 'stripEnergy', (x) => x.sort((a, b) => (needs(t).includes(b.def.provides) ? 1 : 0) - (needs(t).includes(a.def.provides) ? 1 : 0)).reverse(), { mon: t.id });
         removeEnergy(G, O, t, chosen);
         emit(G, 'discard', `${O.name} discards ${plural(chosen.length, 'Energy', 'Energy')} from ${who(t)}.`, { hl: [t.id] });
         break;
@@ -869,8 +920,105 @@
         break;
       }
       case 'spread': for (const t of mons(O)) if (t !== ctx.snipe) putDamage(G, ctx, t, attackDamage(G, ctx, t, f.n, false)); break;
+      case 'itemLock': ctx.O.flags.itemLock = G.turn + 1; emit(G, 'effect', `${ctx.O.name} can't play Item cards during their next turn.`); break;
+      case 'shuffleSelf': case 'scoopSelf': {
+        // Run Away Draw (only if it drew), Tuck Tail: this Pokémon and everything on it leave play
+        if (!A || !mons(P).includes(A) || (f.k === 'shuffleSelf' && !ctx.drew)) break;
+        const wasActive = P.active === A, name = top(A).name;
+        takeFrom(P.bench, A); if (wasActive) P.active = null;
+        const cards = [...A.stack, ...A.energy].concat(A.tool ? [A.tool] : []);
+        if (f.k === 'shuffleSelf') { P.deck.push(...cards); shuffleDeck(G, P); emit(G, 'shuffle', `${P.name} shuffles ${name} and its cards into their deck.`); }
+        else { P.hand.push(...cards); emit(G, 'move', `${P.name} picks up ${name} and every card attached to it.`); }
+        if (wasActive && !ctx.isAttack) promote(G, P);
+        break;
+      }
+      case 'handCounters': {
+        // Powerful Hand: damage counters, not damage, so Weakness and Resistance don't apply
+        if (!D || protectedFromEffects(G, ctx, D)) break;
+        const k = f.n * P.hand.length;
+        if (!k) { emit(G, 'miss', `${ctx.atk ? ctx.atk.name : 'The attack'} places no damage counters.`); break; }
+        D.dmg += k * 10;
+        P.stats.damage += k * 10; if (k * 10 > P.stats.best) P.stats.best = k * 10;
+        emit(G, 'damage', `${plural(k, 'damage counter')} on ${who(D)}.`, { hl: [D.id], hits: [[D.id, k * 10]] });
+        break;
+      }
+      case 'crispin': {
+        // two Basic Energy of different types: one to the hand, the other attached
+        const pool = P.deck.filter((c) => isEnergy(c.def) && c.def.basicEnergy);
+        const pair = (list) => { const s = byNeed(G, P)(list); const a = s[0], b = s.find((c) => c.def.provides !== a.def.provides); return [a, b].filter(Boolean).concat(s.filter((c) => c !== a && c !== b)); };
+        let chosen = pickCards(G, P, pool, 0, 2, 'crispin', pair, { from: 'deck' });
+        if (chosen.length === 2 && chosen[0].def.provides === chosen[1].def.provides) chosen = [chosen[0]];
+        for (const c of chosen) takeFrom(P.deck, c);
+        shuffleDeck(G, P);
+        if (!chosen.length) { emit(G, 'search', `${P.name} searches their deck but takes nothing.`); break; }
+        const att = chosen.length === 2 ? pickCards(G, P, chosen, 1, 1, 'crispinAttach', (x) => x.sort((a, b) => Math.max(...mons(P).map((m) => energyTargetScore(G, P, m, b.def))) - Math.max(...mons(P).map((m) => energyTargetScore(G, P, m, a.def)))), { from: 'deck' })[0] : chosen[0];
+        const hand = chosen.find((c) => c !== att);
+        if (hand) P.hand.push(hand);
+        emit(G, 'search', `${P.name} searches their deck for ${list(chosen.map((c) => c.def.name))}.`, { cards: chosen.map((c) => [c.id, c.def.id]) });
+        const t = pickMon(G, P, mons(P), 'attachTo', (m) => energyTargetScore(G, P, m, att.def), false, { card: att.id, def: att.def.id });
+        if (t) { attachEnergy(G, P, t, att); emit(G, 'energy', `${P.name} attaches ${att.def.name} to ${who(t)}.`, { hl: [t.id] }); } else P.hand.push(att);
+        break;
+      }
+      case 'redCard': {
+        // Special Red Card: their hand goes to the bottom of their deck, then they draw 3
+        if (!O.hand.length) break;
+        const h = G.rng.shuffle(O.hand.slice()); O.hand = []; O.deck.unshift(...h);
+        const got = draw(G, O, f.n);
+        emit(G, 'draw', `${O.name} puts their hand on the bottom of their deck and draws ${plural(got, 'card')}.`);
+        break;
+      }
+      case 'eri': {
+        // Eri: look at their hand and discard up to n Item cards from it
+        const items = O.hand.filter((c) => c.def.trainer === 'item');
+        emit(G, 'reveal', `${O.name} reveals their hand.`, { cards: O.hand.map((c) => [c.id, c.def.id]) });
+        const chosen = pickCards(G, P, items, 0, f.n, 'discardOppHand', (x) => x.sort((a, b) => cardNeed(G, O, b.def) - cardNeed(G, O, a.def)), { from: 'opp' });
+        discardCards(G, O, chosen);
+        emit(G, 'discard', chosen.length ? `${P.name} discards ${list(chosen.map((c) => c.def.name))} from ${O.name}'s hand.` : `${O.name} has no Item cards to discard.`);
+        break;
+      }
+      case 'moveCounters': {
+        // Adrena-Brain: up to n damage counters from one of your Pokémon to one of theirs
+        const from = pickMon(G, P, mons(P).filter((x) => x.dmg > 0), 'moveFrom', (x) => x.dmg + (isActive(G, x) ? 5 : 0));
+        if (!from) break;
+        const k = Math.min(f.n, Math.floor(from.dmg / 10));
+        const to = pickMon(G, P, mons(O), 'moveTo', (x) => (caged(G, ctx, x) ? -1 : counterValue(G, P, x, k)), false, { n: k });
+        if (!to) break;
+        from.dmg -= k * 10;
+        // under Battle Cage, counters moved to a Benched Pokémon leave the source and are never placed
+        if (caged(G, ctx, to)) { emit(G, 'damage', `${plural(k, 'damage counter')} leave ${nm(from)}; ${G.stadium.def.name} keeps them off ${who(to)}.`, { hl: [from.id], heals: [[from.id, k * 10]] }); break; }
+        to.dmg += k * 10;
+        emit(G, 'damage', `${plural(k, 'damage counter')} move from ${nm(from)} to ${who(to)}.`, { hl: [to.id], hits: [[to.id, k * 10]], heals: [[from.id, k * 10]] });
+        break;
+      }
+      case 'tmEvolve': {
+        // Technical Machine: Evolution: up to n Benched Pokémon evolve straight from the deck
+        const evos = (x) => P.deck.filter((c) => isPokemon(c.def) && c.def.stage > 0 && c.def.from === nm(x));
+        let cands = P.bench.filter((x) => evos(x).length);
+        for (let k = 0; k < f.n && cands.length; k++) {
+          const x = pickMon(G, P, cands, 'tmEvolve', (y) => Math.max(...evos(y).map((c) => pokemonScore(c.def))), true);
+          if (!x) break;
+          const card = pickCards(G, P, evos(x), 1, 1, 'evolveFromDeck', (list) => list.sort((p, q) => pokemonScore(q.def) - pokemonScore(p.def)), { mon: x.id })[0];
+          if (card) evolveInto(G, P, x, card, true);
+          takeFrom(cands, x);
+        }
+        shuffleDeck(G, P);
+        break;
+      }
+      case 'devolveAll': {
+        // Technical Machine: Devolution: each evolved Pokémon of theirs goes back a stage, the top card to their hand
+        for (const x of mons(O)) {
+          if (x.stack.length < 2 || protectedFromEffects(G, ctx, x)) continue;
+          const card = x.stack.pop();
+          O.hand.push(card);
+          clearOnMove(x);
+          emit(G, 'evolve', `${card.def.name} goes back to ${O.name}'s hand; ${nm(x)} is left.`, { hl: [x.id] });
+        }
+        break;
+      }
       case 'counters': case 'countersSpread': {
-        let cands = (f.active ? (D ? [D] : []) : f.bench ? O.bench.slice() : mons(O)).filter((m) => !protectedFromEffects(G, ctx, m));
+        const all = f.active ? (D ? [D] : []) : f.bench ? O.bench.slice() : mons(O);
+        let cands = all.filter((m) => !protectedFromEffects(G, ctx, m) && !caged(G, ctx, m));
+        if (all.some((m) => caged(G, ctx, m))) emit(G, 'prevent', `${G.stadium.def.name} keeps damage counters off the Bench.`);
         if (f.k === 'countersSpread') {
           let left = f.n;
           while (left > 0 && cands.length) {
@@ -893,6 +1041,7 @@
         if (f.extra && O.prizes.length <= f.when) k += f.extra;
         if (f.ifPrizes && P.prizes.length === f.ifPrizes) k = f.instead;
         const got = draw(G, P, k);
+        ctx.drew = got;
         emit(G, 'draw', `${P.name} draws ${plural(got, 'card')}.`);
         break;
       }
@@ -916,9 +1065,10 @@
         const space = BENCH - P.bench.length;
         const pool = P.deck.filter((c) => isBasic(c.def) && (!f.type || c.def.types.includes(f.type)) && (!f.maxHp || c.def.hp <= f.maxHp) && (!f.noRuleBox || !ruleBox(c.def)));
         const chosen = pickCards(G, P, pool, 0, Math.min(f.n, space), 'benchSearch', byNeed(G, P), { from: 'deck' });
-        for (const c of chosen) { const m = toBench(G, P, c); m.since = G.turn; }
+        const put = chosen.map((c) => { const m = toBench(G, P, c); m.since = G.turn; return m; });
         shuffleDeck(G, P);
         emit(G, 'bench', chosen.length ? `${P.name} puts ${list(chosen.map((c) => c.def.name))} onto the Bench.` : `${P.name} searches their deck and finds nothing to bench.`);
+        for (const m of put) benchHurt(G, P, m);
         break;
       }
       case 'pokeSearch': case 'energySearch': case 'cardSearch': case 'tutor': {
@@ -955,6 +1105,7 @@
             if (f.filter === 'evolution' && d.stage === 0) return false;
             if (f.filter === 'stage1' && d.stage !== 1) return false;
             if (f.maxHp && d.hp > f.maxHp) return false;
+            if (f.noRuleBox && ruleBox(d)) return false;
             return true;
           });
           chosen = pickCards(G, P, pool, 0, f.n, 'search', byNeed(G, P), { from: 'deck' });
@@ -988,6 +1139,7 @@
           if (f.what === 'pokemon') return isPokemon(d);
           if (f.what === 'supporter') return d.trainer === 'supporter';
           if (f.what === 'item') return d.trainer === 'item';
+          if (f.what === 'trainer') return d.kind === 1;
           return (isPokemon(d) && (!f.noRuleBox || !ruleBox(d))) || (isEnergy(d) && d.basicEnergy);
         });
         const chosen = pickCards(G, P, pool, 0, f.n, f.k === 'rod' ? 'rod' : 'recover', byNeed(G, P), { from: 'discard' });
@@ -1072,8 +1224,9 @@
       case 'reviveName': {
         const pool = P.discard.filter((c) => c.def.name.toLowerCase() === f.name && isBasic(c.def));
         const chosen = pickCards(G, P, pool, 0, Math.min(f.n, BENCH - P.bench.length), 'revive', (x) => x, { from: 'discard' });
-        for (const c of chosen) { const m = toBench(G, P, c); m.since = G.turn; }
+        const put = chosen.map((c) => { const m = toBench(G, P, c); m.since = G.turn; return m; });
         if (chosen.length) emit(G, 'bench', `${P.name} puts ${list(chosen.map((c) => c.def.name))} onto the Bench from the discard pile.`);
+        for (const m of put) benchHurt(G, P, m);
         break;
       }
       case 'peek': {
@@ -1132,6 +1285,8 @@
     v += m.energy.length;
     if (d.prizes > 1 && !d.atks.some((a) => canPay(energyOf(m), a.cost))) v -= 6;
     if (d.abil.some((a) => a.k === 'once' && a.bench)) v -= 4;
+    // a Pokémon that still has an Evolution to come is better kept safe on the Bench than knocked out up front
+    if (d.stage < 2 && P.deck.concat(P.hand).some((c) => isPokemon(c.def) && c.def.from === d.name) && threatened(G, P, m)) v -= 6;
     return v;
   }
   function energyTargetScore(G, P, m, ed) {
@@ -1178,6 +1333,8 @@
      ============================================================ */
   function trainerPlayable(G, P, c) {
     const d = c.def, O = opp(G, P);
+    if (d.trainer === 'item' && P.flags.itemLock === G.turn) return false;
+    if (d.ace && aceLocked(G, P)) return false;
     if (d.trainer === 'supporter') {
       if (P.flags.supporter === G.turn) return false;
       if (G.turn === 1 && P.i === G.first && !(d.req && d.req.req === 'firstTurnOk')) return false;
@@ -1188,6 +1345,7 @@
       if (d.req.req === 'discard' && P.hand.length - 1 < d.req.n) return false;
       if (d.req.req === 'behind' && !(P.prizes.length > O.prizes.length)) return false;
       if (d.req.req === 'revenge' && P.koTurn !== G.turn - 1) return false;
+      if (d.req.req === 'oppPrizes' && O.prizes.length > d.req.n) return false;
     }
     const fx = d.fx || [];
     for (const f of fx) {
@@ -1201,6 +1359,9 @@
       if (f.k === 'shiftEnergy' && !mons(P).some((m) => m.energy.length)) return false;
       if (f.k === 'strip' && !(O.active && O.active.energy.length)) return false;
       if (f.k === 'toolScrap' && !allMons(G).some((m) => m.tool)) return false;
+      if (f.k === 'stripAny' && f.special && !mons(O).some((m) => m.energy.some((e) => e.def.special))) return false;
+      if (f.k === 'attachDiscard' && f.to === 'stage2' && !(mons(P).some((m) => top(m).stage === 2) && P.discard.some((x) => isEnergy(x.def) && x.def.basicEnergy))) return false;
+      if (f.k === 'crispin' && !P.deck.some((x) => isEnergy(x.def) && x.def.basicEnergy)) return false;
     }
     return true;
   }
@@ -1230,6 +1391,8 @@
     P.discard.push(c);
   }
   function abilityUsable(G, P, m, a) {
+    if (!abilOf(G, m).includes(a)) return false;
+    if (a.needE && !energyOf(m).some((e) => e === a.needE || e === '*')) return false;
     if (a.k === 'once') {
       if (m.used[a.name] === G.turn) return false;
       if (a.unique && P.flags['u:' + a.name] === G.turn) return false;
@@ -1254,7 +1417,9 @@
       case 'attachHand': return P.hand.some((c) => isEnergy(c.def) && c.def.basicEnergy && (!f.type || c.def.provides === f.type));
       case 'attachDiscard': return P.discard.some((c) => isEnergy(c.def) && c.def.basicEnergy && (!f.type || c.def.provides === f.type));
       case 'attachDeck': return P.deck.some((c) => isEnergy(c.def) && c.def.basicEnergy && (!f.type || c.def.provides === f.type));
-      case 'counters': return mons(O).length > 0;
+      case 'counters': return f.bench ? O.bench.length > 0 : mons(O).length > 0;
+      case 'moveCounters': return mons(P).some((x) => x.dmg > 0) && mons(O).length > 0;
+      case 'shuffleSelf': return mons(P).length > 1;
       case 'heal': return mons(P).some((x) => x.dmg > 0);
       case 'gust': return O.bench.length > 0;
       case 'switch': return P.bench.length > 0;
@@ -1308,14 +1473,33 @@
     else if (s.k === 'energyRecover') doFx(G, ctx, { k: 'recoverEnergy', n: s.n, type: s.type });
   }
 
+  // The copy-an-attack effect of an attack, if it has one: { flip } when it needs heads first
+  function copyOf(a) {
+    if (a.fx.some((f) => f.k === 'copyAttack')) return { flip: false };
+    if (a.fx.length === 1 && a.fx[0].k === 'flip' && (a.fx[0].heads || []).some((f) => f.k === 'copyAttack')) return { flip: true };
+    return null;
+  }
   function useAttack(G, P, m, i) {
-    const O = opp(G, P), a = top(m).atks[i];
+    const O = opp(G, P);
+    let a = atksOf(G, m)[i];
     G.phase = 'attack';
     emit(G, 'attack', `${nm(m)} uses ${a.name}.`, { hl: [m.id], atk: a.name, who: P.i });
     if (m.cond.r === 'confused' && !flip(G, P, `${nm(m)} is Confused`)) {
       m.dmg += 30;
       emit(G, 'damage', `${nm(m)} hurts itself in its confusion for 30 damage.`, { hl: [m.id], hits: [[m.id, 30]] });
       return;
+    }
+    // Genome Hacking, Metronome, Foul Play: one of the opponent's Active Pokémon's attacks, used as this attack
+    const copy = copyOf(a);
+    if (copy) {
+      if (copy.flip && !flip(G, P, a.name)) { emit(G, 'miss', `${a.name} does nothing.`); return; }
+      const opts = O.active ? top(O.active).atks.filter((x) => !copyOf(x)) : [];
+      if (!opts.length) { emit(G, 'miss', `${a.name} has nothing to copy.`); return; }
+      const k = isHuman(G, P) ? (ask(G, { type: 'option', reason: 'copyAttack', options: opts.map((x) => `${x.name}${x.base ? ` (${x.base}${x.mod === 'x' ? '×' : x.mod})` : ''}`) }).i || 0)
+        : opts.map((x, j) => [j, estimateWith(G, P, m, x, O.active).dmg]).sort((p, q) => q[1] - p[1])[0][0];
+      const orig = a.name;
+      a = opts[Math.max(0, Math.min(opts.length - 1, k))];
+      emit(G, 'attack', `${orig} copies ${a.name}.`, { hl: [m.id], atk: a.name, who: P.i });
     }
     const ctx = { P, O, src: m, atk: a, isAttack: true, fuel: 0, plus: 0, times: null, nothing: false, noWR: false, noRes: false, pierce: false, snipe: null, post: [], dealt: 0 };
     for (const f of a.fx) { if (G.over) return; if (PRE.has(f.k)) preFx(G, ctx, f); else ctx.post.push(f); }
@@ -1464,6 +1648,7 @@
   function endTurn(G) {
     const P = G.players[G.active];
     G.phase = 'checkup';
+    for (const m of mons(P)) if (m.tool && m.tool.def.tool && m.tool.def.tool.k === 'tm') { P.discard.push(m.tool); emit(G, 'tool', `${m.tool.def.name} is discarded from ${nm(m)}.`, { hl: [m.id] }); m.tool = null; }
     const t = P.active && toolFx(G, P.active);
     if (t && t.k === 'leftovers' && P.active.dmg) { const h = Math.min(t.n, P.active.dmg); P.active.dmg -= h; emit(G, 'heal', `${P.active.tool.def.name} heals ${h} damage from ${nm(P.active)}.`, { heals: [[P.active.id, h]] }); }
     checkKOs(G, G.active);
@@ -1496,7 +1681,7 @@
         if (d.stage === 0 && P.bench.length < BENCH) out.push({ k: 'bench', c: c.id });
         if (d.stage > 0) for (const m of mons(P)) if (canEvolve(G, P, m, d)) out.push({ k: 'evolve', c: c.id, m: m.id });
       } else if (isEnergy(d)) {
-        if (P.flags.energy !== G.turn) for (const m of mons(P)) out.push({ k: 'energy', c: c.id, m: m.id });
+        if (P.flags.energy !== G.turn && !(d.ace && aceLocked(G, P))) for (const m of mons(P)) out.push({ k: 'energy', c: c.id, m: m.id });
       } else if (d.trainer === 'tool') {
         if (trainerPlayable(G, P, c)) for (const m of mons(P)) if (!m.tool) out.push({ k: 'tool', c: c.id, m: m.id });
       } else if (trainerPlayable(G, P, c)) out.push({ k: 'play', c: c.id });
@@ -1504,7 +1689,7 @@
     for (const m of mons(P)) top(m).abil.forEach((a, i) => { if (abilityUsable(G, P, m, a)) out.push({ k: 'ability', m: m.id, i }); });
     if (stadiumUsable(G, P)) out.push({ k: 'stadium' });
     if (canRetreat(G, P)) out.push({ k: 'retreat' });
-    if (P.active) top(P.active).atks.forEach((a, i) => { if (canAttackWith(G, P, P.active, i)) out.push({ k: 'attack', i }); });
+    if (P.active) atksOf(G, P.active).forEach((a, i) => { if (canAttackWith(G, P, P.active, i)) out.push({ k: 'attack', i }); });
     out.push({ k: 'end' });
     return out;
   }
@@ -1516,7 +1701,12 @@
         const mon = toBench(G, P, card);
         mon.since = G.turn;
         emit(G, 'bench', `${P.name} puts ${card.def.name} on the Bench.`, { who: P.i, hl: [mon.id] });
-        for (const ab of card.def.abil) if (ab.k === 'bench' && ab.fx.every((f) => fxPossible(G, P, mon, f)) && yes(G, P, 'abilityTrigger', true, { mon: mon.id, ability: ab.name })) {
+        benchHurt(G, P, mon);
+        for (const ab of card.def.abil) {
+          // Last-Ditch Abilities: one a turn
+          if (ab.k !== 'bench' || (ab.lastDitch && P.flags.lastDitch === G.turn) || !ab.fx.every((f) => fxPossible(G, P, mon, f))) continue;
+          if (!yes(G, P, 'abilityTrigger', true, { mon: mon.id, ability: ab.name })) continue;
+          if (ab.lastDitch) P.flags.lastDitch = G.turn;
           emit(G, 'ability', `${card.def.name}'s ${ab.name}.`, { hl: [mon.id] });
           runFx(G, { P, O: opp(G, P), src: mon, label: ab.name }, ab.fx);
         }
@@ -1528,6 +1718,8 @@
         P.flags.energy = G.turn;
         P.stats.energy++;
         emit(G, 'energy', `${P.name} attaches ${card.def.name} to ${nm(m)}.`, { who: P.i, hl: [m.id] });
+        // Telepathic Psychic Energy, Enriching Energy
+        if (card.def.onAttach && (!card.def.onAttach.onType || top(m).types.includes(card.def.onAttach.onType))) runFx(G, { P, O: opp(G, P), src: m, label: card.def.name }, card.def.onAttach.fx);
         return;
       case 'tool': playTrainer(G, P, card, m); return;
       case 'play': playTrainer(G, P, card); return;
@@ -1553,15 +1745,21 @@
 
   /* ---------- AI: a whole turn ---------- */
   // estimated damage of attack i by attacker m against target t, coin flips averaged
-  function estimate(G, P, m, i, t) {
-    const a = top(m).atks[i];
+  function estimate(G, P, m, i, t) { return estimateWith(G, P, m, atksOf(G, m)[i], t); }
+  function estimateWith(G, P, m, a, t) {
     const O = G.players[t.owner];
     const ctx = { P, O, src: m, atk: a, isAttack: true, fuel: 0, plus: 0, times: null, noWR: false, noRes: false, pierce: false };
-    let mult = 1, ko = false;
+    let mult = 1, ko = false, counters = 0;
     for (const f of a.fx) {
       switch (f.k) {
+        case 'handCounters': counters += protectedFromEffects(G, ctx, t) ? 0 : f.n * 10 * P.hand.length; break;
         case 'coins': if (f.more) ctx.plus += f.n * (f.coins === 'tails' ? 1 : f.coins / 2); else ctx.times = f.n * (f.coins === 'tails' ? 1 : f.coins / 2); break;
-        case 'flip': { if (f.tails.some((x) => x.k === 'nothing')) mult *= 0.5; for (const g of f.heads) if (g.k === 'plus') ctx.plus += g.n / 2; break; }
+        case 'flip': {
+          if (f.tails.some((x) => x.k === 'nothing')) mult *= 0.5;
+          for (const g of f.heads) if (g.k === 'plus') ctx.plus += g.n / 2;
+          if (f.heads.some((g) => g.k === 'copyAttack')) { const D = O.active; ctx.times = D ? Math.max(0, ...top(D).atks.filter((x) => !copyOf(x)).map((x) => x.base)) : 0; mult *= 0.5; }
+          break;
+        }
         case 'flipAll': mult *= 1; break;
         case 'flipAny': mult *= Math.pow(0.5, f.coins); break;
         case 'scale': { const k = countFor(G, ctx, f.per, f.type); if (f.how === 'times') ctx.times = f.n * k; else if (f.how === 'less') ctx.plus -= f.n * k; else ctx.plus += f.n * k; break; }
@@ -1571,7 +1769,8 @@
         case 'noRes': ctx.noRes = true; break;
         case 'pierce': ctx.pierce = true; break;
         case 'hitNew': ctx.times = f.n; break;
-        case 'snipe': ctx.times = f.n; break;
+        case 'snipe': ctx.times = f.perSelf ? f.perSelf * Math.floor(m.dmg / 10) : f.n; break;
+        case 'copyAttack': { const D = O.active; ctx.times = D ? Math.max(0, ...top(D).atks.filter((x) => !copyOf(x)).map((x) => x.base)) : 0; break; }
         case 'fuel': ctx.fuel = Math.min(f.max, f.from === 'hand'
           ? P.hand.filter((c) => isEnergy(c.def) && (!f.basic || c.def.basicEnergy) && (!f.type || c.def.provides === f.type)).length
           : (f.from === 'self' ? energyOf(m) : mons(P).flatMap(energyOf)).filter((e) => !f.type || e === f.type).length); break;
@@ -1581,7 +1780,7 @@
       }
     }
     const base = Math.max(0, (ctx.times != null ? ctx.times : a.base) + ctx.plus);
-    const dmg = attackDamage(G, ctx, t, base, true) * mult;
+    const dmg = (attackDamage(G, ctx, t, base, true) + counters) * mult;
     return { dmg, ko: ko || dmg >= hpLeft(G, t), sure: mult === 1 && !a.fx.some((f) => f.k === 'coins') };
   }
   function sideValue(G, P, m, a) {
@@ -1607,6 +1806,10 @@
         case 'shield': case 'protect': v += 7; break;
         case 'weaken': case 'noRetreat': case 'noAttack': case 'vulnerable': v += 5; break;
         case 'strip': v += 8; break;
+        case 'itemLock': v += 6; break;
+        case 'scoopSelf': v += m.dmg > 0 && threatened(G, P, m) ? 6 * top(m).prizes : -4; break;
+        case 'tmEvolve': v += 14 * Math.min(f.n, P.bench.filter((x) => P.deck.some((c) => isPokemon(c.def) && c.def.from === nm(x))).length); break;
+        case 'devolveAll': for (const x of mons(opp(G, P))) if (x.stack.length > 1) { const prev = x.stack[x.stack.length - 2].def; v += x.dmg >= prev.hp ? 100 * prev.prizes : 6 + 4 * (top(x).stage); } break;
         case 'switchSelf': v += f.may ? 2 : -2; break;
         case 'switchOutOpp': v += 3; break;
         case 'millOpp': v += f.n; break;
@@ -1618,8 +1821,8 @@
   }
   function bestAttackOn(G, P, m, t) {
     let best = { i: -1, dmg: 0, ko: false, score: -Infinity };
-    top(m).atks.forEach((a, i) => {
-      if (!canPay(energyOf(m), a.cost)) return;
+    atksOf(G, m).forEach((a, i) => {
+      if (!canPay(energyOf(m), costOf(G, m, a))) return;
       const e = estimate(G, P, m, i, t);
       const score = (e.ko ? 100 * top(t).prizes + (e.sure ? 20 : 0) : (e.dmg / Math.max(10, hpLeft(G, t))) * 40 * top(t).prizes) + sideValue(G, P, m, a);
       if (score > best.score) best = { i, dmg: e.dmg, ko: e.ko, score };
@@ -1630,7 +1833,7 @@
     const m = P.active, t = opp(G, P).active;
     if (!m || !t) return { i: -1, score: -Infinity };
     let best = { i: -1, score: -Infinity, ko: false, dmg: 0 };
-    top(m).atks.forEach((a, i) => {
+    atksOf(G, m).forEach((a, i) => {
       if (!canAttackWith(G, P, m, i)) return;
       const e = estimate(G, P, m, i, t);
       const dmg = e.dmg + (bonusDmg || 0);
@@ -1865,7 +2068,7 @@
         if (ab.sacrifice) return aiSacrificeWorth(G, P, m, ab);
         const drawn = ab.fx.reduce((s2, f) => s2 + (f.k === 'draw' ? f.n + (f.activeBonus || 0) : f.k === 'drawTo' ? Math.max(0, f.n - P.hand.length) : f.k === 'tutor' ? 1 : 0), 0);
         if (drawn && drawn > drawBudget(G, P) && P.hand.length > 1) return false;
-        if (ab.fx.some((f) => f.k === 'draw' || f.k === 'drawTo') && P.hand.length >= 8) return false;
+        if (ab.fx.some((f) => f.k === 'draw' || f.k === 'drawTo') && P.hand.length >= 8 && !handAttacker(G, P)) return false;
         if (ab.fx.some((f) => f.k === 'discardHand') && P.hand.length > 3) return false;
         if (ab.fx.some((f) => f.k === 'counters')) return mons(O).some((x) => hpLeft(G, x) <= ab.fx[0].n * 10);
         if (ab.fx.some((f) => f.k === 'heal')) return mons(P).some((x) => x.dmg >= 30);
@@ -1882,11 +2085,11 @@
       }
       // 4. Items that find things
       const items = has('play', (a) => card(a.c).def.trainer === 'item');
-      const useful = items.map((a) => [a, itemValue(G, P, card(a.c))]).filter(([, v]) => v > 0).sort((x, y) => y[1] - x[1]);
+      const useful = items.map((a) => [a, itemValue(G, P, card(a.c))]).filter(([a, v]) => v > 0 && !(handAttacker(G, P) && handNet(G, P, card(a.c)) < 0 && v < 6)).sort((x, y) => y[1] - x[1]);
       if (useful.length) { const it = planPick(G, P, 'item', useful.map((x) => x[0]), false); act(it); did = true; continue; }
       // 5. A Supporter that draws or searches (gusts wait for the attack)
       if (P.flags.supporter !== G.turn && P.flags.skipSup !== G.turn) {
-        const sups = has('play', (a) => card(a.c).def.trainer === 'supporter').map((a) => [a, supporterValue(G, P, card(a.c))]).filter(([, v]) => v > 0).sort((x, y) => y[1] - x[1]);
+        const sups = has('play', (a) => card(a.c).def.trainer === 'supporter').map((a) => [a, supporterValue(G, P, card(a.c))]).filter(([a, v]) => v > 0 && !(handAttacker(G, P) && handNet(G, P, card(a.c)) < 0 && v < 6)).sort((x, y) => y[1] - x[1]);
         if (sups.length) {
           const sp = planPick(G, P, 'supporter', sups.map((x) => x[0]), true);
           if (sp) { act(sp); did = true; continue; }
@@ -1969,7 +2172,8 @@
       case 'recover': case 'rod': return P.discard.filter((x) => isPokemon(x.def)).length >= 2 && (f.k === 'recover' || deckLow) ? 2.5 : 0;
       case 'gust': return 0; // saved for the attack step
       case 'flip': return f.heads && f.heads[0] && f.heads[0].k === 'stripAny' ? (mons(O).some((m) => m.energy.length) ? 3 : 0) : f.heads && f.heads[0] && f.heads[0].k === 'gust' ? 0 : 2;
-      case 'strip': case 'stripAny': return O.active && O.active.energy.length ? 3 : 0;
+      case 'strip': case 'stripAny': return f.special ? (mons(O).some((m) => m.energy.some((e) => e.def.special)) ? 4 : 0) : O.active && O.active.energy.length ? 3 : 0;
+      case 'redCard': return O.hand.length >= 5 ? (O.hand.length - 3) * 1.3 : 0;
       case 'shiftEnergy': return 0;
       case 'toolScrap': return mons(O).some((m) => m.tool) ? 2 : 0;
       case 'cond': return 4;
@@ -1978,6 +2182,22 @@
     }
   }
   function threatenedAfterHeal(G, P, n) { return false; }
+  // How a Trainer changes the size of the hand (playing it counts as one card gone)
+  function handNet(G, P, c) {
+    const d = c.def;
+    let n = -1 - (d.req && d.req.req === 'discard' ? d.req.n : 0);
+    for (const f of d.fx || []) {
+      if (f.k === 'draw') n += f.n;
+      else if (f.k === 'drawTo') n += Math.max(0, f.n - (P.hand.length - 1));
+      else if (f.k === 'pokeSearch' || f.k === 'energySearch' || f.k === 'tutor' || f.k === 'recover' || f.k === 'recoverEnergy') n += f.n || 1;
+      else if (f.k === 'cardSearch') n += f.what.length;
+      else if (f.k === 'crispin') n += 1;
+      else if (f.k === 'rareCandy') n -= 1;
+      else if (f.k === 'shuffleHand' || f.k === 'discardHand' || f.k === 'iono' || f.k === 'judge') n -= P.hand.length - 1;
+    }
+    return n;
+  }
+  const handAttacker = (G, P) => !!P.active && atksOf(G, P.active).some((a) => a.fx.some((f) => f.k === 'handCounters'));
   function supporterValue(G, P, c) {
     const d = c.def, O = opp(G, P);
     const f = (d.fx || [])[0] || {};
@@ -2000,6 +2220,9 @@
       case 'recover': case 'recoverEnergy': case 'rod': return P.discard.length >= 4 ? 2.5 : 0;
       case 'choose': return 0;
       case 'boost': return 0;
+      case 'crispin': return P.deck.some((x) => isEnergy(x.def) && x.def.basicEnergy) ? 4.5 + (mons(P).some((m) => needs(m).length) ? 1.5 : 0) : 0;
+      case 'attachDiscard': return f.to === 'stage2' && mons(P).some((m) => top(m).stage === 2 && needs(m).length) ? 6 : 0;
+      case 'eri': return O.hand.length >= 4 ? 3.5 : 1;
       default: return 1.5;
     }
   }
@@ -2013,6 +2236,15 @@
       case 'retreat': return retreatCost(G, m) >= 1 && (!t.stage || t.stage === d.stage) ? (isActive(G, m) ? 3 : 1.5) : 0;
       case 'shield': return (!t.type || d.types.includes(t.type)) && (!t.stage || t.stage === d.stage) ? (isActive(G, m) ? 3.5 : 1.5) : 0;
       case 'noWeak': return d.stage === 0 && d.weak.length ? 2 : 0;
+      case 'tm': {
+        if (!isActive(G, m) || !c.def.tmAtks || !c.def.tmAtks.length) return 0;
+        const a = c.def.tmAtks[0];
+        const payable = canPay(energyOf(m), a.cost) || (P.flags.energy !== G.turn && P.hand.some((x) => isEnergy(x.def)) && shortfall(energyOf(m), a.cost).length <= 1);
+        if (!payable || (G.turn <= 1 && P.i === G.first)) return 0;
+        const v = sideValue(G, P, m, a);
+        const own = bestAttack(G, P);
+        return v > 10 && v > (own.score || 0) ? v / 4 : 0;
+      }
       default: return isActive(G, m) ? 2 : 1;
     }
   }
@@ -2027,12 +2259,16 @@
     const bv = ranked[0][1];
     const gain = bv - (stuck ? -40 : here.score);
     const doomed = threatened(G, P, A) && top(A).prizes >= 2 && P.bench.some((b) => top(b).prizes < top(A).prizes);
-    const want = gain > 25 * PERSONAS[P.persona].hold || (stuck && bv > -20) || (doomed && here.score < 100);
+    const better = gain > 25 * PERSONAS[P.persona].hold || (stuck && bv > -20);
+    // moving only to save Prize cards means bringing in something worth fewer of them
+    const cheaper = ranked.filter(([b]) => top(b).prizes < top(A).prizes);
+    const want = better || (doomed && here.score < 100 && cheaper.length > 0);
     // the hard AI may also try staying put when it would move, or moving when it would stay
     const moveIt = planPick(G, P, 'switch', want ? ['move', 'stay'] : ['stay', 'move'], false) === 'move';
     if (!moveIt || !(canRetreat(G, P) || P.hand.some((c) => c.def.trainer === 'item' && c.def.fx && c.def.fx.length === 1 && c.def.fx[0].k === 'switch'))) return;
     // and bring in another Pokémon than the one that hits hardest
-    const to = planPick(G, P, 'switchTo', ranked.map((x) => x[0]), false);
+    const cands = (!better && doomed && cheaper.length ? cheaper : ranked).map((x) => x[0]);
+    const to = planPick(G, P, 'switchTo', cands, false);
     P.flags.switchTo = to.id;
     const sw = P.hand.find((c) => c.def.trainer === 'item' && c.def.fx && c.def.fx.length === 1 && c.def.fx[0].k === 'switch' && trainerPlayable(G, P, c));
     if (sw && (!canRetreat(G, P) || retreatCost(G, A) >= 1)) doAction(G, P, { k: 'play', c: sw.id });
