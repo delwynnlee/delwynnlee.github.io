@@ -11,14 +11,21 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Tutor">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='13' y='5' width='38' height='54' rx='5' fill='%23ece5d8'/%3E%3Cpath d='M22 19h20v5h-7.5v23h-5V24H22z' fill='%23201d27'/%3E%3C/svg%3E">
+<link rel="icon" type="image/png" sizes="64x64" href="img/favicon-64.png">
+<link rel="icon" type="image/png" sizes="192x192" href="img/icon-192.png">
+<link rel="apple-touch-icon" href="img/icon-180.png">
+<meta property="og:title" content="Tutor: search every Magic card">
+<meta property="og:description" content="A fast, good-looking Magic: The Gathering card browser, with an Arena to play against the AI.">
+<meta property="og:image" content="https://delwynnlee.github.io/tutor/img/og-cards.jpg">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://api.scryfall.com" crossorigin>
 <link rel="preconnect" href="https://cards.scryfall.io">
 <link rel="preconnect" href="https://svgs.scryfall.io">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400..900;1,400..900&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;0,800;1,400;1,500&display=swap">
-<link rel="stylesheet" href="theme.css?v=1">
+<link rel="stylesheet" href="theme.css?v=2">
 <script src="ui.js?v=1"></script>
 <style>
 /* ============================================================
@@ -227,6 +234,7 @@ main { min-width: 0; padding: 22px 0 40px; outline: none; }
 .intro { margin: 10px 0 34px; }
 .intro h1 { margin: 0; font: 800 clamp(31px, 3.6vw, 46px)/1.04 var(--serif); letter-spacing: -.016em; max-width: 20ch; }
 .intro p { margin: 12px 0 18px; font-size: 17.5px; color: var(--muted); max-width: 60ch; }
+.intro h1 + .ornament { margin: 12px 0 0; }
 .intro code, .qcode { font: 500 .86em/1 var(--mono); background: var(--surface); border: 1px solid var(--line); padding: .22em .45em; border-radius: 6px; color: var(--text); }
 .examples { display: flex; flex-wrap: wrap; gap: 8px; }
 .examples .chip { padding: 9px 15px; font-size: 15px; }
@@ -339,6 +347,7 @@ main { min-width: 0; padding: 22px 0 40px; outline: none; }
 #sentinel { height: 1px; }
 .state { padding: 40px 0 30px; max-width: 58ch; }
 .state h3 { margin: 0 0 8px; font: 700 25px/1.2 var(--serif); }
+.state .medal { width: 112px; height: 112px; margin-bottom: 18px; }
 .state p { margin: 0 0 14px; color: var(--muted); font-size: 16.5px; }
 .state ul { margin: 0 0 16px; padding-left: 18px; color: var(--muted); }
 .state .row-btns { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; }
@@ -355,6 +364,7 @@ main { min-width: 0; padding: 22px 0 40px; outline: none; }
 .saved-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .saved-actions .pill.is-confirm { border-color: var(--banned); color: var(--banned); }
 .saved-empty { margin: 4px 0 24px; }
+.saved-empty .medal { width: 112px; height: 112px; margin: 10px 0 18px; }
 .saved-stats { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 20px 40px; margin: 6px 0 30px; padding: 18px 20px 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: var(--sh-1); }
 .saved-stats h3 { margin: 0 0 4px; font: 700 14.5px var(--sans); color: var(--muted); }
 .saved-stats .sum { margin: 2px 0 0; font-size: 14px; color: var(--faint); }
@@ -405,7 +415,8 @@ main { min-width: 0; padding: 22px 0 40px; outline: none; }
 .face { position: absolute; inset: 0; border-radius: var(--card-r); overflow: hidden; background: #15131a; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
 .face.back { transform: rotateY(180deg); }
 .face img { width: 100%; height: 100%; object-fit: cover; display: block; user-select: none; -webkit-user-select: none; }
-.noimg { position: absolute; inset: 0; display: grid; place-items: center; padding: 14%; text-align: center; font: 700 22px/1.2 var(--serif); background: var(--surface); }
+.noimg { position: absolute; inset: 0; display: grid; place-items: center; padding: 14%; text-align: center; font: 700 22px/1.2 var(--serif); color: #f1eadd; text-shadow: 0 2px 10px #000;
+  background: linear-gradient(rgb(23 21 28 / .5), rgb(23 21 28 / .5)), #2a2335 url("img/cardback.webp") center / cover; }
 .glare, .foil { position: absolute; inset: 0; border-radius: var(--card-r); pointer-events: none; }
 .glare {
   background: radial-gradient(circle at var(--gx) var(--gy), rgba(255, 255, 255, .5) 0%, rgba(255, 255, 255, .14) 24%, rgba(255, 255, 255, 0) 56%);
@@ -649,6 +660,8 @@ main { min-width: 0; padding: 22px 0 40px; outline: none; }
   .legal { column-gap: 18px; }
 }
 @media (max-width: 640px) {
+  /* The search header is two rows tall here, so the landing scene needs less room above the title */
+  body[data-art] .intro { padding-top: 112px; }
   .top { grid-template-rows: 56px auto; column-gap: 8px; padding-left: calc(14px + var(--safe-l)); padding-right: calc(14px + var(--safe-r)); }
   .actions { gap: 6px; }
 }
@@ -702,8 +715,8 @@ main { min-width: 0; padding: 22px 0 40px; outline: none; }
 <div class="layout">
   <aside class="rail" id="rail" aria-label="Filters"></aside>
   <main id="main" tabindex="-1">
-    <section class="intro" id="intro" hidden>
-      <h1>Find any Magic card.</h1>
+    <section class="intro art-title" id="intro" hidden>
+      <h1>Find any Magic card.</h1><span class="ornament" aria-hidden="true"></span>
       <p>Type a name or some rules text, or use Scryfall syntax like <code>t:dragon c:r</code>. The filters build the query for you.</p>
       <div class="examples" id="examples"></div>
     </section>
@@ -1551,7 +1564,7 @@ async function runSearch() {
   const ctl = searchCtl = new AbortController();
   const hadCards = R.cards.length > 0 && !R.error;
   R = { url, q, cards: hadCards ? R.cards : [], total: hadCards ? R.total : 0, next: null, warnings: [], loading: true, error: null };
-  E.intro.hidden = !!q;
+  showIntro(!q);
   renderHead();
   E.warn.hidden = true;
   E.foot.textContent = '';
@@ -1680,29 +1693,30 @@ function renderFoot() {
   else E.foot.innerHTML = '';
 }
 function errorHTML(err) {
+  const medal = (n) => `<img class="medal" src="img/${n}.webp" alt="" width="112" height="112">`;
   const warnings = err.warnings && err.warnings.length ? `<ul>${err.warnings.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '';
   const clear = hasFilters() ? '<button type="button" class="pill" data-act="clear-filters">Clear filters</button>' : '';
   const guide = '<a href="https://scryfall.com/docs/syntax" target="_blank" rel="noopener">Search syntax guide</a>';
   if (err.network) {
-    return `<div class="state"><h3>Can't reach Scryfall.</h3>
+    return `<div class="state">${medal('empty-search')}<h3>Can't reach Scryfall.</h3>
       <p>Tutor loads every card live from Scryfall's database. Check your connection and try again. If you opened this file inside a preview that blocks outside connections, open it directly in your browser instead.</p>
       <div class="row-btns"><button type="button" class="pill pill-solid" data-act="retry">Try again</button></div></div>`;
   }
   if (err.status === 404) {
-    return `<div class="state"><h3>No cards match this search.</h3>
+    return `<div class="state">${medal('empty-search')}<h3>No cards match this search.</h3>
       <p>Try fewer filters, check the spelling, or loosen the rules text.</p>${warnings}
       <div class="row-btns">${clear}${guide}</div></div>`;
   }
   if (err.status === 400 || err.status === 422) {
-    return `<div class="state"><h3>Scryfall couldn't read this search.</h3>
+    return `<div class="state">${medal('empty-search')}<h3>Scryfall couldn't read this search.</h3>
       <p>${esc(err.details || 'Part of the query is not valid syntax.')}</p>${warnings}
       <div class="row-btns">${clear}${guide}</div></div>`;
   }
   if (err.status === 429) {
-    return `<div class="state"><h3>Scryfall asked us to slow down.</h3><p>Wait a few seconds, then try again.</p>
+    return `<div class="state">${medal('hourglass')}<h3>Scryfall asked us to slow down.</h3><p>Wait a few seconds, then try again.</p>
       <div class="row-btns"><button type="button" class="pill pill-solid" data-act="retry">Try again</button></div></div>`;
   }
-  return `<div class="state"><h3>Scryfall returned an error${err.status ? ` (${err.status})` : ''}.</h3>
+  return `<div class="state">${medal('empty-search')}<h3>Scryfall returned an error${err.status ? ` (${err.status})` : ''}.</h3>
     <p>${esc(err.details || 'Something went wrong on their side. Try again in a moment.')}</p>
     <div class="row-btns"><button type="button" class="pill pill-solid" data-act="retry">Try again</button></div></div>`;
 }
@@ -1832,9 +1846,13 @@ function setMode(next) {
     runSearch();
   }
 }
+function showIntro(on) {
+  E.intro.hidden = !on;
+  if (on) document.body.dataset.art = 'cards'; else delete document.body.dataset.art;
+}
 function renderSaved() {
   E.rhead.hidden = false;
-  E.intro.hidden = true;
+  showIntro(false);
   E.warn.hidden = true;
   E.foot.innerHTML = '';
   E.rtools.hidden = false;
@@ -1847,7 +1865,7 @@ function renderSaved() {
     : '<span>Open any card and choose Save to keep it here.</span>';
   E.savedStats.hidden = false;
   E.savedStats.className = n ? 'saved-stats' : 'saved-empty';
-  E.savedStats.innerHTML = n ? savedStatsHTML() : `<div class="saved-actions"><button type="button" class="pill" data-act="back">Back to search</button></div>`;
+  E.savedStats.innerHTML = n ? savedStatsHTML() : `<img class="medal" src="img/empty-saved.webp" alt="" width="112" height="112"><div class="saved-actions"><button type="button" class="pill" data-act="back">Back to search</button></div>`;
   E.results.className = S.view === 'list' ? 'list' : 'grid';
   const make = S.view === 'list' ? rowHTML : tileHTML;
   E.results.innerHTML = (S.view === 'list' && n ? LIST_HEAD : '') + SAVED.map((c, i) => make(c, i, 'saved')).join('');

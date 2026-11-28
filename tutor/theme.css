@@ -190,6 +190,51 @@
 .ui-keys dd { margin: 0; color: var(--text); font-size: 15px; }
 .ui-keys .ui-x { position: absolute; top: 14px; right: 14px; }
 
+/* ---------- Painted art (img/, made for Tutor; one painterly style, a night and a daytime version of each scene) ----------
+   body[data-art] puts a page's scene into its background: behind the header and the title, out to the screen's edges,
+   fading into the page below. On a wide screen the scene sits to the right and the title's side stays calm; on a phone
+   the title moves down below it (.art-title). */
+body[data-art] {
+  --art-h: 520px;
+  --art-veil: 1;
+  background:
+    linear-gradient(90deg, rgb(var(--bg-rgb) / var(--art-veil)) 0, rgb(var(--bg-rgb) / calc(var(--art-veil) * .9)) 26%, rgb(var(--bg-rgb) / calc(var(--art-veil) * .42)) 46%, rgb(var(--bg-rgb) / 0) 66%) top / 100% var(--art-h) no-repeat,
+    linear-gradient(rgb(var(--bg-rgb) / .12), rgb(var(--bg-rgb) / 0) calc(var(--art-h) * .28), rgb(var(--bg-rgb) / .62) calc(var(--art-h) * .74), var(--bg) var(--art-h)),
+    var(--art) var(--art-x, 64%) top / max(100%, calc(var(--art-h) * 2.34)) auto no-repeat,
+    var(--bg);
+}
+body[data-art="arena"] { --art: url("/tutor/img/hero-arena-dark.webp"); --art-x: 78%; }
+body[data-art="cards"] { --art: url("/tutor/img/hero-cards-dark.webp"); }
+body[data-art="decks"] { --art: url("/tutor/img/hero-decks-dark.webp"); --art-x: 80%; }
+body[data-art="learn"] { --art: url("/tutor/img/hero-learn-dark.webp"); --art-x: 70%; }
+body[data-art="journal"] { --art: url("/tutor/img/hero-journal-dark.webp"); --art-x: 72%; }
+:root[data-theme="light"] body[data-art="arena"] { --art: url("/tutor/img/hero-arena-light.webp"); }
+:root[data-theme="light"] body[data-art="cards"] { --art: url("/tutor/img/hero-cards-light.webp"); }
+:root[data-theme="light"] body[data-art="decks"] { --art: url("/tutor/img/hero-decks-light.webp"); }
+:root[data-theme="light"] body[data-art="learn"] { --art: url("/tutor/img/hero-learn-light.webp"); }
+:root[data-theme="light"] body[data-art="journal"] { --art: url("/tutor/img/hero-journal-light.webp"); }
+/* Over a scene the header lets more of it through (it blurs whatever scrolls under it) */
+body[data-art] .top { background: rgb(var(--bg-rgb) / .66); }
+body[data-art] .art-title { padding-top: 34px; }
+body[data-art] .art-title h1 { text-shadow: 0 2px 20px rgb(var(--bg-rgb) / .85), 0 0 2px rgb(var(--bg-rgb) / .5); }
+body[data-art] .art-title p { text-shadow: 0 1px 12px rgb(var(--bg-rgb) / .9); }
+@media (max-width: 640px) {
+  body[data-art] { --art-h: 400px; --art-veil: 0; }
+  body[data-art] .art-title { padding-top: 150px; }
+}
+/* A gold flourish under a title, colored by the theme */
+.ornament { display: block; width: min(300px, 76%); aspect-ratio: 900 / 87; margin: 10px 0 12px; background: var(--accent); opacity: .85;
+  -webkit-mask: url("/tutor/img/ornament.webp") center / contain no-repeat; mask: url("/tutor/img/ornament.webp") center / contain no-repeat; }
+.ornament.center { margin-left: auto; margin-right: auto; }
+/* A painted roundel: a lesson, an empty page, the end of a game */
+.medal { display: block; flex: none; border-radius: 50%; box-shadow: 0 8px 24px rgb(0 0 0 / .38); }
+:root[data-theme="light"] .medal { box-shadow: 0 8px 22px rgb(70 50 25 / .24); }
+/* The crest beside the name, where there's room */
+@media (min-width: 641px) {
+  .brand { display: inline-flex; align-items: center; gap: 10px; }
+  .brand::before { content: ""; width: 30px; height: 30px; flex: none; border-radius: 8px; background: url("/tutor/img/crest.webp") center / cover; box-shadow: 0 2px 8px rgb(0 0 0 / .3); }
+}
+
 /* ---------- Paging between cards or decks: the drag follows your finger, and springs back if you let go early ---------- */
 .ui-paging { transition: transform .22s cubic-bezier(.2, .75, .15, 1), opacity .22s; }
 @media (prefers-reduced-motion: reduce) {
